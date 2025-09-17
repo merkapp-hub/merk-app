@@ -1,0 +1,156 @@
+import React from 'react';
+import { View, Text } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Home, ShoppingBag, CreditCard, Box } from 'react-native-feather';
+
+// Import seller screens
+import SellerDashboardScreen from '../screens/seller/SellerDashboardScreen';
+import SellerOrdersScreen from '../screens/seller/SellerOrdersScreen';
+import SellerWalletScreen from '../screens/seller/SellerWalletScreen';
+import AddEditProductScreen from '../screens/seller/AddEditProductScreen';
+
+const Tab = createBottomTabNavigator();
+const DashboardStack = createNativeStackNavigator();
+const OrdersStack = createNativeStackNavigator();
+const WalletStack = createNativeStackNavigator();
+const ProductsStack = createNativeStackNavigator();
+
+// Dashboard Stack
+function DashboardStackScreen() {
+  return (
+    <DashboardStack.Navigator screenOptions={{ headerShown: false }}>
+      <DashboardStack.Screen name="SellerDashboard" component={SellerDashboardScreen} />
+      <DashboardStack.Screen name="AddEditProduct" component={AddEditProductScreen} />
+      <DashboardStack.Screen name="SellerProductDetail" component={SellerProductDetailScreen} />
+      {/* Add more dashboard related screens here */}
+    </DashboardStack.Navigator>
+  );
+}
+
+// Orders Stack
+function OrdersStackScreen() {
+  return (
+    <OrdersStack.Navigator screenOptions={{ headerShown: false }}>
+      <OrdersStack.Screen name="SellerOrders" component={SellerOrdersScreen} />
+      <OrdersStack.Screen name="OrderDetails" component={OrderDetailsScreen} />
+      <OrdersStack.Screen name="AddEditProduct" component={AddEditProductScreen} />
+      {/* Add more orders related screens here */}
+    </OrdersStack.Navigator>
+  );
+}
+
+// Import OrderDetailsScreen
+import OrderDetailsScreen from '../screens/seller/OrderDetailsScreen';
+
+import WithdrawalRequestScreen from '../screens/seller/WithdrawalRequestScreen';
+import ProductScreen from '../screens/seller/ProductScreen';
+import SellerProductDetailScreen from '../screens/seller/SellerProductDetailScreen';
+
+// Wallet Stack
+function WalletStackScreen() {
+  return (
+    <WalletStack.Navigator screenOptions={{ headerShown: false }}>
+      <WalletStack.Screen name="SellerWallet" component={SellerWalletScreen} />
+      <WalletStack.Screen name="WithdrawalRequests" component={WithdrawalRequestScreen} />
+      {/* Add more wallet related screens here */}
+    </WalletStack.Navigator>
+  );
+}
+
+// Products Stack
+function ProductsStackScreen() {
+  return (
+    <ProductsStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProductsStack.Screen name="ProductsList" component={ProductScreen} />
+      <ProductsStack.Screen name="SellerProductDetail" component={SellerProductDetailScreen} />
+      <ProductsStack.Screen name="AddEditProduct" component={AddEditProductScreen} />
+    </ProductsStack.Navigator>
+  );
+}
+
+const SellerTabNavigator = () => {
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: '#E58F14',
+        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarStyle: {
+          height: 70,
+          paddingBottom: 8,
+          paddingTop: 10,
+          paddingHorizontal: 10,
+          backgroundColor: '#ffffff',
+          borderTopWidth: 0,
+          borderTopLeftRadius: 20,
+          borderTopRightRadius: 20,
+          position: 'absolute',
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: -3,
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: 10,
+          elevation: 10,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 5,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '500',
+          marginBottom: 4,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
+        },
+      }}
+    >
+      <Tab.Screen 
+        name="Dashboard" 
+        component={DashboardStackScreen}
+        options={{
+          tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ color, size }) => (
+            <Home width={size} height={size} color={color} fill="none" />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Orders" 
+        component={OrdersStackScreen}
+        options={{
+          tabBarLabel: 'Orders',
+          tabBarIcon: ({ color, size }) => (
+            <ShoppingBag width={size} height={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="Wallet" 
+        component={WalletStackScreen}
+        options={{
+          tabBarLabel: 'Wallet',
+          tabBarIcon: ({ color, size }) => (
+            <CreditCard width={size} height={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen 
+        name="ProductsStack" 
+        component={ProductsStackScreen}
+        options={{
+          tabBarLabel: 'Products',
+          tabBarIcon: ({ color, size }) => (
+            <Box width={size} height={size} color={color} />
+          ),
+          headerShown: false,
+        }}
+      />
+    </Tab.Navigator>
+  );
+};
+
+export default SellerTabNavigator;
