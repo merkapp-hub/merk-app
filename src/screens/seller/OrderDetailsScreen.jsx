@@ -1,59 +1,63 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, ScrollView, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeftIcon } from 'react-native-heroicons/outline';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { GetApi } from '../../Helper/Service';
-import { format } from 'date-fns';
+import { ArrowLeftIcon } from 'react-native-heroicons/outline';
+import { Api, GetApi } from '../../Helper/Service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
+import { Image } from 'react-native-svg';
 
 const OrderDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { t } = useTranslation();
   const { orderId } = route.params;
   
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchOrderDetails = async () => {
-      try {
-        setLoading(true);
-        const response = await GetApi(`getProductRequest/${orderId}`);
+  const fetchOrderDetails = async () => {
+    try {
+      setLoading(true);
+      const response = await GetApi(`getProductRequest/${orderId}`);
+      
+      if (response && response.data) {
+        const orderData = response.data;
+        const transformedOrder = {
+          ...orderData,
+          id: orderData._id,
+          orderId: orderData.orderId,
+          total: orderData.total,
+          finalAmount: orderData.finalAmount,
+          status: orderData.status,
+          paymentmode: orderData.paymentmode,
+          createdAt: orderData.createdAt,
+          updatedAt: orderData.updatedAt,
+          user: orderData.user,
+          shipping_address: orderData.shipping_address,
+          productDetail: orderData.productDetail || [],
+          deliveryCharge: orderData.deliveryCharge || 0,
+          tax: orderData.tax || 0,
+          adminFee: orderData.adminFee || 0,
+          sellerEarnings: orderData.sellerEarnings || 0
+        };
         
-        if (response && response.data) {
-          const orderData = response.data;
-          const transformedOrder = {
-            ...orderData,
-            id: orderData._id,
-            orderId: orderData.orderId,
-            total: orderData.total,
-            finalAmount: orderData.finalAmount,
-            status: orderData.status,
-            paymentmode: orderData.paymentmode,
-            createdAt: orderData.createdAt,
-            updatedAt: orderData.updatedAt,
-            user: orderData.user,
-            shipping_address: orderData.shipping_address,
-            productDetail: orderData.productDetail || [],
-            deliveryCharge: orderData.deliveryCharge || 0,
-            tax: orderData.tax || 0,
-            adminFee: orderData.adminFee || 0,
-            sellerEarnings: orderData.sellerEarnings || 0
-          };
-          
-          setOrder(transformedOrder);
-        } else {
-          setError('Order not found');
-        }
-      } catch (err) {
-        console.error('Error fetching order details:', err);
-        setError('Failed to load order details');
-      } finally {
-        setLoading(false);
+        setOrder(transformedOrder);
+      } else {
+        setError(t('order_not_found'));
       }
-    };
+    } catch (err) {
+      console.error('Error fetching order details:', err);
+      setError(t('failed_to_load_order_details'));
+      console.log('Error response:', err.response?.data || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchOrderDetails();
   }, [orderId]);
 
@@ -69,6 +73,16 @@ const OrderDetailsScreen = () => {
     return (
       <SafeAreaView style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => {
+            setError(null);
+            setLoading(true);
+            fetchOrderDetails();
+          }}
+        >
+          <Text style={styles.retryButtonText}>{t('retry')}</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -95,55 +109,55 @@ const OrderDetailsScreen = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <ArrowLeftIcon size={24} color="#000" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Order Details</Text>
+        <Text style={styles.headerTitle}>{t('order_details')}</Text>
         <View style={styles.headerRight} />
       </View>
 
       <ScrollView style={styles.content}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Information</Text>
+          <Text style={styles.sectionTitle}>{t('order_information')}</Text>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Order ID:</Text>
+            <Text style={styles.label}>{t('order_id')}:</Text>
             <Text style={styles.value}>{order.orderId || 'N/A'}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Order Date:</Text>
+            <Text style={styles.label}>{t('order_date')}:</Text>
             <Text style={styles.value}>
               {order.date || formatDate(order.createdAt || new Date().toISOString())}
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Status:</Text>
+            <Text style={styles.label}>{t('status')}:</Text>
             <View style={[styles.statusBadge, { backgroundColor: getStatusColor(order.status) }]}>
-              <Text style={styles.statusText}>{order.status || 'Pending'}</Text>
+              <Text style={styles.statusText}>{order.status || t('pending')}</Text>
             </View>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Payment Method:</Text>
+            <Text style={styles.label}>{t('payment_method')}:</Text>
             <Text style={styles.value}>{order.paymentmode?.toUpperCase() || 'N/A'}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Customer Information</Text>
+          <Text style={styles.sectionTitle}>{t('customer_information')}</Text>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Name:</Text>
+            <Text style={styles.label}>{t('name')}:</Text>
             <Text style={styles.value}>
               {order.user?.firstName} {order.user?.lastName}
             </Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Email:</Text>
+            <Text style={styles.label}>{t('email')}:</Text>
             <Text style={styles.value}>{order.user?.email || 'N/A'}</Text>
           </View>
           <View style={styles.infoRow}>
-            <Text style={styles.label}>Phone:</Text>
+            <Text style={styles.label}>{t('phone')}:</Text>
             <Text style={styles.value}>{order.shipping_address?.phone || 'N/A'}</Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shipping Address</Text>
+          <Text style={styles.sectionTitle}>{t('shipping_address')}</Text>
           <Text style={styles.addressText}>
             {order.shipping_address?.address || 'N/A'}{'\n'}
             {order.shipping_address?.city}{order.shipping_address?.state ? `, ${order.shipping_address.state}` : ''}{'\n'}
@@ -157,7 +171,7 @@ const OrderDetailsScreen = () => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Items</Text>
+          <Text style={styles.sectionTitle}>{t('order_items')}</Text>
           {order.productDetail?.map((item, index) => (
             <View key={index} style={styles.orderItem}>
               <Image
@@ -184,30 +198,43 @@ const OrderDetailsScreen = () => {
           ))}
         </View>
 
+        {/* Order Summary */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Order Summary</Text>
+          <Text style={styles.sectionTitle}>{t('order_summary')}</Text>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal:</Text>
+            <Text style={styles.summaryLabel}>{t('subtotal')}</Text>
             <Text style={styles.summaryValue}>{currencySign}{order.total?.toFixed(2) || '0.00'}</Text>
           </View>
+          
+          {/* Delivery Charge - Always show */}
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Delivery Charge:</Text>
-            <Text style={styles.summaryValue}>{currencySign}{order.deliveryCharge?.toFixed(2) || '0.00'}</Text>
+            <Text style={styles.summaryLabel}>{t('delivery_charge')}</Text>
+            <Text style={styles.summaryValue}>
+              {order.deliveryCharge > 0 
+                ? `${currencySign}${order.deliveryCharge.toFixed(2)}` 
+                : t('free')}
+            </Text>
           </View>
+          
+          {/* Tax - Always show */}
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Tax:</Text>
-            <Text style={styles.summaryValue}>{currencySign}{order.tax?.toFixed(2) || '0.00'}</Text>
+            <Text style={styles.summaryLabel}>
+              {t('tax')} ({order.taxRate || 0}%)
+            </Text>
+            <Text style={styles.summaryValue}>
+              {order.tax > 0 
+                ? `${currencySign}${order.tax.toFixed(2)}` 
+                : `${currencySign}0.00`}
+            </Text>
           </View>
-          {/* <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Admin Fee:</Text>
-            <Text style={styles.summaryValue}>{currencySign}{order.adminFee?.toFixed(2) || '0.00'}</Text>
-          </View> */}
+          
           <View style={[styles.summaryRow, styles.totalRow]}>
-            <Text style={styles.totalLabel}>Order Total:</Text>
-            <Text style={styles.totalValue}>{currencySign}{order.finalAmount?.toFixed(2) || order.total?.toFixed(2) || '0.00'}</Text>
+            <Text style={styles.totalLabel}>{t('total')}</Text>
+            <Text style={styles.totalAmount}>{currencySign}{order.finalAmount?.toFixed(2) || order.total?.toFixed(2) || '0.00'}</Text>
           </View>
+          
           <View style={[styles.summaryRow, styles.earningsRow]}>
-            <Text style={styles.earningsLabel}>Your Earnings:</Text>
+            <Text style={styles.earningsLabel}>{t('your_earnings')}:</Text>
             <Text style={styles.earningsValue}>{currencySign}{order.sellerEarnings?.toFixed(2) || '0.00'}</Text>
           </View>
         </View>
@@ -385,16 +412,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#10B981',
   },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  totalValue: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -405,8 +422,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
     padding: 20,
+  },
+  retryButton: {
+    marginTop: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    backgroundColor: '#4F46F5',
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontWeight: '600',
   },
   errorText: {
     fontSize: 16,

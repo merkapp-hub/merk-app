@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,8 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
-import { ChevronLeftIcon, ChevronRightIcon, UserIcon, ArrowLeftIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { ChevronLeftIcon, ChevronRightIcon, UserIcon } from 'react-native-heroicons/outline';
+import ConfirmationModal from '../../components/ConfirmationModal';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { Api } from '../../Helper/Service';
@@ -23,6 +24,9 @@ const AccountScreen = () => {
   const { t } = useTranslation();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showFinalConfirm, setShowFinalConfirm] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   
   const menuItems = [
     { id: 1, title: t('my_orders'), hasArrow: true },
@@ -65,6 +69,27 @@ const AccountScreen = () => {
     }
   };
 
+  const handleDeleteAccount = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleFirstConfirm = () => {
+    setShowDeleteConfirm(false);
+    setShowFinalConfirm(true);
+  };
+
+  const handleFinalConfirm = async () => {
+    setShowFinalConfirm(false);
+    try {
+      // Call your delete account API here
+      // await Api.delete('/delete-account');
+      await logout();
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      // You might want to show an error toast or message here
+    }
+  };
+
   const handleMenuPress = async (item) => {
     if (item.onPress) {
       item.onPress();
@@ -72,24 +97,7 @@ const AccountScreen = () => {
     }
     
     if (item.title === t('log_out')) {
-      Alert.alert(
-        t('log_out'),
-        t('confirm_logout'),
-        [
-          {
-            text: t('cancel'),
-            style: 'cancel',
-          },
-          {
-            text: t('log_out'),
-            onPress: async () => {
-              await logout();
-            },
-            style: 'destructive',
-          },
-        ],
-        { cancelable: false }
-      );
+      setShowLogoutConfirm(true);
     } else if (item.title === t('my_orders')) {
       navigation.navigate('Orders');
     } else if (item.title === t('delete_account')) {
@@ -97,40 +105,6 @@ const AccountScreen = () => {
     } else {
       console.log(`Pressed: ${item.title}`);
     }
-  };
-
-  // Handle account deletion
-  const handleDeleteAccount = async () => {
-    Alert.alert(
-      t('delete_account'),
-      t('confirm_delete_account'),
-      [
-        {
-          text: t('cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('delete'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const response = await Api.delete('/users/delete-account');
-              if (response.data.success) {
-                // Logout user and redirect to login
-                await logout();
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Login' }],
-                });
-              }
-            } catch (error) {
-              console.error('Error deleting account:', error);
-              Alert.alert(t('error'), t('failed_delete_account'));
-            }
-          },
-        },
-      ]
-    );
   };
 
   return (
@@ -200,6 +174,41 @@ const AccountScreen = () => {
         onClose={() => setLanguageModalVisible(false)}
         onSelectLanguage={handleLanguageSelect}
         currentLanguage={currentLanguage}
+      />
+
+      {/* Logout Confirmation Modal */}
+      <ConfirmationModal
+        visible={showLogoutConfirm}
+        title={t('log_out')}
+        message={t('confirm_logout')}
+        confirmText={t('log_out')}
+        cancelText={t('cancel')}
+        onConfirm={logout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
+
+      {/* Delete Account Confirmation Modal */}
+      <ConfirmationModal
+        visible={showDeleteConfirm}
+        title={t('delete_account')}
+        message={t('confirm_delete_account')}
+        confirmText={t('proceed')}
+        cancelText={t('cancel')}
+        onConfirm={handleFirstConfirm}
+        onCancel={() => setShowDeleteConfirm(false)}
+        type="default"
+      />
+
+      {/* Final Confirmation Modal */}
+      <ConfirmationModal
+        visible={showFinalConfirm}
+        title={t('are_you_sure')}
+        message={t('delete_account_warning')}
+        confirmText={t('yes_delete')}
+        cancelText={t('no')}
+        onConfirm={handleFinalConfirm}
+        onCancel={() => setShowFinalConfirm(false)}
+        type="danger"
       />
     </SafeAreaView>
   );

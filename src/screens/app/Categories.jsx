@@ -55,8 +55,14 @@ const Categories = () => {
       key={`category-${item._id || index}`}
       className="w-1/4 p-2"
       onPress={() => {
-        // Navigate to category products if needed
-        // navigation.navigate('CategoryProducts', { categoryId: item._id, categoryName: item.name });
+        // Navigate to HomeTab first, then to CategoryProducts
+        navigation.navigate('HomeTab', {
+          screen: 'CategoryProducts',
+          params: {
+            categoryId: item._id,
+            categoryName: item.name.trim()
+          }
+        });
       }}
     >
       <View className="bg-gray-50 rounded-lg p-3 items-center border border-gray-100">

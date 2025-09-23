@@ -275,8 +275,9 @@ export const AuthProvider = ({ children }) => {
       if (cartData) {
         const parsedCart = JSON.parse(cartData);
         if (Array.isArray(parsedCart)) {
-          const totalItems = parsedCart.reduce((sum, item) => sum + (item.qty || 0), 0);
-          setCartCount(totalItems);
+          // Count unique items instead of summing quantities
+          const uniqueItemsCount = parsedCart.length;
+          setCartCount(uniqueItemsCount);
         }
       } else {
         setCartCount(0);

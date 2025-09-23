@@ -1,14 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, RefreshControl } from 'react-native';
-import { useNavigation, useIsFocused } from '@react-navigation/native';
+import React, { useState, useEffect, useContext } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowRightIcon, ShoppingBagIcon, UserGroupIcon, CurrencyDollarIcon, ShoppingCartIcon, ChartBarIcon, Cog6ToothIcon, ArrowRightOnRectangleIcon, ExclamationTriangleIcon } from 'react-native-heroicons/outline';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { ArrowRightOnRectangleIcon, ExclamationTriangleIcon, UserGroupIcon } from 'react-native-heroicons/outline';
+import { Api } from '../../Helper/Service';
+import { AuthContext } from '../../context/AuthContext';
+import DashboardCharts from '../../components/DashboardCharts';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { GetApi } from '../../Helper/Service';
 import { SalesChart, RevenuePieChart, StatsCards } from '../../components/DashboardCharts';
 
 const SellerDashboardScreen = () => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const isFocused = useIsFocused();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,7 +53,18 @@ const SellerDashboardScreen = () => {
   const verifySellerStatus = async () => {
     try {
       const userData = JSON.parse(await AsyncStorage.getItem('userInfo'));
-      setUser(userData);
+      
+      if (!userData) {
+        setError('User data not found. Please login again.');
+        return false;
+      }
+      
+      // Set user data to state
+      setUser({
+        ...userData,
+        firstName: userData.firstName || userData.name?.split(' ')[0] || 'Seller',
+        lastName: userData.lastName || userData.name?.split(' ').slice(1).join(' ') || ''
+      });
       
       if (userData?.role !== 'seller') {
         setError('Access restricted to sellers only');
@@ -114,14 +130,14 @@ const SellerDashboardScreen = () => {
       
       const pieData = [
         {
-          name: 'Products',
+          name: t('products'),
           population: productRevenue,
           color: '#4F46F5',
           legendFontColor: '#7F7F7F',
           legendFontSize: 13,
         },
         {
-          name: 'Services',
+          name: t('services'),
           population: serviceRevenue,
           color: '#10B981',
           legendFontColor: '#7F7F7F',
@@ -256,8 +272,12 @@ const SellerDashboardScreen = () => {
         <View className="p-4 bg-white shadow-sm">
           <View className="flex-row justify-between items-center">
             <View>
-              <Text className="text-2xl font-bold text-gray-900">Dashboard</Text>
-              <Text className="text-gray-500">Welcome back, {user?.firstName || 'Seller'}</Text>
+              <Text className="text-2xl font-bold text-gray-900">{t('dashboard')}</Text>
+              <Text className="text-gray-500">
+                {user?.firstName 
+                  ? t('welcome_back_seller', { name: user.firstName })
+                  : t('welcome_back_seller', { name: 'Seller' })}
+              </Text>
             </View>
             <TouchableOpacity
               onPress={() => navigation.navigate('Account')}
@@ -270,13 +290,13 @@ const SellerDashboardScreen = () => {
 
         {/* Stats */}
         <View className="p-4">
-          <StatsCards stats={stats} />
+          <StatsCards stats={stats} t={t} />
           
           {/* Sales Chart */}
-          <SalesChart data={stats.salesData} />
+          <SalesChart data={stats.salesData} t={t} />
           
           {/* Revenue Pie Chart */}
-          <RevenuePieChart data={stats.revenueData} />
+          <RevenuePieChart data={stats.revenueData} t={t} />
         </View>
 
       

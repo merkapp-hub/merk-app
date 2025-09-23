@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { GetApi, Api } from '../../Helper/Service';
 import { useAuth } from '../../context/AuthContext';
-import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
+import { HeartIcon as HeartIconSolid, ArrowLeftIcon } from 'react-native-heroicons/solid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
@@ -247,7 +247,7 @@ const Favorites = () => {
         {t('no_favorites_message')}
       </Text>
       <TouchableOpacity 
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate('HomeTab')}
         className="bg-slate-800 px-6 py-3 rounded-lg"
       >
         <Text className="text-white font-medium">{t('continue_shopping')}</Text>
@@ -267,8 +267,14 @@ const Favorites = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="px-4 py-4 border-b border-gray-200">
-        <Text className="text-2xl font-bold text-gray-900">{t('my_favorites')}</Text>
+      <View className="px-4 py-4 border-b border-gray-200 flex-row items-center">
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()}
+          className="mr-4"
+        >
+          <ArrowLeftIcon size={24} color="#374151" />
+        </TouchableOpacity>
+        <Text className="text-2xl font-bold text-gray-900 flex-1">{t('my_favorites')}</Text>
       </View>
       
       <FlatList

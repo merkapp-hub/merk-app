@@ -1,14 +1,17 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowRightIcon, CreditCardIcon, ArrowDownTrayIcon, ArrowUpTrayIcon, XMarkIcon, ListBulletIcon } from 'react-native-heroicons/outline';
-import { GetApi, Post } from '../../Helper/Service';
 import { useNavigation } from '@react-navigation/native';
+import { ArrowLeftIcon, CreditCardIcon, BanknotesIcon, ArrowUpTrayIcon, ListBulletIcon, ArrowDownTrayIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import { Api, GetApi, Post } from '../../Helper/Service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 
 const styles = {};
 
 export default function SellerWalletScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [loading, setLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const [walletData, setWalletData] = React.useState({
@@ -181,9 +184,37 @@ export default function SellerWalletScreen() {
     }
   };
 
+  const handleWithdrawButtonPress = () => {
+    console.log('Withdraw button pressed - modal state:', withdrawModalVisible);
+    setWithdrawModalVisible(true);
+    console.log('Modal state set to true');
+  };
+
+  const handleViewRequestsPress = () => {
+    console.log('View Requests button pressed');
+    try {
+      navigation.navigate('WithdrawalRequests');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      Alert.alert('Error', 'Unable to open withdrawal requests');
+    }
+  };
+
+  const closeModal = () => {
+    console.log('Closing modal');
+    setWithdrawModalVisible(false);
+    setWithdrawAmount('');
+    setWithdrawDescription('');
+  };
+
   React.useEffect(() => {
     fetchWalletData();
   }, []);
+
+  // Debug effect to monitor modal state
+  React.useEffect(() => {
+    console.log('Modal visibility changed:', withdrawModalVisible);
+  }, [withdrawModalVisible]);
 
   if (loading && !refreshing) {
     return (
@@ -201,13 +232,13 @@ export default function SellerWalletScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <Text className="text-2xl font-bold text-gray-900 mb-6">My Wallet</Text>
+        <Text className="text-2xl font-bold text-gray-900 mb-6">{t('my_wallet')}</Text>
         
         {/* Balance Summary */}
         <View className="space-y-4 mb-6">
           <View className="bg-white rounded-xl p-5 shadow-sm">
-            <Text className="text-gray-500 text-sm mb-1">Available Balance</Text>
-            <Text className="text-3xl font-bold text-gray-900">${walletData.balance}</Text>
+            <Text className="text-gray-500 text-sm mb-1">{t('available_balance')}</Text>
+            <Text className="text-3xl font-bold text-gray-900">${parseFloat(walletData.balance).toFixed(2)}</Text>
             
             <View className="mt-4 flex-row justify-between items-center">
               {/* <View>
@@ -221,8 +252,6 @@ export default function SellerWalletScreen() {
               </View> */}
             </View>
             
-          
-
             <View className="flex-row justify-between mt-4" style={{ gap: 12 }}>
               {/* Withdraw Button - Left side */}
               <TouchableOpacity 
@@ -232,19 +261,19 @@ export default function SellerWalletScreen() {
                   justifyContent: 'center',
                   paddingHorizontal: 24,
                   paddingVertical: 8,
-                  backgroundColor: '#E58F14',
+                  backgroundColor: isSubmitting ? '#9CA3AF' : '#E58F14',
                   borderRadius: 8,
                   minWidth: 120,
                   flex: 1
                 }}
-                onPress={() => {
-                  console.log('Withdraw button pressed');
-                  setWithdrawModalVisible(true);
-                }}
+                onPress={handleWithdrawButtonPress}
+                disabled={isSubmitting}
                 activeOpacity={0.7}
               >
                 <ArrowUpTrayIcon size={18} color="#FFFFFF" />
-                <Text style={{ color: '#FFFFFF', fontWeight: '500', fontSize: 14, marginLeft: 8 }}>Withdraw</Text>
+                <Text style={{ color: '#FFFFFF', fontWeight: '500', fontSize: 14, marginLeft: 8 }}>
+                  {isSubmitting ? t('processing') + '...' : t('withdraw')}
+                </Text>
               </TouchableOpacity>
               
               {/* View Requests Button - Right side */}
@@ -262,38 +291,29 @@ export default function SellerWalletScreen() {
                   minWidth: 130,
                   flex: 1
                 }}
-                onPress={() => {
-                  console.log('View Requests button pressed');
-                  try {
-                    navigation.navigate('WithdrawalRequests');
-                  } catch (error) {
-                    console.error('Navigation error:', error);
-                    Alert.alert('Error', 'Unable to open withdrawal requests');
-                  }
-                }}
+                onPress={handleViewRequestsPress}
+                disabled={isSubmitting}
                 activeOpacity={0.7}
               >
                 <ListBulletIcon size={18} color="#4F46E5" />
-                <Text style={{ color: '#4F46E5', fontWeight: '500', fontSize: 14, marginLeft: 8 }}>View Requests</Text>
+                <Text style={{ color: '#4F46E5', fontWeight: '500', fontSize: 14, marginLeft: 8 }}>{t('view_requests')}</Text>
               </TouchableOpacity>
             </View>
           </View>
-          
-         
         </View>
         
         {/* Recent Transactions */}
         <View>
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-lg font-semibold text-gray-900">Recent Transactions</Text>
+            <Text className="text-lg font-semibold text-gray-900">{t('recent_transactions')}</Text>
             <TouchableOpacity>
-              <Text className="text-blue-600 text-sm">View All</Text>
+              <Text className="text-blue-600 text-sm">{t('view_all')}</Text>
             </TouchableOpacity>
           </View>
           
           {walletData.transactions.length === 0 ? (
             <View className="bg-white rounded-xl p-5 items-center justify-center">
-              <Text className="text-gray-500">No transactions yet</Text>
+              <Text className="text-gray-500">{t('no_transactions_yet')}</Text>
             </View>
           ) : (
             <View className="space-y-3">
@@ -318,7 +338,7 @@ export default function SellerWalletScreen() {
                             <Text className={`text-xs font-medium ${
                               txn.type === 'credit' ? 'text-green-800' : 'text-red-800'
                             }`}>
-                              {txn.type === 'credit' ? 'Credit' : 'Debit'}
+                              {txn.type === 'credit' ? t('credit') : t('debit')}
                             </Text>
                           </View>
                           <Text className="font-medium text-gray-900 flex-1" numberOfLines={1}>
@@ -327,7 +347,7 @@ export default function SellerWalletScreen() {
                         </View>
                         {txn.reference_id && (
                           <Text className="text-xs text-gray-500 mt-1" numberOfLines={1}>
-                            Ref: {txn.reference_id}
+                            {t('ref')}: {txn.reference_id}
                           </Text>
                         )}
                         <Text className="text-xs text-gray-500 mt-1">
@@ -373,40 +393,38 @@ export default function SellerWalletScreen() {
         animationType="slide"
         transparent={true}
         visible={withdrawModalVisible}
-        onRequestClose={() => {
-          setWithdrawModalVisible(false);
-        }}
+        onRequestClose={closeModal}
       >
         <View className="flex-1 justify-center bg-black/50 p-4">
           <View className="bg-white rounded-xl p-6">
             <View className="flex-row justify-between items-center mb-4">
-              <Text className="text-xl font-bold text-gray-900">Withdraw Funds</Text>
-              <TouchableOpacity onPress={() => setWithdrawModalVisible(false)}>
+              <Text className="text-xl font-bold text-gray-900">{t('common:withdraw_funds')}</Text>
+              <TouchableOpacity onPress={closeModal}>
                 <XMarkIcon size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
             
             <View className="mb-4">
-              <Text className="text-sm font-medium text-gray-700 mb-1">Amount (USD)</Text>
+              <Text className="text-sm font-medium text-gray-700 mb-1">{t('common:amount_usd')}</Text>
               <View className="relative">
                 <TextInput
                   className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white"
-                  placeholder="Enter amount"
+                  placeholder={t('common:enter_amount')}
                   keyboardType="decimal-pad"
                   value={withdrawAmount}
                   onChangeText={setWithdrawAmount}
                 />
                 <Text className="absolute right-3 top-3.5 text-gray-500">$</Text>
               </View>
-              <Text className="text-xs text-gray-500 mt-1">Available: ${walletData.balance}</Text>
+              <Text className="text-xs text-gray-500 mt-1">{t('common:available')}: ${parseFloat(walletData.balance).toFixed(2)}</Text>
             </View>
             
             <View className="mb-6">
-              <Text className="text-sm font-medium text-gray-700 mb-1">Description (Optional)</Text>
+              <Text className="text-sm font-medium text-gray-700 mb-1">{t('common:description_optional')}</Text>
               <TextInput
                 className="border border-gray-300 rounded-lg px-4 py-3 text-gray-900 bg-white h-20"
                 style={{ textAlignVertical: 'top' }}
-                placeholder="Add a note about this withdrawal"
+                placeholder={t('common:withdrawal_note_placeholder')}
                 multiline
                 numberOfLines={3}
                 value={withdrawDescription}
@@ -417,10 +435,10 @@ export default function SellerWalletScreen() {
             <View className="flex-row justify-between">
               <TouchableOpacity 
                 className="flex-1 border border-gray-300 py-3 rounded-lg mr-3"
-                onPress={() => setWithdrawModalVisible(false)}
+                onPress={closeModal}
                 disabled={isSubmitting}
               >
-                <Text className="text-center font-medium text-gray-700">Cancel</Text>
+                <Text className="text-center font-medium text-gray-700">{t('common:cancel')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -431,7 +449,7 @@ export default function SellerWalletScreen() {
                 {isSubmitting ? (
                   <ActivityIndicator color="white" />
                 ) : (
-                  <Text className="text-center font-medium text-white">Withdraw</Text>
+                  <Text className="text-center font-medium text-white">{t('common:withdraw')}</Text>
                 )}
               </TouchableOpacity>
             </View>

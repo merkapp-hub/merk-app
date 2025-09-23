@@ -1,11 +1,9 @@
 import React, { useState, useContext, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Image,
   ScrollView,
@@ -16,16 +14,17 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
-  ImageBackground,
+  Dimensions,
   Modal,
-  Dimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation, CommonActions } from '@react-navigation/native';
+import { ArrowLeftIcon, ArrowUpTrayIcon, BuildingOfficeIcon, DocumentIcon, EnvelopeIcon, GlobeAltIcon, MapPinIcon, PhoneIcon, PhotoIcon, UserIcon } from 'react-native-heroicons/outline';
+import { Api, ApiFormData } from '../../Helper/Service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../../context/AuthContext';
-import { ArrowLeftIcon, ArrowUpTrayIcon, DocumentIcon, UserIcon, BuildingOfficeIcon, MapPinIcon, EnvelopeIcon, PhoneIcon, GlobeAltIcon } from 'react-native-heroicons/outline';
-import {launchImageLibrary} from 'react-native-image-picker';
-import { Picker } from '@react-native-picker/picker';
-import { Postwithimage } from '../../Helper/Service';
 
 // Static list of countries with emojis
 const countryList = [
@@ -70,10 +69,9 @@ const countryList = [
   { code: 'SG', name: 'Singapore', emoji: '🇸🇬' }
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-const CreateStoreScreen = () => {
-  const [showThankYouModal, setShowThankYouModal] = useState(false);
-  const [apiResponse, setApiResponse] = useState(null);
+export default function CreateStoreScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   
   // Get the logout function from AuthContext
   const { logout } = useContext(AuthContext);
@@ -116,6 +114,8 @@ const CreateStoreScreen = () => {
   const [countryName, setCountryName] = useState('');
   const [selectedCountry, setSelectedCountry] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showThankYouModal, setShowThankYouModal] = useState(false);
+  const [apiResponse, setApiResponse] = useState(null);
   const kbisInputRef = useRef();
   const identityInputRef = useRef();
 
@@ -523,7 +523,7 @@ const CreateStoreScreen = () => {
                   >
                     <ArrowLeftIcon size={24} color="#000" />
                   </TouchableOpacity>
-                  <Text style={styles.headerTitle}>Create Store</Text>
+                  <Text style={styles.headerTitle}>{t('create_store')}</Text>
                   <View style={{ width: 24 }} />
                 </View>
 
@@ -1109,4 +1109,3 @@ const styles = StyleSheet.create({
   },
 });
 
-export default CreateStoreScreen;

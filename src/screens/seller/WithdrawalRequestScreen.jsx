@@ -1,14 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, SafeAreaView } from 'react-native';
-import { ArrowLeftIcon, ArrowPathIcon } from 'react-native-heroicons/outline';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { GetApi } from '../../Helper/Service';
+import { ArrowLeftIcon, ArrowPathIcon } from 'react-native-heroicons/outline';
+import { Api, GetApi } from '../../Helper/Service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 
 export default function WithdrawalRequestScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [withdrawals, setWithdrawals] = useState([]);
   const navigation = useNavigation();
+  const { t } = useTranslation();
 
   const fetchWithdrawals = async () => {
     try {
@@ -77,7 +81,7 @@ export default function WithdrawalRequestScreen() {
         >
           <ArrowLeftIcon size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Withdrawal Requests</Text>
+        <Text style={styles.headerTitle}>{t('withdrawal_requests')}</Text>
         <TouchableOpacity 
           onPress={onRefresh}
           style={styles.refreshButton}
@@ -96,7 +100,7 @@ export default function WithdrawalRequestScreen() {
       >
         {withdrawals.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No withdrawal requests found</Text>
+            <Text style={styles.emptyText}>{t('no_withdrawal_requests')}</Text>
           </View>
         ) : (
           withdrawals.map((item, index) => (
@@ -110,27 +114,27 @@ export default function WithdrawalRequestScreen() {
                   ]}
                 >
                   <Text style={[styles.statusText, { color: getStatusColor(item.settle || item.status) }]}>
-                    {item.settle || item.status || 'Pending'}
+                    {item.settle || item.status || t('pending')}
                   </Text>
                 </View>
               </View>
               
               <View style={styles.detailsRow}>
-                <Text style={styles.detailLabel}>Date:</Text>
+                <Text style={styles.detailLabel}>{t('date')}:</Text>
                 <Text style={styles.detailValue}>{formatDate(item.createdAt || item.date)}</Text>
               </View>
               
               {item.paymentMethod && (
                 <View style={styles.detailsRow}>
-                  <Text style={styles.detailLabel}>Method:</Text>
+                  <Text style={styles.detailLabel}>{t('method')}:</Text>
                   <Text style={styles.detailValue}>{item.paymentMethod}</Text>
                 </View>
               )}
               
               <View style={styles.notesContainer}>
-                <Text style={styles.notesLabel}>Notes:</Text>
+                <Text style={styles.notesLabel}>{t('notes')}:</Text>
                 <Text style={styles.notesText}>
-                  {item.notes || item.note || 'No notes provided'}
+                  {item.notes || item.note || t('no_notes_provided')}
                 </Text>
               </View>
             </View>

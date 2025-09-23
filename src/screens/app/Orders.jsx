@@ -30,10 +30,21 @@ const OrdersScreen = ({ navigation }) => {
   const [hasMore, setHasMore] = useState(true);
 
   const [showRatingModal, setShowRatingModal] = useState(false);
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
   const limit = 10;
+  
+  // Close success popup after 3 seconds
+  useEffect(() => {
+    if (showSuccessPopup) {
+      const timer = setTimeout(() => {
+        setShowSuccessPopup(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessPopup]);
 
 
 
@@ -53,75 +64,88 @@ const OrdersScreen = ({ navigation }) => {
       return;
     }
     
+    const productId = selectedProduct.product?._id || selectedProduct._id;
+    console.log('Submitting review for product:', productId);
+    console.log('Rating:', rating);
+    console.log('Review text:', reviewText);
+    
+    // Trim whitespace from review text
+    const trimmedReviewText = reviewText.trim();
+    
+    const data = {
+      product: productId,
+      rating: rating,
+      review: trimmedReviewText || ''  
+    };
+    
+    // Function to update the UI state
+    const updateOrderState = (apiResult = {}) => {
+      setOrders(prevOrders => {
+        return prevOrders.map(order => {
+          if (order._id === selectedProduct.orderId) {
+            return {
+              ...order,
+              productDetail: order.productDetail.map(item => {
+                if (item._id === selectedProduct._id || item.product?._id === selectedProduct._id) {
+                  // Use the response data if available, otherwise fall back to local data
+                  const reviewData = apiResult?.data || {};
+                  return { 
+                    ...item, 
+                    isRated: true,
+                    rating: reviewData.rating || rating,
+                    review: {
+                      rating: reviewData.rating || rating,
+                      // Use the description from the response if available, otherwise use the local one
+                      description: reviewData.description || trimmedReviewText || '',
+                      // Use the created date from the response if available, otherwise use current time
+                      createdAt: reviewData.createdAt || new Date().toISOString(),
+                      ...reviewData  // Spread any other review data from the response
+                    }
+                  };
+                }
+                return item;
+              })
+            };
+          }
+          return order;
+        });
+      });
+    };
+    
     try {
-      const productId = selectedProduct.product?._id || selectedProduct._id;
-      console.log('Submitting review for product:', productId);
-      console.log('Rating:', rating);
-      console.log('Review text:', reviewText);
-      
-      const data = {
-        product: productId,
-        rating: rating,
-        description: reviewText || ''
-      };
-      
+      console.log('Submitting review with data:', data);
       const result = await Post('addreview', data, { navigation });
       console.log('Review submission response:', result);
       
-      if (result && result.status) {
-        alert(t('thank_you_review'));
-        
-        // Update the UI to show "Rated" instead of "Rate Product"
-        setOrders(prevOrders => {
-          return prevOrders.map(order => {
-            if (order._id === selectedProduct.orderId) {
-              return {
-                ...order,
-                productDetail: order.productDetail.map(item => {
-                  if (item._id === selectedProduct._id) {
-                    return { ...item, isRated: true };
-                  }
-                  return item;
-                })
-              };
-            }
-            return order;
-          });
-        });
-        
-        // Close the rating modal
-        setShowRatingModal(false);
-        
-        // Refresh the product details to show the new review
-        try {
-          const productResponse = await fetch(`https://api.merkapp.net/api/getProductByslug/${productId}`, {
-            headers: {
-              'Authorization': `Bearer ${userInfo?.token}`
-            }
-          });
-          
-          if (!productResponse.ok) {
-            console.error('Failed to refresh product details');
-            return;
-          }
-          
-          const productData = await productResponse.json();
-          console.log('Refreshed product data:', productData);
-          
-          // The product details will be refreshed when the user navigates back to the product page
-        } catch (error) {
-          console.error('Error refreshing product details:', error);
-        }
-      } else {
-        throw new Error(result.message || 'Failed to submit review');
+      // Update UI with the response data
+      updateOrderState(result);
+      
+      // We'll show the success popup after the rating modal is closed
+      console.log('Review submitted successfully, will show thank you popup after modal closes');
+      
+      // Refresh the orders to get updated data
+      try {
+        await fetchOrders(true);
+        console.log('Successfully refreshed orders after review submission');
+      } catch (error) {
+        console.error('Error refreshing orders after review:', error);
       }
+      
     } catch (error) {
-      console.error('Error submitting review:', error);
-      alert(error.message || t('error_submitting_review'));
+      console.error('Error in submitRating:', error);
+      // Update UI with local data if there was an error with the API
+      updateOrderState();
+      alert(t('review_submitted_offline'));
     } finally {
+      // Close the modal and then show thank you popup
       setShowRatingModal(false);
+      // Small delay to ensure modal is closed before showing thank you
+      setTimeout(() => {
+        setShowSuccessPopup(true);
+      }, 300);
     }
   };
+  
 
   const groupOrdersByOrderNumber = (orders) => {
     const groupedOrders = {};
@@ -136,14 +160,22 @@ const OrdersScreen = ({ navigation }) => {
         };
       }
       
-      // Handle different API response structures
       let productsToAdd = [];
       
       if (order.productDetail && Array.isArray(order.productDetail)) {
-        productsToAdd = order.productDetail;
+        productsToAdd = order.productDetail.map(product => ({
+          ...product,
+          isRated: !!(product.rating && product.rating > 0) || !!(product.review && product.review.rating > 0), // Updated condition
+          review: product.review || (product.rating ? {
+            rating: product.rating,
+            description: product.reviewText || '',
+            createdAt: product.reviewDate || new Date().toISOString()
+          } : null)
+        }));
       } else if (order.products && Array.isArray(order.products)) {
         productsToAdd = order.products.map(product => ({
           ...product,
+          isRated: !!(product.rating && product.rating > 0) || !!(product.review && product.review.rating > 0), // Updated condition
           product: product.product || {
             _id: product._id,
             name: product.name,
@@ -151,12 +183,17 @@ const OrdersScreen = ({ navigation }) => {
           },
           image: Array.isArray(product.image) ? product.image : [product.image || 'https://via.placeholder.com/60'],
           qty: product.qty || product.quantity || 1,
-          price: product.price || 0
+          price: product.price || 0,
+          review: product.review || (product.rating ? {
+            rating: product.rating,
+            description: product.reviewText || '',
+            createdAt: product.reviewDate || new Date().toISOString()
+          } : null)
         }));
       } else if (order.name) {
-        // Single product order
         productsToAdd = [{
           _id: order._id,
+          isRated: !!(order.rating && order.rating > 0) || !!(order.review && order.review.rating > 0), // Updated condition
           product: {
             _id: order._id,
             name: order.name,
@@ -164,7 +201,12 @@ const OrdersScreen = ({ navigation }) => {
           },
           image: Array.isArray(order.image) ? order.image : [order.image || 'https://via.placeholder.com/60'],
           qty: order.quantity || 1,
-          price: order.price || 0
+          price: order.price || 0,
+          review: order.review || (order.rating ? {
+            rating: order.rating,
+            description: order.reviewText || '',
+            createdAt: order.reviewDate || new Date().toISOString()
+          } : null)
         }];
       }
       
@@ -262,6 +304,7 @@ const OrdersScreen = ({ navigation }) => {
     return { backgroundColor: '#f3f4f6', color: '#374151' };
   };
 
+  
   const renderOrderItem = (item, index) => {
     const isExpanded = expandedOrderId === item._id;
     const hasProducts = item.productDetail && item.productDetail.length > 0;
@@ -324,9 +367,12 @@ const OrdersScreen = ({ navigation }) => {
                           {product.product?.name || product.name || 'Product Name'}
                         </Text>
                         {product.isRated ? (
-                          <View style={styles.ratedContainer}>
-                            <Text style={styles.ratedText}>{t('rated')}</Text>
-                          </View>
+                          <TouchableOpacity 
+                            style={[styles.rateButton, styles.updateButton]}
+                            onPress={() => openRatingModal(product, item)}
+                          >
+                            <Text style={styles.rateButtonText}>{t('update_review')}</Text>
+                          </TouchableOpacity>
                         ) : (
                           <TouchableOpacity 
                             style={styles.rateButton}
@@ -577,6 +623,20 @@ const OrdersScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+
+      {/* Success Popup */}
+      <Modal
+        transparent={true}
+        visible={showSuccessPopup}
+        animationType="fade"
+        onRequestClose={() => setShowSuccessPopup(false)}
+      >
+        <View style={styles.successPopupOverlay}>
+          <View style={styles.successPopup}>
+            <Text style={styles.successPopupText}>{t('thank_you_review')}</Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -585,6 +645,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+    paddingBottom: 24,
   },
   header: {
     backgroundColor: 'white',
@@ -641,9 +702,11 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    paddingBottom: 40,
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 32,
   },
   ordersHeader: {
     alignItems: 'center',
@@ -709,6 +772,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     marginTop: 2,
+  },
+  rateButton: {
+    backgroundColor: '#E58F14',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  updateButton: {
+    backgroundColor: '#f59e0b', 
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    marginLeft: 8,
   },
   ratedContainer: {
     backgroundColor: '#e5f7e5',
@@ -832,7 +909,37 @@ const styles = StyleSheet.create({
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    paddingTop: 8,
+    marginTop: 24,
+    gap: 12,
+  },
+  successPopupOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  successPopup: {
+    backgroundColor: '#E58F14',
+    margin: 20,
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    width: '90%',
+    marginBottom: 30,
+  },
+  successPopupText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   cancelButton: {
     paddingHorizontal: 20,

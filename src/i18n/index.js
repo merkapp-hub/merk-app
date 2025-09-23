@@ -18,22 +18,22 @@ const LANGUAGE_DETECTOR = {
   async: true,
   detect: callback => {
     AsyncStorage.getItem('@app_language', (err, language) => {
-      // if error fetching stored data or no language was stored
-      // display errors when in DEV mode as console statements
-      if (err || !language) {
-        if (err) {
-          console.log('Error fetching Languages from asyncstorage ', err);
-        } else {
-          console.log('No language is set, choosing English as fallback');
-        }
-
-        const findBestAvailableLanguage =
-          RNLocalize.findBestAvailableLanguage(LANG_CODES);
-
-        callback(findBestAvailableLanguage.languageTag || 'en');
+      // If we have a stored language, use it
+      if (!err && language) {
+        callback(language);
         return;
       }
-      callback(language);
+
+      // Otherwise, try to detect the best available language
+      try {
+        const bestFit = RNLocalize.findBestAvailableLanguage(LANG_CODES);
+        const languageTag = bestFit?.languageTag || 'en';
+        console.log('Using detected language:', languageTag);
+        callback(languageTag);
+      } catch (error) {
+        console.warn('Error detecting language, using English as fallback', error);
+        callback('en');
+      }
     });
   },
   init: () => {},

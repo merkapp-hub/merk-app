@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import SwiperFlatList from 'react-native-swiper-flatlist';
+
 import { 
   View, 
   Text, 
@@ -16,6 +16,7 @@ import Header from '../../components/Header';
 import FlashSale from '../../components/FlashSale';
 import { GetApi } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
+import SwiperFlatList from 'react-native-swiper-flatlist';
 
 
 const { width } = Dimensions.get('window');
@@ -25,11 +26,13 @@ const HomeScreen = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  // const flatListRef = useRef(null);
+  // 
   const navigation = useNavigation();
   const { t } = useTranslation();
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+const [currentImageIndex, setCurrentImageIndex] = useState(0);
+const scrollViewRef = useRef(null);
 
   const [bestSellingProducts, setBestSellingProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -47,16 +50,36 @@ const HomeScreen = () => {
       _product: product 
     });
   };
+const setCarouselRef = useCallback((ref) => {
+  flatListRef.current = ref;
+  console.log('ScrollView ref set:', ref !== null);
+}, []);
 
+
+useEffect(() => {
+  let interval = null;
+  
+  if (carouselImages.length > 1) {
+    interval = setInterval(() => {
+      setCurrentImageIndex(prevIndex => (prevIndex + 1) % carouselImages.length);
+    }, 2000);
+  }
+
+  return () => {
+    if (interval) {
+      clearInterval(interval);
+    }
+  };
+}, [carouselImages.length]);
   // Fetch best selling products
   const fetchBestSellingProducts = async () => {
     try {
       setLoadingProducts(true);
       setError(null);
-      console.log('Fetching best selling products...');
+     
       
       const response = await GetApi("getTopSoldProduct");
-      console.log('Best selling products response:', response);
+     
       
       // Handle different response formats
       let productsData = response;
@@ -100,7 +123,7 @@ const HomeScreen = () => {
           };
         });
         
-        console.log('Processed products:', products);
+        
         setBestSellingProducts(products);
       } else {
         console.warn('Invalid response structure:', response);
@@ -175,10 +198,10 @@ const newArrivals = [
     try {
       setLoadingProducts(true);
       setError(null);
-      console.log('Fetching best selling products...');
+    
       
       const response = await GetApi("getTopSoldProduct");
-      console.log('Best selling products response:', response);
+    
       
       // Handle different response formats
       let productsData = response;
@@ -256,16 +279,19 @@ const newArrivals = [
 
    
   }, []);
-  const fetchCarouselImages = async () => {
+const fetchCarouselImages = async () => {
   try {
     setLoading(true);
     setError(null);
     const response = await GetApi("getsetting");
-    console.log('API Response:', response);
+    
     
     if (response && response.success !== false && response.setting && response.setting[0]?.carousel) {
       const carouselItems = response.setting[0].carousel;
       const images = carouselItems.map((item, index) => item.image);
+      
+     
+      
       setCarouselImages(images);
     } else {
       console.warn('No carousel data found in response:', response);
@@ -378,24 +404,7 @@ const newArrivals = [
     fetchExploreProducts();
   }, [fetchExploreProducts]);
 
- 
-  // useEffect(() => {
-  //   if (carouselImages.length === 0) return;
-    
-  //   const interval = setInterval(() => {
-  //     const nextIndex = (currentImageIndex + 1) % carouselImages.length;
-  //     setCurrentImageIndex(nextIndex);
-      
-  //     if (flatListRef.current) {
-  //       flatListRef.current.scrollToIndex({
-  //         index: nextIndex,
-  //         animated: true,
-  //       });
-  //     }
-  //   }, 3000); 
 
-  //   return () => clearInterval(interval);
-  // }, [carouselImages, currentImageIndex]);
 
   const renderStars = (rating) => {
     const stars = [];
@@ -554,7 +563,10 @@ const newArrivals = [
         contentContainerStyle={{ paddingBottom: 20 }}
       >
         {/* Carousel */}
-     <View className="mb-6" style={{ marginTop: 10 }}>
+
+
+{/* Carousel */}
+     <View style={{marginVertical: 20}}>
   {loading ? (
     <View style={{ height: 200, justifyContent: 'center', alignItems: 'center' }}>
       <ActivityIndicator size="large" color="#0000ff" />
@@ -563,50 +575,43 @@ const newArrivals = [
     <View style={{ height: 200, justifyContent: 'center', alignItems: 'center' }}>
       <Text style={{ color: 'red' }}>{error}</Text>
     </View>
-  ) : (
-    <SwiperFlatList
-      autoplay
-      autoplayDelay={2}
-      autoplayLoop
-      index={0}
-      showPagination
-      data={carouselImages}
-      renderItem={({ item, index }) => (
-        <View key={`carousel-${index}`} style={{ width: width, height: 200, paddingHorizontal: 10 }}>
-          <View style={{
-            flex: 1,
-            backgroundColor: '#f3f4f6',
-            borderRadius: 12,
-            overflow: 'hidden',
-            elevation: 2,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-          }}>
-            <Image
-              source={{ uri: item }}
-              style={{
-                width: '100%',
-                height: '100%',
-                resizeMode: 'cover',
-              }}
-            />
-          </View>
-        </View>
-      )}
-      paginationStyle={{ position: 'absolute', bottom: -20 }}
-      paginationStyleItem={{
-        width: 8,
-        height: 8,
-        backgroundColor: '#d1d5db',
-        marginHorizontal: 4
-      }}
-      paginationStyleItemActive={{
-        backgroundColor: '#f97316'
-      }}
-    />
-  )}
+  ) : carouselImages && carouselImages?.length > 0 ? (
+    <View>
+      {/* Simple Image Display with Index Change */}
+      <View style={{width: width, alignItems: 'center', height: 200}}>
+        <Image
+          source={{uri: carouselImages[currentImageIndex]}}
+          style={{
+            height: 180,
+            width: width - 20,
+            borderRadius: 20,
+            alignSelf: 'center',
+          }}
+          resizeMode="stretch"
+        />
+      </View>
+      
+      {/* Dots */}
+      <View style={{
+        flexDirection: 'row',
+        justifyContent: 'center',
+        paddingTop: 10
+      }}>
+        {carouselImages.map((_, index) => (
+          <View
+            key={index}
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: index === currentImageIndex ? '#f97316' : '#d1d5db',
+              marginHorizontal: 4
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  ) : null}
 </View>
 
         {/* Explore Categories */}
@@ -614,7 +619,7 @@ const newArrivals = [
           <View className="flex-row items-center justify-between mb-4">
             <View className="flex-row items-center">
               <View className="w-1 h-6 bg-orange-500 rounded-full mr-2" />
-              <Text className="text-black text-xl font-bold">{t('explore_by_categories')}</Text>
+              <Text className="text-black text-xl font-bold">{t('explore_categories')}</Text>
             </View>
             <TouchableOpacity 
               onPress={() => navigation.navigate('Categories')}
@@ -767,11 +772,14 @@ const newArrivals = [
           {newArrivals.map((item) => (
             <View key={item.id} className="mb-4">
               <View className="relative">
-                <Image
-                  source={{ uri: item.image }}
-                  className="w-full h-48 rounded-lg"
-                  resizeMode="cover"
-                />
+                <View className="relative">
+                  <Image
+                    source={{ uri: item.image }}
+                    className="w-full h-48 rounded-lg"
+                    resizeMode="cover"
+                  />
+                  <View className="absolute inset-0 bg-black opacity-40 rounded-lg" />
+                </View>
                 <View className="absolute bottom-4 left-4">
                   <Text className="text-white text-xl font-bold mb-1">{item.title}</Text>
                   <Text className="text-white text-sm mb-3 opacity-80">{item.subtitle}</Text>
@@ -787,7 +795,7 @@ const newArrivals = [
         {/* Services */}
         <View className="px-4 pb-8">
           <View className="space-y-6">
-            {/* Free Delivery */}
+          
             <View className="items-center">
               <View className="w-16 h-16 bg-gray-200 rounded-full items-center justify-center mb-3">
                 <View className="w-10 h-10 bg-slate-800 rounded-full items-center justify-center">
@@ -798,7 +806,7 @@ const newArrivals = [
               <Text className="text-gray-600 text-center">{t('free_delivery_over_140')}</Text>
             </View>
 
-            {/* Customer Service */}
+          
             <View className="items-center">
               <View className="w-16 h-16 bg-gray-200 rounded-full items-center justify-center mb-3">
                 <View className="w-10 h-10 bg-slate-800 rounded-full items-center justify-center">
@@ -809,7 +817,6 @@ const newArrivals = [
               <Text className="text-gray-600 text-center">{t('friendly_customer_support')}</Text>
             </View>
 
-            {/* Money Back Guarantee */}
             <View className="items-center">
               <View className="w-16 h-16 bg-gray-200 rounded-full items-center justify-center mb-3">
                 <View className="w-10 h-10 bg-slate-800 rounded-full items-center justify-center">

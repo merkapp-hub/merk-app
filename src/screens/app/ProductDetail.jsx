@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { GetApi, Post, Api } from '../../Helper/Service';
 import { useAuth } from '../../context/AuthContext';
-import { HeartIcon as HeartIconOutline } from 'react-native-heroicons/outline';
+import { HeartIcon as HeartIconOutline, ArrowLeftIcon } from 'react-native-heroicons/outline';
 import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProductCard from '../../components/ProductCard';
@@ -27,6 +27,23 @@ const ProductDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { userInfo: user, addToCart, updateCartCount, updateFavoritesCount } = useAuth();
+  
+  // Remove item from cart
+  const removeFromCart = async (itemId) => {
+    try {
+      const cartData = await AsyncStorage.getItem('cartData');
+      if (cartData) {
+        const cart = JSON.parse(cartData);
+        const updatedCart = cart.filter(item => item._id !== itemId);
+        await AsyncStorage.setItem('cartData', JSON.stringify(updatedCart));
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+      return { success: false, error: error.message };
+    }
+  };
   const { t } = useTranslation();
   const { productId, flashSaleId, flashSalePrice, isFlashSale } = route.params || {};
 
@@ -40,6 +57,7 @@ const ProductDetailScreen = () => {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [favoriteUpdated, setFavoriteUpdated] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
@@ -158,10 +176,18 @@ const fetchProductDetails = async () => {
       const newFavoriteState = !isFavorite;
       
       // Update local storage for both logged in and guest users
-      await updateLocalFavorites(product._id, newFavoriteState);
-      setIsFavorite(newFavoriteState);
+      const updated = await updateLocalFavorites(product._id, newFavoriteState);
       
-      console.log('Favorite toggled successfully:', newFavoriteState);
+      if (updated) {
+        // Only update the UI if the favorites were actually changed
+        setIsFavorite(newFavoriteState);
+        
+        // Toggle the favoriteUpdated state to trigger the useEffect hook
+        // This will update the favorites count in the tab bar
+        setFavoriteUpdated(prev => !prev);
+        
+        console.log('Favorite toggled successfully:', newFavoriteState);
+      }
       
     } catch (error) {
       console.error('Error toggling favorite:', error);
@@ -184,18 +210,29 @@ const fetchProductDetails = async () => {
       console.log('Current favorites before update:', favArray);
       console.log('Adding/Removing product:', productId, 'isFav:', isFav);
   
+      let updated = false;
+      
       if (isFav) {
         if (!favArray.includes(productId)) {
           favArray.push(productId);
+          updated = true;
         }
       } else {
+        const initialLength = favArray.length;
         favArray = favArray.filter(id => id !== productId);
+        updated = favArray.length !== initialLength;
       }
   
-      await AsyncStorage.setItem('favorites', JSON.stringify(favArray));
-      console.log('Updated favorites:', favArray);
+      if (updated) {
+        await AsyncStorage.setItem('favorites', JSON.stringify(favArray));
+        console.log('Updated favorites:', favArray);
+        return true; // Return true if favorites were updated
+      }
+      
+      return false; // Return false if no changes were made
     } catch (error) {
       console.error('Error updating local favorites:', error);
+      throw error; // Re-throw to be caught by the calling function
     }
   };
 
@@ -268,10 +305,57 @@ const fetchProductDetails = async () => {
   };
 
   // Handle quantity change
-  const updateQuantity = (change) => {
+  const updateQuantity = async (change) => {
     const newQuantity = quantity + change;
     if (newQuantity >= 0 && newQuantity <= 10) {
       setQuantity(newQuantity);
+      
+      // If quantity is being increased from 0, add to cart
+      if (newQuantity > 0 && quantity === 0) {
+        try {
+          await addToCart(product, selectedVariant, newQuantity);
+          // Update cart count in tab navigator
+          if (updateCartCount) {
+            await updateCartCount();
+          }
+        } catch (error) {
+          console.error('Error updating cart:', error);
+        }
+      }
+      // If quantity is being decreased to 0, remove from cart
+      else if (newQuantity === 0 && quantity > 0) {
+        try {
+          await removeFromCart(product._id + '_' + selectedVariant);
+          // Update cart count in tab navigator
+          if (updateCartCount) {
+            await updateCartCount();
+          }
+        } catch (error) {
+          console.error('Error removing from cart:', error);
+        }
+      }
+      // If quantity is being updated (but not to/from 0), update cart
+      else if (newQuantity > 0 && quantity > 0) {
+        try {
+          const cartData = await AsyncStorage.getItem('cartData');
+          if (cartData) {
+            let cart = JSON.parse(cartData);
+            const itemIndex = cart.findIndex(item => item._id === product._id + '_' + selectedVariant);
+            
+            if (itemIndex >= 0) {
+              cart[itemIndex].qty = newQuantity;
+              cart[itemIndex].total = cart[itemIndex].price * newQuantity;
+              await AsyncStorage.setItem('cartData', JSON.stringify(cart));
+              // Update cart count in tab navigator
+              if (updateCartCount) {
+                await updateCartCount();
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error updating cart quantity:', error);
+        }
+      }
     }
   };
 
@@ -419,6 +503,13 @@ const fetchProductDetails = async () => {
     }
   }, [product]);
 
+  // Update favorites count when favorite status changes
+  useEffect(() => {
+    if (updateFavoritesCount) {
+      updateFavoritesCount();
+    }
+  }, [favoriteUpdated, updateFavoritesCount]);
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-white">
@@ -460,14 +551,18 @@ const fetchProductDetails = async () => {
     <SafeAreaView className="flex-1 bg-white">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200">
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text className="text-2xl">←</Text>
-        </TouchableOpacity>
-        <Text className="text-lg font-semibold">{t('product_details')}</Text>
+        <View className="flex-row items-center">
+          <TouchableOpacity onPress={() => navigation.goBack()} className="mr-4">
+            <ArrowLeftIcon size={24} color="#374151" />
+          </TouchableOpacity>
+          <Text className="text-lg font-semibold">{t('product_details')}</Text>
+        </View>
         <TouchableOpacity onPress={handleToggleFavorite}>
-          <Text className={`text-2xl ${isFavorite ? 'text-red-500' : 'text-gray-400'}`}>
-            {isFavorite ? '♥' : '♡'}
-          </Text>
+          {isFavorite ? (
+            <HeartIconSolid size={24} color="#EF4444" />
+          ) : (
+            <HeartIconOutline size={24} color="#9CA3AF" />
+          )}
         </TouchableOpacity>
       </View>
 

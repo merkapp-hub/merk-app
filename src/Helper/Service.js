@@ -10,13 +10,13 @@ import { navigate, reset, navigationRef } from '../../navigationRef';
 
 const GetApi = async (url, props, retryCount = 0) => {
   const requestId = Math.random().toString(36).substr(2, 9);
-  console.log(`[${new Date().toISOString()}] GetApi called for:`, url, `(Attempt ${retryCount + 1})`);
+  // console.log(`[${new Date().toISOString()}] GetApi called for:`, url, `(Attempt ${retryCount + 1})`);
   
   try {
     // Check internet connection
     const connected = await ConnectionCheck.isConnected();
-    console.log('Internet connection status:', connected ? 'Connected' : 'Disconnected');
-    console.log('API Base URL:', API_BASE_URL);
+    // console.log('Internet connection status:', connected ? 'Connected' : 'Disconnected');
+    // console.log('API Base URL:', API_BASE_URL);
     
     if (!connected) {
       throw new Error('No internet connection');
@@ -29,7 +29,7 @@ const GetApi = async (url, props, retryCount = 0) => {
     try {
       console.log('Retrieving token from AsyncStorage...');
       token = await AsyncStorage.getItem('userToken');
-      console.log('Token retrieved from storage:', token ? `Found (${token.length} chars)` : 'Not found');
+      // console.log('Token retrieved from storage:', token ? `Found (${token.length} chars)` : 'Not found');
       
       if (!token) {
         if (retryCount < 1) {
@@ -48,7 +48,7 @@ const GetApi = async (url, props, retryCount = 0) => {
     let timeout;
     try {
       const requestUrl = API_BASE_URL + url;
-      console.log(`[${requestId}] Sending GET request to: ${requestUrl}`);
+      // console.log(`[${requestId}] Sending GET request to: ${requestUrl}`);
       
       
       const source = axios.CancelToken.source();
@@ -61,7 +61,7 @@ const GetApi = async (url, props, retryCount = 0) => {
         source.cancel(`Request timed out after ${timeoutDuration}ms`);
       }, timeoutDuration);
 
-      console.log(`[${requestId}] Setting request timeout to ${timeoutDuration}ms`);
+      // console.log(`[${requestId}] Setting request timeout to ${timeoutDuration}ms`);
       
       const response = await axios.get(requestUrl, {
         headers: {
@@ -78,8 +78,8 @@ const GetApi = async (url, props, retryCount = 0) => {
       });
       
       clearTimeout(timeout);
-      console.log(`[${requestId}] Response received - Status: ${response.status} ${response.statusText}`);
-      console.log(`[${requestId}] Response headers:`, JSON.stringify(response.headers, null, 2));
+      // console.log(`[${requestId}] Response received - Status: ${response.status} ${response.statusText}`);
+      // console.log(`[${requestId}] Response headers:`, JSON.stringify(response.headers, null, 2));
       
       // Check if response.data exists
       if (!response.data) {
@@ -88,9 +88,9 @@ const GetApi = async (url, props, retryCount = 0) => {
       }
       
       if (response.data) {
-        console.log(`[${requestId}] Response data type:`, typeof response.data);
-        console.log(`[${requestId}] Response data length:`, 
-          typeof response.data === 'string' ? response.data.length : 'N/A');
+        // console.log(`[${requestId}] Response data type:`, typeof response.data);
+        // console.log(`[${requestId}] Response data length:`, 
+        //   typeof response.data === 'string' ? response.data.length : 'N/A');
         return response.data;
       } else {
         console.warn(`[${requestId}] No data in response`);
@@ -286,9 +286,12 @@ const Post = async (url, data, props) => {
             config.headers.Authorization = `Bearer ${token}`; 
           }
           
+          console.log('Making POST request to:', API_BASE_URL + url);
           axios
             .post(API_BASE_URL + url, data, config)
             .then(res => {
+              console.log('API Response:', res);
+              console.log('Response Data:', res.data);
               resolve(res.data);
             })
             .catch(async err => {

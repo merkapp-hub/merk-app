@@ -1,11 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GetApi } from '../../Helper/Service';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import ProductList from '../../components/ProductList';
+import { Api, GetApi } from '../../Helper/Service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
+
+const styles = StyleSheet.create({});
 
 export default function ProductScreen() {
+  const { t } = useTranslation();
+  const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [products, setProducts] = useState([]);
@@ -84,15 +90,15 @@ export default function ProductScreen() {
   const deleteProduct = async (productId) => {
     try {
       Alert.alert(
-        'Delete Product',
-        'Are you sure you want to delete this product? This action cannot be undone.',
+        t('common:delete_product_title'),
+        t('common:delete_product_message'),
         [
           {
-            text: 'Cancel',
+            text: t('common:cancel'),
             style: 'cancel',
           },
           {
-            text: 'Delete',
+            text: t('common:delete'),
             style: 'destructive',
             onPress: async () => {
               try {
@@ -103,13 +109,13 @@ export default function ProductScreen() {
                 if (response && response.success) {
                   // Refresh the products list after successful deletion
                   await fetchProducts();
-                  Alert.alert('Success', 'Product deleted successfully');
+                  Alert.alert(t('common:success'), t('common:product_deleted'));
                 } else {
-                  throw new Error(response?.message || 'Failed to delete product');
+                  throw new Error(response?.message || t('common:delete_failed'));
                 }
               } catch (error) {
                 console.error('Error deleting product:', error);
-                Alert.alert('Error', error.message || 'Failed to delete product');
+                Alert.alert(t('common:error'), error.message || t('common:delete_failed'));
               } finally {
                 setLoading(false);
               }
@@ -119,7 +125,7 @@ export default function ProductScreen() {
       );
     } catch (error) {
       console.error('Error deleting product:', error);
-      Alert.alert('Error', 'Failed to delete product');
+      Alert.alert(t('common:error'), t('common:delete_failed'));
     }
   };
 
@@ -148,7 +154,6 @@ export default function ProductScreen() {
         refreshing={refreshing}
         onRefresh={onRefresh}
         onDeleteProduct={deleteProduct}
-        showAddButton={true}
         showActions={true}
       />
     </SafeAreaView>

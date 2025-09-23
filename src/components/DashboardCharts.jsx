@@ -20,7 +20,7 @@ const chartConfig = {
   },
 };
 
-export const SalesChart = ({ data }) => {
+export const SalesChart = ({ data, t }) => {
   // Ensure we have valid labels and data
   const defaultLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
   const defaultData = [0, 0, 0, 0, 0, 0];
@@ -50,13 +50,13 @@ export const SalesChart = ({ data }) => {
       width: '100%',
     }}>
       <Text style={{ 
-        fontSize: 16, 
+        fontSize: 18, 
         fontWeight: 'bold', 
-        marginBottom: 10,
+        marginBottom: 16,
         alignSelf: 'flex-start',
         paddingLeft: 8,
       }}>
-        Sales Overview
+        {t('sales_overview')}
       </Text>
       <View style={{ width: '100%', overflow: 'hidden' }}>
       <LineChart
@@ -105,10 +105,12 @@ export const SalesChart = ({ data }) => {
   );
 };
 
-export const RevenuePieChart = ({ data }) => {
+export const RevenuePieChart = ({ data, t }) => {
   return (
     <View style={{ marginVertical: 8, padding: 16, backgroundColor: 'white', borderRadius: 8 }}>
-      <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 10 }}>Revenue Sources</Text>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>
+        {t('revenue_distribution')}
+      </Text>
       <PieChart
         data={data || [
           {
@@ -138,11 +140,11 @@ export const RevenuePieChart = ({ data }) => {
   );
 };
 
-export const StatsCards = ({ stats }) => {
+export const StatsCards = ({ stats, t }) => {
   const statItems = [
-    { label: 'Total Sales', value: stats?.totalSales || '0', color: '#4F46F5' },
-    { label: 'Total Orders', value: stats?.totalOrders || '0', color: '#10B981' },
-    { label: 'Total Revenue', value: `$${stats?.totalRevenue || '0'}`, color: '#F59E0B' },
+    { label: t('total_sales'), value: stats?.totalSales || '0', color: '#4F46F5' },
+    { label: t('total_orders'), value: stats?.totalOrders || '0', color: '#10B981' },
+    { label: t('total_revenue'), value: `$${stats?.totalRevenue || '0'}`, color: '#F59E0B' },
   ];
 
   return (

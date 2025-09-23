@@ -1,27 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  Dimensions,
-  Alert
-} from 'react-native';
+import { View, Text, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator, Dimensions, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { GetApi } from '../../Helper/Service';
+import { ArrowLeftIcon, StarIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { StarIcon as StarIconSolid } from 'react-native-heroicons/solid';
+import { Api, GetApi } from '../../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { StarIcon } from 'react-native-heroicons/solid';
-import { ArrowLeftIcon } from 'react-native-heroicons/outline';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
 export default function SellerProductDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute();
+  const { t } = useTranslation();
   const { productId } = route.params;
 
   const [product, setProduct] = useState(null);
@@ -322,7 +314,7 @@ export default function SellerProductDetailScreen() {
           >
             <ArrowLeftIcon size={24} color="#1F2937" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Product Details</Text>
+          <Text style={styles.headerTitle}>{t('product_details')}</Text>
           <View style={{ width: 24 }} />
         </View>
 

@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, Dimensions, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, Image, StyleSheet, Dimensions, FlatList, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { GetApi } from '../Helper/Service';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
 const FlashSale = () => {
   const [saleData, setSaleData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -124,13 +126,17 @@ const FlashSale = () => {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Loading flash sales...</Text>
+        <ActivityIndicator size="small" color="#0000ff" />
       </View>
     );
   }
 
   if (saleData.length === 0) {
-    return null; // Don't show anything if no active sales
+    return (
+      <View style={styles.container}>
+        <Text style={styles.noSalesText}>{t('no_sale_live')}</Text>
+      </View>
+    );
   }
 
   return (
@@ -253,6 +259,13 @@ const styles = StyleSheet.create({
   loadingContainer: {
     padding: 20,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noSalesText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#666',
+    paddingVertical: 20,
   },
 });
 

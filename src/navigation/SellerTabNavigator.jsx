@@ -2,13 +2,14 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Home, ShoppingBag, CreditCard, Box } from 'react-native-feather';
+import { Home, ShoppingBag, CreditCard, Box, Plus } from 'react-native-feather';
 
 // Import seller screens
 import SellerDashboardScreen from '../screens/seller/SellerDashboardScreen';
 import SellerOrdersScreen from '../screens/seller/SellerOrdersScreen';
 import SellerWalletScreen from '../screens/seller/SellerWalletScreen';
-import AddEditProductScreen from '../screens/seller/AddEditProductScreen';
+import AddProductScreen from '../screens/seller/AddProductScreen';
+import AccountScreen from '../screens/app/Account';
 
 const Tab = createBottomTabNavigator();
 const DashboardStack = createNativeStackNavigator();
@@ -21,8 +22,9 @@ function DashboardStackScreen() {
   return (
     <DashboardStack.Navigator screenOptions={{ headerShown: false }}>
       <DashboardStack.Screen name="SellerDashboard" component={SellerDashboardScreen} />
-      <DashboardStack.Screen name="AddEditProduct" component={AddEditProductScreen} />
+      <DashboardStack.Screen name="AddProduct" component={AddProductScreen} />
       <DashboardStack.Screen name="SellerProductDetail" component={SellerProductDetailScreen} />
+      <DashboardStack.Screen name="Account" component={AccountScreen} />
       {/* Add more dashboard related screens here */}
     </DashboardStack.Navigator>
   );
@@ -34,15 +36,14 @@ function OrdersStackScreen() {
     <OrdersStack.Navigator screenOptions={{ headerShown: false }}>
       <OrdersStack.Screen name="SellerOrders" component={SellerOrdersScreen} />
       <OrdersStack.Screen name="OrderDetails" component={OrderDetailsScreen} />
-      <OrdersStack.Screen name="AddEditProduct" component={AddEditProductScreen} />
+      <OrdersStack.Screen name="AddProduct" component={AddProductScreen} />
       {/* Add more orders related screens here */}
     </OrdersStack.Navigator>
   );
 }
 
-// Import OrderDetailsScreen
+// Import remaining screens
 import OrderDetailsScreen from '../screens/seller/OrderDetailsScreen';
-
 import WithdrawalRequestScreen from '../screens/seller/WithdrawalRequestScreen';
 import ProductScreen from '../screens/seller/ProductScreen';
 import SellerProductDetailScreen from '../screens/seller/SellerProductDetailScreen';
@@ -64,7 +65,7 @@ function ProductsStackScreen() {
     <ProductsStack.Navigator screenOptions={{ headerShown: false }}>
       <ProductsStack.Screen name="ProductsList" component={ProductScreen} />
       <ProductsStack.Screen name="SellerProductDetail" component={SellerProductDetailScreen} />
-      <ProductsStack.Screen name="AddEditProduct" component={AddEditProductScreen} />
+      <ProductsStack.Screen name="AddProduct" component={AddProductScreen} />
     </ProductsStack.Navigator>
   );
 }
@@ -106,6 +107,7 @@ const SellerTabNavigator = () => {
         tabBarIconStyle: {
           marginTop: 4,
         },
+        tabBarHideOnKeyboard: true,
       }}
     >
       <Tab.Screen 
