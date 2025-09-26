@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import './src/i18n';
+import SplashScreen from './src/components/SplashScreen';
 
 import SignupScreen from "./src/screens/auth/SignupScreen";
 import LoginScreen from "./src/screens/auth/LoginScreen";
@@ -14,9 +15,26 @@ import ProfileScreen from "./src/screens/app/Profile";
 import ProductDetails from "./src/screens/app/ProductDetail";
 import SearchResultScreen from "./src/screens/SearchResultScreen";
 import CreateStoreScreen from "./src/screens/seller/CreateStoreScreen";
+import SellerProductDetailScreen from "./src/screens/seller/SellerProductDetailScreen";
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigationContainerRef } from '@react-navigation/native';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://c20ad320af1fbfdfaac5f0090a939e0f@o4510084981391360.ingest.us.sentry.io/4510084987813888',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+  integrations: [Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
 
 const Stack = createNativeStackNavigator();
 
@@ -74,6 +92,7 @@ const AppStack = () => {
         }}
       />
       <Stack.Screen name="ProductDetail" component={ProductDetails} />
+      <Stack.Screen name="SellerProductDetail" component={SellerProductDetailScreen} />
       <Stack.Screen name="SearchResults" component={SearchResultScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
     </Stack.Navigator>
@@ -82,8 +101,17 @@ const AppStack = () => {
 
 const RootNavigator = () => {
   const { isLoading, userToken, userInfo } = useAuth();
+  const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const navigationRef = useNavigationContainerRef();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsSplashVisible(false);
+    }, 4000); // 3 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const prepare = async () => {
@@ -97,10 +125,15 @@ const RootNavigator = () => {
       }
     };
 
-    prepare();
-  }, [userToken, userInfo]);
+    if (!isSplashVisible) {
+      prepare();
+    }
+  }, [isSplashVisible, userToken, userInfo]);
 
-  // Render loading indicator while checking auth state
+  if (isSplashVisible) {
+    return <SplashScreen />;
+  }
+
   if (isLoading || !isReady) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -122,7 +155,7 @@ const RootNavigator = () => {
   );
 };
 
-export default function App() {
+export default Sentry.wrap(function App() {
   return (
     <AuthProvider>
       <SafeAreaView
@@ -136,7 +169,7 @@ export default function App() {
       </SafeAreaView>
     </AuthProvider>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

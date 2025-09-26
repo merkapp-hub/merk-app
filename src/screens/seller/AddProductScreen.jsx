@@ -483,7 +483,7 @@ const AddProductScreen = () => {
         {/* Price */}
         <View className="mb-4">
           <Text className="text-gray-800 mb-2 font-semibold text-base">
-            Price (₹) <Text className="text-red-500">*</Text>
+            Price ($) <Text className="text-red-500">*</Text>
           </Text>
           <TextInput
             className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
@@ -504,7 +504,7 @@ const AddProductScreen = () => {
 
         {/* Offer Price */}
         <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Offer Price (₹)</Text>
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Offer Price ($)</Text>
           <TextInput
             className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
             placeholder="Enter offer price (optional)"

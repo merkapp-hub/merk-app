@@ -92,18 +92,18 @@ export default function ProductScreen() {
     }
   };
 
-  // Show delete confirmation modal
+  
   const confirmDelete = (productId) => {
     setSelectedProductId(productId);
     setShowDeleteModal(true);
   };
 
-  // Handle delete confirmation
+
   const handleDeleteConfirm = async () => {
     if (!selectedProductId) return;
     
     try {
-      // First, check if we're online
+    
       const isConnected = await ConnectionCheck.isConnected();
       if (!isConnected) {
         throw new Error('No internet connection');
@@ -282,7 +282,7 @@ export default function ProductScreen() {
     return (
       <TouchableOpacity 
         className="bg-white mx-4 my-2 rounded-xl shadow-sm border border-gray-100 overflow-hidden"
-        onPress={() => navigation.navigate('ProductDetail', { productId: item._id, product: item })}
+        onPress={() => navigation.navigate('SellerProductDetail', { productId: item._id })}
         activeOpacity={0.7}
       >
         {/* Header with Status and Action Buttons */}
