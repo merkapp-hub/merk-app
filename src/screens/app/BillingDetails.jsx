@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 const BillingDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { userInfo: user } = useAuth();
+  const { userInfo: user, updateCartCount } = useAuth();
   const { t } = useTranslation();
   
   // Get cart data from route params
@@ -338,6 +338,11 @@ const BillingDetails = () => {
       if (response.success || response.status) {
         // Clear cart on successful order
         await AsyncStorage.removeItem('cartData');
+        
+        // Update cart count in tab bar
+        if (updateCartCount) {
+          await updateCartCount();
+        }
         
         // Navigate to order confirmation
         navigation.replace('OrderConfirmation', {

@@ -7,6 +7,8 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  Image,
+  Linking,
 } from 'react-native';
 import { ChevronLeftIcon, ChevronRightIcon, UserIcon } from 'react-native-heroicons/outline';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -37,7 +39,12 @@ const AccountScreen = () => {
       hasArrow: true,
       onPress: () => setLanguageModalVisible(true)
     },
-    { id: 3, title: t('help_center'), hasArrow: true },
+    { 
+      id: 3, 
+      title: t('help_center'), 
+      hasArrow: true,
+      onPress: () => navigation.navigate('HelpCenter')
+    },
     { id: 4, title: t('delete_account'), hasArrow: true },
     { id: 5, title: t('log_out'), hasArrow: true },
   ];
@@ -107,6 +114,10 @@ const AccountScreen = () => {
     }
   };
 
+  // Debug log to check userInfo
+  console.log('User Info in Account:', userInfo);
+  const userData = userInfo?.data || userInfo; // Handle both nested and flat structures
+  
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       <StatusBar barStyle="light-content" backgroundColor="#1e293b" />
@@ -129,15 +140,30 @@ const AccountScreen = () => {
         <View className="flex-row items-center mb-5">
           <TouchableOpacity 
             onPress={() => navigation.navigate('Profile')}
-            className="w-16 h-16 bg-black rounded-full items-center justify-center mr-4"
+            className="w-16 h-16 rounded-full items-center justify-center mr-4 overflow-hidden border-2 border-slate-200"
           >
-            <UserIcon size={32} color="white" />
+            {userData?.profilePicture ? (
+              <Image 
+                source={{ 
+                  uri: userData.profilePicture.startsWith('http') 
+                    ? userData.profilePicture 
+                    : `data:image/jpeg;base64,${userData.profilePicture}`
+                }} 
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+                onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+              />
+            ) : (
+              <View className="w-full h-full bg-slate-800 items-center justify-center">
+                <UserIcon size={28} color="white" />
+              </View>
+            )}
           </TouchableOpacity>
           <View>
             <Text className="text-gray-900 text-xl font-semibold">
-              {userInfo?.firstName} 
+              {userData?.firstName} {userData?.lastName}
             </Text>
-            <Text className="text-gray-600 text-base">{userInfo?.email}</Text>
+            <Text className="text-gray-600 text-base">{userData?.email}</Text>
           </View>
         </View>
 

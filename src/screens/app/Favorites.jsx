@@ -107,7 +107,6 @@ const Favorites = () => {
     }
   };
 
-
   const handleRemoveFavorite = async (productId) => {
     try {
       // Update local storage
@@ -199,40 +198,40 @@ const Favorites = () => {
             </View>
             
             {quantities[item._id] === undefined || quantities[item._id] === 0 ? (
-  <TouchableOpacity
-    onPress={() => {
-      handleAddToCart(item);
-      setQuantities(prev => ({ ...prev, [item._id]: 1 }));
-    }}
-    className="mt-3 bg-slate-800 py-1.5 px-4 rounded-lg items-center self-start"
-  >
-    <Text className="text-white font-semibold text-sm">{t('add_to_cart')}</Text>
-  </TouchableOpacity>
-) : (
-  <View className="mt-3 flex-row items-center justify-between">
-    <View className="flex-row items-center">
-      <TouchableOpacity
-        onPress={() => setQuantities(prev => ({ 
-          ...prev, 
-          [item._id]: Math.max(0, (prev[item._id] || 1) - 1) 
-        }))}
-        className="w-8 h-8 bg-gray-200 rounded-md items-center justify-center"
-      >
-        <Text className="text-lg font-bold">-</Text>
-      </TouchableOpacity>
-      <Text className="mx-4 text-lg font-semibold">{quantities[item._id] || 0}</Text>
-      <TouchableOpacity
-        onPress={() => setQuantities(prev => ({ 
-          ...prev, 
-          [item._id]: Math.min(10, (prev[item._id] || 1) + 1) 
-        }))}
-        className="w-8 h-8 bg-gray-200 rounded-md items-center justify-center"
-      >
-        <Text className="text-lg font-bold">+</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-)}
+              <TouchableOpacity
+                onPress={() => {
+                  handleAddToCart(item);
+                  setQuantities(prev => ({ ...prev, [item._id]: 1 }));
+                }}
+                className="mt-3 bg-slate-800 py-1.5 px-4 rounded-lg items-center self-start"
+              >
+                <Text className="text-white font-semibold text-sm">{t('add_to_cart')}</Text>
+              </TouchableOpacity>
+            ) : (
+              <View className="mt-3 flex-row items-center justify-between">
+                <View className="flex-row items-center">
+                  <TouchableOpacity
+                    onPress={() => setQuantities(prev => ({ 
+                      ...prev, 
+                      [item._id]: Math.max(0, (prev[item._id] || 1) - 1) 
+                    }))}
+                    className="w-8 h-8 bg-gray-200 rounded-md items-center justify-center"
+                  >
+                    <Text className="text-lg font-bold">-</Text>
+                  </TouchableOpacity>
+                  <Text className="mx-4 text-lg font-semibold">{quantities[item._id] || 0}</Text>
+                  <TouchableOpacity
+                    onPress={() => setQuantities(prev => ({ 
+                      ...prev, 
+                      [item._id]: Math.min(10, (prev[item._id] || 1) + 1) 
+                    }))}
+                    className="w-8 h-8 bg-gray-200 rounded-md items-center justify-center"
+                  >
+                    <Text className="text-lg font-bold">+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -281,10 +280,14 @@ const Favorites = () => {
         data={favorites}
         renderItem={renderProduct}
         keyExtractor={(item) => item._id}
-        contentContainerStyle={{ paddingVertical: 16 }}
+        contentContainerStyle={{ 
+          paddingVertical: 16,
+          paddingBottom: 90 
+        }}
         ListEmptyComponent={renderEmpty}
         refreshing={refreshing}
         onRefresh={fetchFavorites}
+        showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>
   );

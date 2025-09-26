@@ -31,7 +31,7 @@ const SearchResultScreen = () => {
     }
   }, [searchQuery]);
 
-  // Log when component mounts or updates
+
   useEffect(() => {
     console.log('Route params:', route.params);
     if (route.params?.query !== undefined) {

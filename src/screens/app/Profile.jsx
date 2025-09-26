@@ -10,10 +10,12 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
-import { ChevronLeftIcon, UserIcon, XMarkIcon } from 'react-native-heroicons/outline';
+import * as ImagePicker from 'react-native-image-picker';
+import { ChevronLeftIcon, UserIcon, XMarkIcon, CameraIcon } from 'react-native-heroicons/outline';
 import { useNavigation } from '@react-navigation/native';
-import { GetApi, Put } from '../../Helper/Service';
+import { GetApi, Put, UploadFile } from '../../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../config';
 import { useAuth } from '../../context/AuthContext';
@@ -35,6 +37,7 @@ const ProfileScreen = () => {
     confirmPassword: '',
   });
   const [isUpdating, setIsUpdating] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
 
   useEffect(() => {
     fetchProfile();
@@ -66,6 +69,9 @@ const ProfileScreen = () => {
         setFirstName(userData.firstName || '');
         setLastName(userData.lastName || '');
         setEmail(userData.email || '');
+        if (userData.profilePicture) {
+          setProfileImage(userData.profilePicture);
+        }
       } else {
         console.warn('Unexpected response format:', response);
         throw new Error('Invalid response format');
@@ -89,6 +95,94 @@ const ProfileScreen = () => {
       Alert.alert(t('error'), error.message || t('failed_load_profile'));
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleImageUpload = async () => {
+    try {
+      const options = {
+        mediaType: 'photo',
+        includeBase64: false,
+        maxHeight: 2000,
+        maxWidth: 2000,
+      };
+
+      const result = await ImagePicker.launchImageLibrary(options);
+
+      if (result.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (result.error) {
+        console.log('ImagePicker Error: ', result.error);
+        Alert.alert('Error', 'Failed to pick image. Please try again.');
+      } else {
+        const source = { uri: result.assets[0].uri };
+        setProfileImage(source.uri);
+        
+        // Upload the image to the server
+        await uploadProfileImage(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const uploadProfileImage = async (imageData) => {
+    try {
+      setIsUpdating(true);
+      
+      // Create form data
+      const formData = new FormData();
+      
+      // Get file extension from URI or default to jpg
+      const fileExt = imageData.uri.split('.').pop();
+      const fileName = `profile-${Date.now()}.${fileExt || 'jpg'}`;
+      
+      // Create file object with the correct format for React Native
+      const file = {
+        uri: imageData.uri,
+        type: imageData.type || `image/${fileExt || 'jpeg'}`,
+        name: fileName,
+      };
+      
+      // Append the file to form data
+      formData.append('profileImage', file);
+
+      const token = await AsyncStorage.getItem('userToken');
+      
+      // Make sure to use the correct endpoint
+      const response = await fetch(`${API_BASE_URL}auth/uploadProfileImage`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to upload profile image');
+      }
+
+      // Update the profile picture in the UI
+      setProfileImage(data.profilePicture);
+      
+      // Update the user info in AsyncStorage
+      const userInfo = JSON.parse(await AsyncStorage.getItem('userInfo'));
+      if (userInfo) {
+        userInfo.profilePicture = data.profilePicture;
+        await AsyncStorage.setItem('userInfo', JSON.stringify(userInfo));
+      }
+      
+      Alert.alert('Success', 'Profile picture updated successfully');
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile picture');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -204,10 +298,29 @@ const ProfileScreen = () => {
       
       <ScrollView className="flex-1 px-4 pt-6">
         {/* Profile Section */}
-        <View className="flex-row items-center mb-8">
-          <View className="w-20 h-20 bg-black rounded-full items-center justify-center mr-4">
-            <UserIcon size={32} color="white" />
-          </View>
+        <View className="items-center mt-6 mb-8">
+          <TouchableOpacity 
+            className="relative"
+            onPress={handleImageUpload}
+            disabled={!isEditing}
+          >
+            <View className="w-32 h-32 bg-gray-200 rounded-full items-center justify-center overflow-hidden">
+              {profileImage ? (
+                <Image 
+                  source={{ uri: profileImage }} 
+                  className="w-full h-full"
+                  resizeMode="cover"
+                />
+              ) : (
+                <UserIcon size={60} color="#6b7280" />
+              )}
+            </View>
+            {isEditing && (
+              <View className="absolute bottom-0 right-0 bg-slate-800 p-2 rounded-full">
+                <CameraIcon size={20} color="white" />
+              </View>
+            )}
+          </TouchableOpacity>
           <View>
             <Text className="text-gray-900 text-xl font-semibold">
               {`${firstName} ${lastName}`.trim()}

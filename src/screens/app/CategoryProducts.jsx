@@ -35,31 +35,85 @@ const CategoryProducts = () => {
     if (!categoryId) return;
     
     try {
-      setLoading(true);
-      const response = await GetApi(`getProductBycategoryId?category=${categoryId}&page=${page}&limit=${limit}`);
+      // Only show loading indicator on first page load or refresh
+      if (page === 1) {
+        setLoading(true);
+        setProducts([]); // Clear products when loading first page
+      } else {
+        setLoading(false);
+      }
       
-      // Handle different response formats
-      let productsData = response.data || response;
+      setError(null);
+      
+      console.log('Fetching products for category ID:', categoryId, 'Page:', page);
+      
+      // Use the correct endpoint that filters by category on the server side
+      const response = await GetApi(`getProductByCategory/${categoryId}?page=${page}&limit=${limit}`);
+      
+      console.log('API Response:', {
+        status: response?.status,
+        dataCount: response?.data?.length,
+        firstProduct: response?.data?.[0],
+        pagination: response?.pagination
+      });
+      
+      if (!response || !response.data) {
+        throw new Error('Invalid API response');
+      }
+
+      const productsData = response.data;
+      const pagination = response.pagination || {};
       
       if (Array.isArray(productsData)) {
+        // Debug: Log the first product's category
+        if (productsData.length > 0) {
+          console.log('First product category:', {
+            productId: productsData[0]._id,
+            productName: productsData[0].name,
+            category: productsData[0].category,
+            expectedCategoryId: categoryId
+          });
+        }
+
+        // Format the products - server should already filter by category
         const formattedProducts = productsData.map((product) => ({
           id: product._id,
           slug: product.slug || product._id,
           name: product.name || 'Unnamed Product',
-          price: `$${Math.round(product.price_slot?.[0]?.Offerprice || 0)}`,
-          originalPrice: `$${Math.round(product.price_slot?.[0]?.price || 0)}`,
+          price: product.price_slot?.[0]?.Offerprice || 0,
+          originalPrice: product.price_slot?.[0]?.price || 0,
           discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
-            ? `${Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) / 
-                 product.price_slot[0].price * 100))}% OFF`
-            : null,
+            ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) / 
+                 product.price_slot[0].price * 100))
+            : 0,
           rating: 4.0,
           image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
-          category: product.category?.name || 'Uncategorized',
-          soldPieces: product.sold_pieces || 0
+          category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
+          soldPieces: product.sold_pieces || 0,
+          _raw: product
         }));
+       
         
-        setProducts(prev => page === 1 ? formattedProducts : [...prev, ...formattedProducts]);
-        setHasMore(formattedProducts.length === limit);
+        
+        setProducts(prev => {
+         
+          if (page === 1) {
+            return formattedProducts;
+          }
+       
+          return [...prev, ...formattedProducts];
+        });
+        
+        // Update hasMore based on pagination
+        const hasMorePages = pagination.currentPage < pagination.totalPages;
+        console.log('Pagination:', { 
+          currentPage: pagination.currentPage, 
+          totalPages: pagination.totalPages,
+          hasMore: hasMorePages,
+          itemsPerPage: pagination.itemsPerPage,
+          totalItems: pagination.totalItems
+        });
+        setHasMore(hasMorePages);
       }
     } catch (err) {
       console.error('Error fetching products:', err);
@@ -69,48 +123,129 @@ const CategoryProducts = () => {
     }
   }, [categoryId, page]);
 
+  // Reset pagination when category changes
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
-
-  const loadMore = () => {
-    if (!loading && hasMore) {
-      setPage(prev => prev + 1);
+    console.log('Category changed to:', categoryId);
+    if (categoryId) {
+      console.log('Resetting pagination for new category');
+      setPage(1);
+      setProducts([]);
+      setHasMore(true);
+      setLoading(true);
     }
+  }, [categoryId]);
+  
+  // Fetch products when page or category changes
+  useEffect(() => {
+    if (categoryId) {
+     
+      const fetchData = async () => {
+        try {
+          await fetchProducts();
+        } catch (error) {
+          console.error('Error in fetchData:', error);
+          // If the first attempt fails, try the alternative endpoint
+          if (page === 1) {
+           
+            try {
+              const response = await GetApi(`getProducts?category=${categoryId}&page=${page}&limit=${limit}`);
+              if (response && response.data) {
+                const formattedProducts = response.data.map((product) => ({
+                  id: product._id,
+                  slug: product.slug || product._id,
+                  name: product.name || 'Unnamed Product',
+                  price: product.price_slot?.[0]?.Offerprice || 0,
+                  originalPrice: product.price_slot?.[0]?.price || 0,
+                  discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
+                    ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) / 
+                         product.price_slot[0].price * 100))
+                    : 0,
+                  rating: 4.0,
+                  image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
+                  category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
+                  soldPieces: product.sold_pieces || 0,
+                  _raw: product
+                }));
+                setProducts(formattedProducts);
+                setHasMore(response.pagination?.currentPage < response.pagination?.totalPages);
+              }
+            } catch (fallbackError) {
+              console.error('Fallback endpoint also failed:', fallbackError);
+              setError('Failed to load products. Please try again.');
+            }
+          }
+        }
+      };
+      fetchData();
+    }
+  }, [page, categoryId, fetchProducts]);
+
+  // Debug effect
+  useEffect(() => {
+  
+    if (products.length > 0) {
+      console.log('Sample product data:', {
+        id: products[0].id,
+        name: products[0].name,
+        category: products[0]._raw?.category,
+        price: products[0].price,
+        originalPrice: products[0].originalPrice
+      });
+    }
+    console.log('==================');
+  }, [products, categoryId, categoryName]);
+
+  const loadMore = useCallback(() => {
+    console.log('Load more triggered. Current page:', page, 'Has more:', hasMore, 'Loading:', loading);
+    if (!loading && hasMore) {
+      console.log('Loading more products. New page:', page + 1);
+      setPage(prev => prev + 1);
+    } else {
+      console.log('Not loading more. Loading:', loading, 'Has more:', hasMore);
+    }
+  }, [page, hasMore, loading]);
+
+  const renderItem = ({ item }) => {
+    const discountText = item.discount > 0 ? `${item.discount}% OFF` : null;
+    const isOnSale = item.price < item.originalPrice;
+    
+    return (
+      <TouchableOpacity 
+        style={styles.productCard}
+        onPress={() => navigation.navigate('ProductDetail', { 
+          productId: item.slug || item.id,
+          productName: item.name
+        })}
+      >
+        {discountText && (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountText}>{discountText}</Text>
+          </View>
+        )}
+
+        <Image
+          source={{ uri: item.image }}
+          style={styles.productImage}
+          resizeMode="contain"
+        />
+
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+          
+          <View style={styles.priceContainer}>
+            {isOnSale ? (
+              <>
+                <Text style={styles.price}>${Number(item.price).toFixed(2)}</Text>
+                <Text style={styles.originalPrice}>${Number(item.originalPrice).toFixed(2)}</Text>
+              </>
+            ) : (
+              <Text style={styles.price}>${Number(item.originalPrice).toFixed(2)}</Text>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
   };
-
-  const renderProductItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.productCard}
-      onPress={() => navigation.navigate('ProductDetail', { 
-        productId: item.slug || item.id,
-        productName: item.name
-      })}
-    >
-      {item.discount && (
-        <View style={styles.discountBadge}>
-          <Text style={styles.discountText}>{item.discount}</Text>
-        </View>
-      )}
-
-      <Image
-        source={{ uri: item.image }}
-        style={styles.productImage}
-        resizeMode="contain"
-      />
-
-      <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-        
-        <View style={styles.priceContainer}>
-          <Text style={styles.price}>{item.price}</Text>
-          {item.originalPrice && item.originalPrice !== item.price && (
-            <Text style={styles.originalPrice}>{item.originalPrice}</Text>
-          )}
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
 
   if (loading && products.length === 0) {
     return (
@@ -153,7 +288,7 @@ const CategoryProducts = () => {
       {/* Product List */}
       <FlatList
         data={products}
-        renderItem={renderProductItem}
+        renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
         numColumns={2}
         contentContainerStyle={styles.productList}
@@ -167,10 +302,17 @@ const CategoryProducts = () => {
           </View>
         }
         ListFooterComponent={
-          loading && products.length > 0 ? (
+          loading ? (
             <View style={styles.footerLoader}>
               <ActivityIndicator size="small" color="#0000ff" />
             </View>
+          ) : hasMore ? (
+            <TouchableOpacity 
+              style={styles.loadMoreButton}
+              onPress={loadMore}
+            >
+              <Text style={styles.loadMoreText}>Load More</Text>
+            </TouchableOpacity>
           ) : null
         }
       />
@@ -249,17 +391,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   discountBadge: {
-    backgroundColor: '#1f2937',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
     position: 'absolute',
     top: 8,
     left: 8,
+    backgroundColor: '#FF3B30',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     zIndex: 1,
   },
   discountText: {
-    color: '#fff',
+    color: 'white',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -283,17 +425,18 @@ const styles = StyleSheet.create({
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginTop: 4,
+    flexWrap: 'wrap',
   },
   price: {
     fontSize: 16,
     fontWeight: '700',
     color: '#111827',
-    marginRight: 8,
   },
   originalPrice: {
     fontSize: 12,
     color: '#9ca3af',
+    marginLeft: 4,
     textDecorationLine: 'line-through',
   },
   emptyContainer: {
@@ -308,9 +451,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   footerLoader: {
-    padding: 10,
+    padding: 15,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadMoreButton: {
+    padding: 12,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+    margin: 10,
+    alignItems: 'center',
+  },
+  loadMoreText: {
+    color: '#333',
+    fontWeight: '600',
   },
 });
 

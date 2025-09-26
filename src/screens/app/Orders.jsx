@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Modal,       
   TextInput, 
+  KeyboardAvoidingView
 } from 'react-native';
 import { ChevronLeftIcon, ChevronDownIcon, ChevronUpIcon } from 'react-native-heroicons/outline';
 import { useAuth } from '../../context/AuthContext';
@@ -34,6 +35,7 @@ const OrdersScreen = ({ navigation }) => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [rating, setRating] = useState(0);
   const [reviewText, setReviewText] = useState('');
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const limit = 10;
   
   // Close success popup after 3 seconds
@@ -51,56 +53,76 @@ const OrdersScreen = ({ navigation }) => {
 
 
   const openRatingModal = (product, order) => {
-    setSelectedProduct({ ...product, orderId: order._id });
-    setRating(0);
-    setReviewText('');
+    const existingReview = product.review || (product.rating ? {
+      rating: product.rating,
+      description: product.reviewText || '',
+      createdAt: product.reviewDate || new Date().toISOString()
+    } : null);
+    
+    setSelectedProduct({ 
+      ...product, 
+      orderId: order._id,
+      existingReview
+    });
+    
+    if (existingReview) {
+      setRating(existingReview.rating || 0);
+      setReviewText(existingReview.description || '');
+    } else {
+      setRating(0);
+      setReviewText('');
+    }
+    
     setShowRatingModal(true);
   };
 
-  // Submit rating to the backend API
   const submitRating = async () => {
     if (rating === 0) {
       alert(t('please_select_rating'));
       return;
     }
     
-    const productId = selectedProduct.product?._id || selectedProduct._id;
-    console.log('Submitting review for product:', productId);
-    console.log('Rating:', rating);
-    console.log('Review text:', reviewText);
+    if (isSubmittingRating) {
+      return; 
+    }
     
-    // Trim whitespace from review text
+    setIsSubmittingRating(true);
+    
+    const productId = selectedProduct.product?._id || selectedProduct._id;
+    const orderId = selectedProduct.orderId;
     const trimmedReviewText = reviewText.trim();
     
     const data = {
       product: productId,
       rating: rating,
-      review: trimmedReviewText || ''  
+      review: trimmedReviewText || ''
     };
     
-    // Function to update the UI state
     const updateOrderState = (apiResult = {}) => {
       setOrders(prevOrders => {
         return prevOrders.map(order => {
-          if (order._id === selectedProduct.orderId) {
+          if (order._id === orderId) {
             return {
               ...order,
               productDetail: order.productDetail.map(item => {
-                if (item._id === selectedProduct._id || item.product?._id === selectedProduct._id) {
-                  // Use the response data if available, otherwise fall back to local data
-                  const reviewData = apiResult?.data || {};
+                const itemProductId = item.product?._id || item._id;
+                if (itemProductId === productId) {
+                  const newReview = {
+                    rating: rating,
+                    description: trimmedReviewText,
+                    createdAt: new Date().toISOString(),
+                    isRated: true,
+                    posted_by: {
+                      id: userInfo?.id || userInfo?._id,
+                      _id: userInfo?.id || userInfo?._id
+                    }
+                  };
+                  
                   return { 
                     ...item, 
                     isRated: true,
-                    rating: reviewData.rating || rating,
-                    review: {
-                      rating: reviewData.rating || rating,
-                      // Use the description from the response if available, otherwise use the local one
-                      description: reviewData.description || trimmedReviewText || '',
-                      // Use the created date from the response if available, otherwise use current time
-                      createdAt: reviewData.createdAt || new Date().toISOString(),
-                      ...reviewData  // Spread any other review data from the response
-                    }
+                    rating: rating,
+                    review: newReview
                   };
                 }
                 return item;
@@ -113,69 +135,84 @@ const OrdersScreen = ({ navigation }) => {
     };
     
     try {
-      console.log('Submitting review with data:', data);
       const result = await Post('addreview', data, { navigation });
-      console.log('Review submission response:', result);
-      
-      // Update UI with the response data
       updateOrderState(result);
       
-      // We'll show the success popup after the rating modal is closed
-      console.log('Review submitted successfully, will show thank you popup after modal closes');
+      setShowRatingModal(false);
+      setShowSuccessPopup(true);
       
-      // Refresh the orders to get updated data
-      try {
-        await fetchOrders(true);
-        console.log('Successfully refreshed orders after review submission');
-      } catch (error) {
-        console.error('Error refreshing orders after review:', error);
-      }
+      // Refresh orders after a short delay to ensure the backend has processed the update
+      setTimeout(() => {
+        fetchOrders(true);
+      }, 1000);
       
     } catch (error) {
       console.error('Error in submitRating:', error);
-      // Update UI with local data if there was an error with the API
+      // Still update the UI optimistically
       updateOrderState();
       alert(t('review_submitted_offline'));
     } finally {
-      // Close the modal and then show thank you popup
-      setShowRatingModal(false);
-      // Small delay to ensure modal is closed before showing thank you
-      setTimeout(() => {
-        setShowSuccessPopup(true);
-      }, 300);
+      setIsSubmittingRating(false);
     }
-  };
+};
   
 
-  const groupOrdersByOrderNumber = (orders) => {
-    const groupedOrders = {};
+const groupOrdersByOrderNumber = (orders) => {
+  const groupedOrders = {};
+  
+  orders.forEach(order => {
+    const orderKey = order.orderNumber || order._id;
+    if (!groupedOrders[orderKey]) {
+      groupedOrders[orderKey] = {
+        ...order,
+        productDetail: [],
+        total: order.total || 0
+      };
+    }
     
-    orders.forEach(order => {
-      const orderKey = order.orderNumber || order._id;
-      if (!groupedOrders[orderKey]) {
-        groupedOrders[orderKey] = {
-          ...order,
-          productDetail: [],
-          total: order.total || 0
+    let productsToAdd = [];
+    
+    const processProduct = (product) => {
+      // Check if the product has a rating either directly or in the review object
+      const hasRating = (product.rating && product.rating > 0) || 
+                      (product.review && product.review.rating && product.review.rating > 0);
+      
+      // Preserve existing isRated if it's already true, otherwise use hasRating
+      const isRated = product.isRated === true ? true : hasRating;
+      
+      // Create a consistent review object
+      let review = null;
+      if (product.review) {
+        review = {
+          ...product.review,
+          rating: product.review.rating || 0,
+          description: product.review.description || '',
+          createdAt: product.review.createdAt || new Date().toISOString()
+        };
+      } else if (product.rating) {
+        review = {
+          rating: product.rating,
+          description: product.reviewText || '',
+          createdAt: product.reviewDate || new Date().toISOString()
         };
       }
       
-      let productsToAdd = [];
-      
-      if (order.productDetail && Array.isArray(order.productDetail)) {
-        productsToAdd = order.productDetail.map(product => ({
-          ...product,
-          isRated: !!(product.rating && product.rating > 0) || !!(product.review && product.review.rating > 0), // Updated condition
-          review: product.review || (product.rating ? {
-            rating: product.rating,
-            description: product.reviewText || '',
-            createdAt: product.reviewDate || new Date().toISOString()
-          } : null)
-        }));
-      } else if (order.products && Array.isArray(order.products)) {
-        productsToAdd = order.products.map(product => ({
-          ...product,
-          isRated: !!(product.rating && product.rating > 0) || !!(product.review && product.review.rating > 0), // Updated condition
+      return {
+        ...product,
+        isRated,
+        review,
+        // Ensure rating is set at the root level for backward compatibility
+        rating: review?.rating || 0
+      };
+    };
+    
+    if (order.productDetail && Array.isArray(order.productDetail)) {
+      productsToAdd = order.productDetail.map(processProduct);
+    } else if (order.products && Array.isArray(order.products)) {
+      productsToAdd = order.products.map(product => {
+        const processed = processProduct(product);
+        return {
+          ...processed,
           product: product.product || {
             _id: product._id,
             name: product.name,
@@ -183,41 +220,33 @@ const OrdersScreen = ({ navigation }) => {
           },
           image: Array.isArray(product.image) ? product.image : [product.image || 'https://via.placeholder.com/60'],
           qty: product.qty || product.quantity || 1,
-          price: product.price || 0,
-          review: product.review || (product.rating ? {
-            rating: product.rating,
-            description: product.reviewText || '',
-            createdAt: product.reviewDate || new Date().toISOString()
-          } : null)
-        }));
-      } else if (order.name) {
-        productsToAdd = [{
+          price: product.price || 0
+        };
+      });
+    } else if (order.name) {
+      const processed = processProduct(order);
+      productsToAdd = [{
+        ...processed,
+        _id: order._id,
+        product: {
           _id: order._id,
-          isRated: !!(order.rating && order.rating > 0) || !!(order.review && order.review.rating > 0), // Updated condition
-          product: {
-            _id: order._id,
-            name: order.name,
-            price: order.price
-          },
-          image: Array.isArray(order.image) ? order.image : [order.image || 'https://via.placeholder.com/60'],
-          qty: order.quantity || 1,
-          price: order.price || 0,
-          review: order.review || (order.rating ? {
-            rating: order.rating,
-            description: order.reviewText || '',
-            createdAt: order.reviewDate || new Date().toISOString()
-          } : null)
-        }];
-      }
-      
-      groupedOrders[orderKey].productDetail = [
-        ...(groupedOrders[orderKey].productDetail || []),
-        ...productsToAdd
-      ];
-    });
+          name: order.name,
+          price: order.price
+        },
+        image: Array.isArray(order.image) ? order.image : [order.image || 'https://via.placeholder.com/60'],
+        qty: order.qty || order.quantity || 1,
+        price: order.price || 0
+      }];
+    }
     
-    return Object.values(groupedOrders);
-  };
+    groupedOrders[orderKey].productDetail = [
+      ...(groupedOrders[orderKey].productDetail || []),
+      ...productsToAdd
+    ];
+  });
+  
+  return Object.values(groupedOrders);
+};
 
   const fetchOrders = async (isRefreshing = false) => {
     try {
@@ -308,7 +337,17 @@ const OrdersScreen = ({ navigation }) => {
   const renderOrderItem = (item, index) => {
     const isExpanded = expandedOrderId === item._id;
     const hasProducts = item.productDetail && item.productDetail.length > 0;
-    const displayOrderId = item.orderId || item._id; // Use orderId if available, fallback to _id
+    const displayOrderId = item.orderId || item._id;
+    
+    // Add this debug log
+    console.log('Debug - Order products:', item.productDetail?.map(p => ({
+      name: p.product?.name || p.name,
+      isRated: p.isRated,
+      hasRating: !!p.rating,
+      hasReview: !!p.review,
+      ratingValue: p.rating,
+      reviewData: p.review
+    })));
     
     return (
       <View key={item._id} style={styles.orderCard}>
@@ -366,10 +405,11 @@ const OrdersScreen = ({ navigation }) => {
                         <Text style={styles.productName} numberOfLines={2}>
                           {product.product?.name || product.name || 'Product Name'}
                         </Text>
-                        {product.isRated ? (
+                        {product.isRated || (product.review && product.review.rating > 0) ? (
                           <TouchableOpacity 
                             style={[styles.rateButton, styles.updateButton]}
                             onPress={() => openRatingModal(product, item)}
+                            disabled={isSubmittingRating}
                           >
                             <Text style={styles.rateButtonText}>{t('update_review')}</Text>
                           </TouchableOpacity>
@@ -377,6 +417,7 @@ const OrdersScreen = ({ navigation }) => {
                           <TouchableOpacity 
                             style={styles.rateButton}
                             onPress={() => openRatingModal(product, item)}
+                            disabled={isSubmittingRating}
                           >
                             <Text style={styles.rateButtonText}>{t('rate_product')}</Text>
                           </TouchableOpacity>
@@ -518,111 +559,120 @@ const OrdersScreen = ({ navigation }) => {
           )}
         </ScrollView>
       )}
-        <Modal
-        visible={showRatingModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowRatingModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            {/* Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{t('rate_product')}</Text>
-              <TouchableOpacity 
-                onPress={() => setShowRatingModal(false)}
-                style={styles.closeButton}
-              >
-                <Text style={styles.closeButtonText}>×</Text>
-              </TouchableOpacity>
+      <Modal
+  visible={showRatingModal}
+  animationType="slide"
+  transparent={true}
+  onRequestClose={() => setShowRatingModal(false)}
+>
+  <KeyboardAvoidingView 
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    style={styles.modalOverlay}
+  >
+    <View style={styles.modalContent}>
+      {/* Header */}
+      <View style={styles.modalHeader}>
+  <Text style={styles.modalTitle}>
+    {selectedProduct?.isRated ? t('update_review') : t('rate_product')}
+  </Text>
+  <TouchableOpacity 
+    onPress={() => setShowRatingModal(false)}
+    style={styles.closeButton}
+  >
+    <Text style={styles.closeButtonText}>×</Text>
+  </TouchableOpacity>
+</View>
+
+      {selectedProduct && (
+        <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+          {/* Rest of your modal content remains the same */}
+          {/* Product Info */}
+          <View style={styles.productInfoSection}>
+            <Image 
+              source={{ 
+                uri: (Array.isArray(selectedProduct.image) ? 
+                      selectedProduct.image[0] : 
+                      selectedProduct.image) || 'https://via.placeholder.com/120'
+              }} 
+              style={styles.modalProductImage}
+            />
+            <View style={styles.modalProductDetails}>
+              <Text style={styles.modalProductName}>
+                {selectedProduct.product?.name || selectedProduct.name || 'Product Name'}
+              </Text>
+              <Text style={styles.modalProductPrice}>
+                ${(selectedProduct.price || 0).toFixed(2)}
+              </Text>
             </View>
-
-            {selectedProduct && (
-              <ScrollView style={styles.modalBody}>
-                {/* Product Info */}
-                <View style={styles.productInfoSection}>
-                  <Image 
-                    source={{ 
-                      uri: (Array.isArray(selectedProduct.image) ? 
-                            selectedProduct.image[0] : 
-                            selectedProduct.image) || 'https://via.placeholder.com/120'
-                    }} 
-                    style={styles.modalProductImage}
-                  />
-                  <View style={styles.modalProductDetails}>
-                    <Text style={styles.modalProductName}>
-                      {selectedProduct.product?.name || selectedProduct.name || 'Product Name'}
-                    </Text>
-                    <Text style={styles.modalProductPrice}>
-                      ${(selectedProduct.price || 0).toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Rating Stars */}
-                <View style={styles.ratingSection}>
-                  <Text style={styles.ratingLabel}>{t('your_rating')}</Text>
-                  <View style={styles.starsContainer}>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <TouchableOpacity
-                        key={star}
-                        onPress={() => setRating(star)}
-                        style={styles.starButton}
-                      >
-                        <Text style={[
-                          styles.starText, 
-                          { color: star <= rating ? '#E58F14' : '#d1d5db' }
-                        ]}>
-                          ★
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <Text style={styles.ratingText}>
-                    {rating === 0 ? t('tap_to_rate') : 
-                     rating === 1 ? t('poor') :
-                     rating === 2 ? t('fair') :
-                     rating === 3 ? t('good') :
-                     rating === 4 ? t('very_good') : t('excellent')}
-                  </Text>
-                </View>
-
-                {/* Review Text */}
-                <View style={styles.reviewSection}>
-                  <Text style={styles.reviewLabel}>{t('write_review_optional')}</Text>
-                  <TextInput
-                    style={styles.reviewInput}
-                    placeholder={t('share_your_experience')}
-                    placeholderTextColor="#9ca3af"
-                    multiline
-                    numberOfLines={4}
-                    value={reviewText}
-                    onChangeText={setReviewText}
-                    textAlignVertical="top"
-                  />
-                </View>
-
-                {/* Buttons */}
-                <View style={styles.modalActions}>
-                  <TouchableOpacity 
-                    style={styles.cancelButton}
-                    onPress={() => setShowRatingModal(false)}
-                  >
-                    <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.submitButton}
-                    onPress={submitRating}
-                  >
-                    <Text style={styles.submitButtonText}>{t('submit')}</Text>
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            )}
           </View>
-        </View>
-      </Modal>
+
+          {/* Rating Stars */}
+          <View style={styles.ratingSection}>
+            <Text style={styles.ratingLabel}>{t('your_rating')}</Text>
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRating(star)}
+                  style={styles.starButton}
+                >
+                  <Text style={[
+                    styles.starText, 
+                    { color: star <= rating ? '#E58F14' : '#d1d5db' }
+                  ]}>
+                    ★
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.ratingText}>
+              {rating === 0 ? t('tap_to_rate') : 
+               rating === 1 ? t('poor') :
+               rating === 2 ? t('fair') :
+               rating === 3 ? t('good') :
+               rating === 4 ? t('very_good') : t('excellent')}
+            </Text>
+          </View>
+
+          {/* Review Text */}
+          <View style={styles.reviewSection}>
+            <Text style={styles.reviewLabel}>{t('write_review_optional')}</Text>
+            <TextInput
+              style={styles.reviewInput}
+              placeholder={t('share_your_experience')}
+              placeholderTextColor="#9ca3af"
+              multiline
+              numberOfLines={4}
+              value={reviewText}
+              onChangeText={setReviewText}
+              textAlignVertical="top"
+            />
+          </View>
+
+          {/* Buttons */}
+          <View style={styles.modalActions}>
+            <TouchableOpacity 
+              style={styles.cancelButton}
+              onPress={() => setShowRatingModal(false)}
+            >
+              <Text style={styles.cancelButtonText}>{t('cancel')}</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.submitButton, isSubmittingRating && { opacity: 0.6 }]}
+              onPress={submitRating}
+              disabled={isSubmittingRating}
+            >
+              <Text style={styles.submitButtonText}>
+                {isSubmittingRating ? t('submitting') || 'Submitting...' : t('submit')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      )}
+    </View>
+  </KeyboardAvoidingView>
+</Modal>
 
       {/* Success Popup */}
       <Modal
@@ -774,18 +824,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   rateButton: {
-    backgroundColor: '#E58F14',
+    backgroundColor: '#12344D',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 4,
     marginLeft: 8,
   },
   updateButton: {
-    backgroundColor: '#f59e0b', 
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-    marginLeft: 8,
+    backgroundColor: '#E58F14',
   },
   ratedContainer: {
     backgroundColor: '#e5f7e5',
@@ -1029,13 +1075,13 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  rateButton: {
-    backgroundColor: 'transparent',
+  updateButton: {
+    backgroundColor: '#E58F14',
   },
   rateButtonText: {
-    color: '#12344D',
+    color: 'white',
     fontSize: 12,
-    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
   colorContainer: {
     flexDirection: 'row',

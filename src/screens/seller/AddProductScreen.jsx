@@ -1,1039 +1,871 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, Switch, Modal, TouchableWithoutFeedback } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  ScrollView, 
+  Image, 
+  Platform, 
+  Alert, 
+  PermissionsAndroid,
+  Modal,
+  SafeAreaView,
+  KeyboardAvoidingView
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeftIcon, PlusIcon, XMarkIcon, PhotoIcon } from 'react-native-heroicons/outline';
-import { Api, ApiFormData } from '../../Helper/Service';
-// import ColorPicker from 'react-native-wheel-color-picker';
+import { useNavigation } from '@react-navigation/native';
+import { API_URL } from '../../config';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTranslation } from 'react-i18next';
 
-
-
-
-
-
-
-
-
-
-const predefinedColors = [
-  '#FF0000', '#00FF00', '#0000FF', '#FFFF00', 
-  '#FF00FF', '#00FFFF', '#FFA500', '#800080'
-];
-export default function AddEditProductScreen() {
+const AddProductScreen = () => {
   const navigation = useNavigation();
-  const route = useRoute();
-  const { t } = useTranslation();
-  const isEdit = route.params?.productId ? true : false;
-  
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [error, setError] = useState(null);
   const [images, setImages] = useState([]);
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [currentColor, setCurrentColor] = useState('#FF0000');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userId, setUserId] = useState(null);
-  const colorPickerRef = useRef(null);
-  const scrollViewRef = useRef(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   
-  // Form state with safe initialization
+  // Date picker states
+  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
+  // Form state
   const [formData, setFormData] = useState({
     name: '',
-    shortDescription: '',
-    description: '',
-    price: '',
     category: '',
-    stock: '',
-    minOrder: '1',
-    manufacturerName: '',
-    manufacturerAddress: '',
     origin: '',
-    expiryDate: '',
-    sku: '',
-    colors: [],
-    sizes: [],
-    isFeatured: false,
-    isActive: true,
-    weight: '',
-    dimensions: '',
-    parameterType: '',
-    size: '',
-    capacity: '',
-    discountedPrice: '',
-    images: [],
-    priceSlots: [
-      {
-        id: 1,
-        quantity: '',
-        price: '',
-        offerPrice: ''
-      }
-    ]
+    expirydate: new Date(),
+    manufacturername: '',
+    manufactureradd: '',
+    short_description: '',
+    long_description: '',
+    price: '',
+    Offerprice: '',
+    minQuantity: '1',
+    pieces: '1',
   });
-  
-  // Safe form update function
-  const updateFormData = (updates) => {
-    try {
-      setFormData(currentData => ({
-        ...currentData,
-        ...updates
-      }));
-    } catch (error) {
-      console.error('Error updating form data:', error);
-    }
-  };
-useEffect(() => {
-  const fetchUserData = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('userInfo');
-      if (userData) {
-        const parsedUserData = JSON.parse(userData);
-        setUserId(parsedUserData._id || parsedUserData.id);
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    }
-  };
 
-  fetchUserData();
-  fetchCategories();
-  if (isEdit) {
-    fetchProduct(route.params.productId);
-  }
+  useEffect(() => {
+    console.log('Component mounted, fetching categories...');
+    fetchCategories().catch(err => {
+      console.error('Error in fetchCategories:', err);
+      setError(err.message);
+    });
+  }, []);
 
-  // Cleanup function
-  return () => {
-    setLoading(false);
-    setIsSubmitting(false);
-  };
-}, []);
+  // Debug render
+  console.log('Rendering with state:', {
+    categories: categories?.length || 0,
+    formDataCategory: formData.category,
+    error
+  });
+
   const fetchCategories = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      console.log('Fetching categories with token:', token ? 'Token exists' : 'No token found');
+      setLoading(true);
+      setError(null);
+      // Reset categories to empty array first
+      setCategories([]);
       
-      const response = await fetch('https://api.merkapp.net/api/getCategory', {
-        method: 'GET',
+      console.log('Fetching categories from API...');
+      const response = await axios.get('https://api.merkapp.net/api/getCategory', {
+        timeout: 10000,
         headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
       });
-
-      const responseData = await response.json();
-      console.log('Categories API response:', responseData);
       
-      if (responseData?.status && Array.isArray(responseData.data)) {
-        // Transform the categories to match your Picker's expected format
-        const formattedCategories = responseData.data.map(cat => ({
-          label: cat.name || 'Unnamed Category',
-          value: cat._id || '',
-          slug: cat.slug || ''
-        }));
+      console.log('API Response received, status:', response?.status);
+      console.log('Response data:', JSON.stringify(response?.data, null, 2));
+      
+      // More defensive check for response data
+      if (response && response.data) {
+        if (response.data.status === true && Array.isArray(response.data.data)) {
+          console.log(`Received ${response.data.data.length} categories`);
+          setCategories(response.data.data);
+          return; // Exit early on success
+        }
+        console.warn('Unexpected API response format:', response.data);
+      } else {
+        console.warn('Empty or invalid API response');
+      }
+      
+      // If we reach here, there was an issue with the response format
+      Alert.alert('Error', 'Could not load categories. Please try again later.');
+    } catch (error) {
+      console.error('Error in fetchCategories:', {
+        message: error.message,
+        code: error.code,
+        response: error.response?.data,
+        stack: error.stack
+      });
+      
+      let errorMessage = 'Failed to load categories';
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+        errorMessage = `Server responded with status ${error.response.status}`;
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error('No response received:', error.request);
+        errorMessage = 'No response from server. Please check your internet connection.';
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Error message:', error.message);
+        errorMessage = error.message || 'Failed to process request';
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImagePick = async () => {
+    try {
+      
+      if (Platform.OS === 'android') {
+        const androidVersion = Platform.Version;
         
-        console.log('Formatted categories:', formattedCategories);
-        setCategories(formattedCategories);
-        
-        // If there's a product being edited, set its category
-        if (isEdit && route.params?.productId) {
-          const productResponse = await fetch(`https://api.merkapp.net/api/product/${route.params.productId}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-          const productData = await productResponse.json();
-          if (productData?.category) {
-            setFormData(prev => ({
-              ...prev,
-              category: productData.category._id || productData.category
-            }));
+        if (androidVersion >= 33) {
+          
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+            {
+              title: 'Media Permission Required',
+              message: 'App needs access to your photos to upload images',
+              buttonPositive: 'Allow',
+              buttonNegative: 'Deny',
+            }
+          );
+          
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            Alert.alert('Permission Denied', 'Media access permission is required to upload images', [
+              {
+                text: 'Settings',
+                onPress: () => {
+                  // Optional: Open app settings
+                  // Linking.openSettings();
+                }
+              },
+              { text: 'Cancel', style: 'cancel' }
+            ]);
+            return;
+          }
+        } else {
+          // Android 12 और उससे पहले के लिए READ_EXTERNAL_STORAGE
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+            {
+              title: 'Storage Permission Required',
+              message: 'App needs access to your storage to upload images',
+              buttonPositive: 'Allow',
+              buttonNegative: 'Deny',
+            }
+          );
+          
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            Alert.alert('Permission Denied', 'Storage permission is required to upload images', [
+              {
+                text: 'Settings',
+                onPress: () => {
+                  // Optional: Open app settings
+                  // Linking.openSettings();
+                }
+              },
+              { text: 'Cancel', style: 'cancel' }
+            ]);
+            return;
           }
         }
-      } else {
-        console.error('Unexpected categories format:', responseData);
-        // Fallback to default categories if API fails
-        const defaultCategories = [
-          { label: 'Perfume', value: 'perfume', slug: 'perfume' },
-          { label: 'Speakers', value: 'speakers', slug: 'speakers' },
-          { label: 'Sports', value: 'sports', slug: 'sports' },
-          { label: 'Clothing', value: 'clothing', slug: 'clothing' },
-          { label: 'Shoes', value: 'shoes', slug: 'shoes' },
-          { label: 'Furniture', value: 'furniture', slug: 'furniture' },
-          { label: 'Gym Products', value: 'gym-products', slug: 'gym-products' },
-          { label: 'Toys', value: 'toys', slug: 'toys' },
-        ];
-        setCategories(defaultCategories);
       }
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      Alert.alert('Error', 'Failed to load categories. Please try again.');
-    }
-  };
 
-  // const fetchProduct = async (id) => {
-  //   try {
-  //     setLoading(true);
-  //     const response = await Api.get(`products/${id}`);
-  //     setFormData(response.data);
-  //     // Handle images if needed
-  //   } catch (error) {
-  //     console.error('Error fetching product:', error);
-  //     Alert.alert('Error', 'Failed to load product');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
- const handleImagePick = async () => {
-  if (images.length >= 5) {
-    Alert.alert('Limit Reached', 'You can upload maximum 5 images');
-    return;
-  }
-
-  try {
-    const result = await launchImageLibrary({
-      mediaType: 'photo',
-      maxWidth: 800,
-      maxHeight: 800,
-      quality: 0.8,
-      selectionLimit: 1, // Limit to 1 to prevent memory issues
-    });
-
-    if (result.didCancel || result.errorCode || !result.assets || !result.assets[0]) {
-      return;
-    }
-
-    const imageUri = result.assets[0].uri;
-    if (imageUri) {
-      setImages(prev => {
-        const newImages = [...prev];
-        if (newImages.length < 5) {
-          newImages.push(imageUri);
-        }
-        return newImages;
-      });
-    }
-  } catch (error) {
-    console.error('Error picking image:', error);
-    Alert.alert('Error', 'Failed to pick image');
-  }
-};
-
-
-  const removeImage = (index) => {
-    try {
-      // Create a safe copy of the current images array
-      const newImages = [...images];
-      // Remove the image at the specified index
-      if (index >= 0 && index < newImages.length) {
-        newImages.splice(index, 1);
-        // Update state with the new array
-        setImages(newImages);
-      }
-    } catch (error) {
-      console.error('Error removing image:', error);
-    }
-  };
-
-  const handleInputChange = (name, value) => {
-    try {
-      updateFormData({ [name]: value });
-    } catch (error) {
-      console.error(`Error updating field ${name}:`, error);
-    }
-  };
-
-  const handleFocus = (scrollToY = 0) => {
-    if (scrollViewRef.current) {
-      scrollViewRef.current.scrollTo({ y: scrollToY, animated: true });
-    }
-  };
-
-  const validateForm = () => {
-    if (!formData.name?.trim()) {
-      Alert.alert('Error', 'Please enter product name');
-      return false;
-    }
-    if (!formData.price || isNaN(parseFloat(formData.price))) {
-      Alert.alert('Error', 'Please enter a valid price');
-      return false;
-    }
-    if (!formData.category) {
-      Alert.alert('Error', 'Please select a category');
-      return false;
-    }
-    if (!images || images.length === 0) {
-      Alert.alert('Error', 'Please add at least one product image');
-      return false;
-    }
-    return true;
-  };
-
-  const handleImageUpload = async () => {
-    try {
-      // Ensure images array exists
-      const currentImages = Array.isArray(images) ? images : [];
-      
-      // Calculate how many more images can be added
-      const remainingSlots = Math.max(0, 5 - currentImages.length);
-      
-      if (remainingSlots <= 0) {
-        Alert.alert('Limit Reached', 'You can upload maximum 5 images');
-        return;
-      }
-      
-      const result = await launchImageLibrary({
+      const options = {
         mediaType: 'photo',
-        quality: 0.7,
-        selectionLimit: remainingSlots,
-      });
+        selectionLimit: 5 - images.length,
+        quality: 0.8,
+        includeBase64: false,
+        maxWidth: 1024,
+        maxHeight: 1024,
+      };
 
-      if (!result || result.didCancel) return;
-      
-      // Check if assets exists and is an array
-      if (!result.assets || !Array.isArray(result.assets)) {
-        console.log('No assets returned from image picker');
+      const result = await launchImageLibrary(options);
+
+      if (!result.didCancel && !result.errorCode && result.assets) {
+        const selectedImages = result.assets.map(asset => ({
+          uri: asset.uri,
+          type: asset.type || 'image/jpeg',
+          name: asset.fileName || `image_${Date.now()}.jpg`,
+        }));
+        setImages([...images, ...selectedImages]);
+      } else if (result.errorCode) {
+        Alert.alert('Error', `Image selection failed: ${result.errorMessage}`);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+  const removeImage = (index) => {
+    const newImages = [...images];
+    newImages.splice(index, 1);
+    setImages(newImages);
+  };
+
+  // Generate arrays for date picker
+  const getDaysInMonth = (month, year) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  const days = Array.from({ length: getDaysInMonth(selectedMonth, selectedYear) }, (_, i) => i + 1);
+  const months = [
+    { label: 'January', value: 0 },
+    { label: 'February', value: 1 },
+    { label: 'March', value: 2 },
+    { label: 'April', value: 3 },
+    { label: 'May', value: 4 },
+    { label: 'June', value: 5 },
+    { label: 'July', value: 6 },
+    { label: 'August', value: 7 },
+    { label: 'September', value: 8 },
+    { label: 'October', value: 9 },
+    { label: 'November', value: 10 },
+    { label: 'December', value: 11 },
+  ];
+  const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i);
+
+  const showDatepicker = () => {
+    const currentDate = formData.expirydate;
+    setSelectedDay(currentDate.getDate());
+    setSelectedMonth(currentDate.getMonth());
+    setSelectedYear(currentDate.getFullYear());
+    setShowDatePicker(true);
+  };
+
+  const confirmDate = () => {
+    const newDate = new Date(selectedYear, selectedMonth, selectedDay);
+    setFormData({ ...formData, expirydate: newDate });
+    setShowDatePicker(false);
+  };
+
+  const cancelDate = () => {
+    setShowDatePicker(false);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      if (!formData.name || !formData.category || !formData.price) {
+        Alert.alert('Validation Error', 'Please fill in all required fields');
         return;
       }
-      
-      // Process new images
-      const newImages = result.assets.map(asset => ({
-        uri: asset.uri,
-        type: asset.type || 'image/jpeg',
-        fileName: asset.fileName || `image_${Date.now()}.jpg`
-      }));
 
-      // Create a safe copy of the current images array and add new images
-      const updatedImages = [...currentImages];
-      newImages.forEach(img => {
-        if (updatedImages.length < 5 && img && img.uri) {
-          updatedImages.push(img);
+      setLoading(true);
+      
+      const data = new FormData();
+      
+      Object.keys(formData).forEach(key => {
+        if (key === 'expirydate') {
+          data.append(key, formData[key].toISOString().split('T')[0]);
+        } else {
+          data.append(key, formData[key]);
         }
       });
-      
-      // Update state with the new array
-      setImages(updatedImages);
-    } catch (error) {
-      console.error('Error selecting images:', error);
-      Alert.alert('Error', 'Failed to select images. Please try again.');
-    }
-  };
-  useEffect(() => {
-  return () => {
-    // Cleanup on unmount
-    setImages([]);
-    setCategories([]);
-    setLoading(false);
-    setIsSubmitting(false);
-    setShowColorPicker(false);
-  };
-}, []);
 
-const handleSubmit = async () => {
-  if (isSubmitting || loading) return;
-  
-  if (!validateForm()) return;
-  
-  setLoading(true);
-  setIsSubmitting(true);
-  
-  try {
-    const formDataToSend = new FormData();
-    
-    // Add user ID with validation
-    if (!userId) {
-      throw new Error('User ID not found. Please login again.');
-    }
-    formDataToSend.append('userid', userId);
-    
-    // Add form fields safely
-    const fieldsToInclude = [
-      'name', 'shortDescription', 'description', 'price', 'category', 'stock',
-      'minOrder', 'manufacturerName', 'manufacturerAddress', 'origin',
-      'expiryDate', 'sku', 'isFeatured', 'isActive', 'weight', 'dimensions',
-      'parameterType', 'size', 'capacity', 'discountedPrice'
-    ];
+      images.forEach((image, index) => {
+        data.append('images', {
+          uri: image.uri,
+          type: 'image/jpeg',
+          name: `product_${Date.now()}_${index}.jpg`
+        });
+      });
 
-    fieldsToInclude.forEach(key => {
-      const value = formData[key];
-      if (value !== null && value !== undefined && value !== '') {
-        formDataToSend.append(key, String(value).trim());
+      data.append('price_slot[0][value]', '1');
+      data.append('price_slot[0][price]', formData.price);
+      data.append('price_slot[0][Offerprice]', formData.Offerprice || formData.price);
+
+      const response = await axios.post(`${API_URL}/addProduct`, data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      });
+
+      if (response.data.status) {
+        Alert.alert('Success', 'Product added successfully', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+      } else {
+        throw new Error(response.data.message || 'Failed to add product');
       }
-    });
-    
-    // Add priceSlots safely
-    if (formData.priceSlots && formData.priceSlots.length > 0) {
-      formDataToSend.append('priceSlots', JSON.stringify(formData.priceSlots));
+    } catch (error) {
+      console.error('Error adding product:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to add product');
+    } finally {
+      setLoading(false);
     }
-    
-    // Add colors safely
-    if (formData.colors && formData.colors.length > 0) {
-      formDataToSend.append('colors', JSON.stringify(formData.colors));
-    }
-    
-    // Add images with validation
-    if (images && images.length > 0) {
-      images.forEach((imageUri, index) => {
-        if (imageUri && typeof imageUri === 'string') {
-          formDataToSend.append('images', {
-            uri: imageUri,
-            type: 'image/jpeg',
-            name: `product_${Date.now()}_${index}.jpg`
-          });
-        }
-      });
-    }
+  };
 
-    const token = await AsyncStorage.getItem('userToken');
-    if (!token) {
-      throw new Error('Authentication token not found');
-    }
+  const formatDate = (date) => {
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
-    const response = await fetch('https://api.merkapp.net/api/createProduct', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formDataToSend,
-    });
-    
-    const responseData = await response.json();
-    
-    if (response.ok && responseData.status) {
-      Alert.alert('Success', 'Product created successfully', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack()
-        }
-      ]);
-    } else {
-      throw new Error(responseData.message || 'Failed to create product');
-    }
-  } catch (error) {
-    console.error('Error in handleSubmit:', error);
-    Alert.alert('Error', error.message || 'Failed to create product');
-  } finally {
-    setLoading(false);
-    setIsSubmitting(false);
-  }
-};
-
-  if (loading) {
+  if (error) {
     return (
-      <View className="flex-1 justify-center items-center bg-gray-50">
-        <ActivityIndicator size="large" color="#E58F14" />
-      </View>
+      <SafeAreaView className="flex-1 justify-center items-center bg-red-50 p-4">
+        <Text className="text-red-600 text-lg font-bold mb-2">Error Loading Categories</Text>
+        <Text className="text-red-500 text-center mb-4">{error}</Text>
+        <TouchableOpacity 
+          className="bg-blue-500 px-6 py-3 rounded-lg"
+          onPress={fetchCategories}
+        >
+          <Text className="text-white font-medium">Try Again</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
     );
   }
 
-  const ColorPickerModal = () => (
-  <Modal 
-    visible={showColorPicker} 
-    transparent 
-    animationType="slide"
-    onRequestClose={() => setShowColorPicker(false)} // Add this
-  >
-    <View style={{flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)'}}>
-      <View style={{backgroundColor: 'white', margin: 20, padding: 20, borderRadius: 10}}>
-        <Text style={{fontSize: 18, marginBottom: 15}}>Select Color</Text>
-        <View style={{flexDirection: 'row', flexWrap: 'wrap'}}>
-          {predefinedColors.map((color) => (
-            <TouchableOpacity
-              key={color}
-              onPress={() => {
-                try {
-                  const currentColors = Array.isArray(formData.colors) ? [...formData.colors] : [];
-                  currentColors.push({id: Date.now(), value: color, name: color});
-                  updateFormData({ colors: currentColors });
-                  setShowColorPicker(false);
-                } catch (error) {
-                  console.error('Error adding color:', error);
-                  setShowColorPicker(false);
-                }
-              }}
-              style={{
-                width: 50, height: 50, backgroundColor: color,
-                margin: 5, borderRadius: 25, borderWidth: 1, borderColor: '#ccc'
-              }}
-            />
-          ))}
-        </View>
-        <TouchableOpacity onPress={() => setShowColorPicker(false)}>
-          <Text style={{textAlign: 'center', marginTop: 15, color: '#666'}}>Cancel</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  </Modal>
-);
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <View className="bg-white py-4 px-4 border-b border-gray-200">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
-              <ArrowLeftIcon size={24} color="#374151" />
-            </TouchableOpacity>
-            <Text className="text-lg font-semibold text-gray-900 ml-2">
-              {isEdit ? t('edit_product') : t('add_new_product')}
-            </Text>
-          </View>
-          <TouchableOpacity 
-            className="bg-[#E58F14] px-4 py-2 rounded-md"
-            onPress={handleSubmit}
-          >
-            <Text className="text-white font-medium">{t('save')}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      
-      <ScrollView className="flex-1 px-4 py-4">
-
-        {/* Product Images */}
-        <View className="mb-6 bg-white rounded-lg p-4 shadow-sm">
-          <Text className="text-sm font-medium text-gray-700 mb-3">{t('product_images')}</Text>
-          <View className="flex-row flex-wrap">
-            {images.map((img, index) => (
-              <View key={index} className="relative m-1">
-                <Image source={{ uri: img }} className="w-20 h-20 rounded-md" />
-                <TouchableOpacity 
-                  onPress={() => removeImage(index)}
-                  className="absolute -top-2 -right-2 bg-red-500 rounded-full p-0.5"
-                >
-                  <XMarkIcon size={14} color="white" />
-                </TouchableOpacity>
-              </View>
-            ))}
-            {images.length < 5 && (
-              <TouchableOpacity 
-                onPress={handleImagePick}
-                className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-md justify-center items-center m-1"
-              >
-                <PhotoIcon size={20} color="#9CA3AF" />
-                <Text className="text-gray-500 text-xs">{t('add_image')}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <Text className="text-xs text-gray-500 mt-2">{t('upload_up_to_5_images')}</Text>
-        </View>
-
-        {/* Product Details Form */}
-        <View className="space-y-4 mb-6">
-          <View className="bg-white rounded-lg p-4 shadow-sm">
-            <Text className="text-sm font-medium text-gray-700 mb-3">{t('basic_information')}</Text>
-            
-            <View className="mb-4">
-              <Text className="text-sm text-gray-600 mb-1">{t('product_name')} *</Text>
-              <TextInput
-                className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-                placeholder={t('enter_product_name')}
-                value={formData.name}
-                onChangeText={(text) => updateFormData({ name: text })}
-              />
-            </View>
-
-            <View className="mb-4">
-              <Text className="text-sm text-gray-600 mb-1">{t('category')}</Text>
-              <View className="border border-gray-300 rounded-md">
-                <Picker
-                  selectedValue={formData.category}
-                  onValueChange={(itemValue) => {
-                    console.log('Selected category:', itemValue);
-                    updateFormData({ category: itemValue });
-                  }}
-                >
-                  <Picker.Item label={t('select_category')} value="" />
-                  {categories.map((category, index) => (
-                    <Picker.Item 
-                      key={category.value || index} 
-                      label={category.label} 
-                      value={category.value} 
-                    />
-                  ))}
-                  <Picker.Item label="Perfume" value="perfume" />
-                  <Picker.Item label="Speakers" value="speakers" />
-                  <Picker.Item label="Sports" value="sports" />
-                  <Picker.Item label="Clothing" value="clothing" />
-                  <Picker.Item label="Shoes" value="shoes" />
-                  <Picker.Item label="Furniture" value="furniture" />
-                  <Picker.Item label="Gym Products" value="gym-products" />
-                  <Picker.Item label="Toys" value="toys" />
-                </Picker>
-              </View>
-            </View>
-
-            {/* Parameter Type */}
-            <View className="mb-4">
-  <Text className="text-sm text-gray-600 mb-1">{t('parameter_type')}</Text>
-  <View className="border border-gray-300 rounded-md">
-    <Picker
-      selectedValue={formData.parameterType || ''}
-      onValueChange={(itemValue) => updateFormData({ parameterType: itemValue })}
-    >
-      <Picker.Item label={t('select_parameter_type')} value="" />
-      <Picker.Item label={t('size')} value="size" />
-      <Picker.Item label={t('capacity')} value="capacity" />
-      <Picker.Item label={t('dimensions')} value="dimensions" />
-      <Picker.Item label={t('weight')} value="weight" />
-    </Picker>
-  </View>
-</View>
-
-            {/* Dynamic Fields based on Parameter Type */}
-            {formData.parameterType === 'size' && (
-  <View className="mb-4">
-    <Text className="text-sm text-gray-600 mb-1">{t('size')}</Text>
-    <TextInput
-      className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-      placeholder={t('enter_size')}
-      value={formData.size || ''}
-      onChangeText={(text) => updateFormData({ size: text })}
-    />
-  </View>
-)}
-
-{formData.parameterType === 'capacity' && (
-  <View className="mb-4">
-    <Text className="text-sm text-gray-600 mb-1">{t('capacity')}</Text>
-    <TextInput
-      className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-      placeholder={t('enter_capacity')}
-      value={formData.capacity || ''}
-      onChangeText={(text) => updateFormData({ capacity: text })}
-    />
-  </View>
-)}
-
-{formData.parameterType === 'dimensions' && (
-  <View className="mb-4">
-    <Text className="text-sm text-gray-600 mb-1">{t('dimensions')}</Text>
-    <TextInput
-      className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-      placeholder={t('enter_dimensions')}
-      value={formData.dimensions || ''}
-      onChangeText={(text) => updateFormData({ dimensions: text })}
-    />
-  </View>
-)}
-
-{formData.parameterType === 'weight' && (
-  <View className="mb-4">
-    <Text className="text-sm text-gray-600 mb-1">{t('weight')}</Text>
-    <TextInput
-      className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-      placeholder={t('enter_weight')}
-      value={formData.weight || ''}
-      onChangeText={(text) => updateFormData({ weight: text })}
-    />
-  </View>
-)}
-
-<View className="mb-4">
-  <Text className="text-sm text-gray-600 mb-1">{t('short_description')}</Text>
-  <TextInput
-    className="border border-gray-300 rounded-md p-2.5 text-gray-900 h-20"
-    placeholder={t('enter_short_description')}
-    multiline
-    numberOfLines={3}
-    textAlignVertical="top"
-    value={formData.shortDescription || ''}
-    onChangeText={(text) => {
-      console.log('Updating short description:', text);
-      updateFormData({ shortDescription: text });
-    }}
-  />
-</View>
-
-<View>
-  <Text className="text-sm text-gray-600 mb-1">{t('full_description')}</Text>
-  <TextInput
-    className="border border-gray-300 rounded-md p-2.5 text-gray-900 h-32"
-    placeholder={t('enter_full_description')}
-    multiline
-    numberOfLines={5}
-    textAlignVertical="top"
-    value={formData.description || ''}
-    onChangeText={(text) => {
-      console.log('Updating full description:', text);
-      updateFormData({ description: text });
-    }}
-  />
-</View>
-          </View>
-
-          {/* Pricing */}
-         {/* Pricing */}
-<View className="bg-white rounded-lg p-4 shadow-sm">
-  <Text className="text-sm font-medium text-gray-700 mb-2">{t('pricing')}</Text>
-  
-  <View className="flex-row space-x-4 mb-4">
-    <View className="flex-1">
-      <Text className="text-sm text-gray-600 mb-1">{t('price')}</Text>
-      <TextInput
-        className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-        placeholder="0.00"
-        keyboardType="numeric"
-        value={formData.price || ''}
-        onChangeText={(text) => {
-          const numericValue = text.replace(/[^0-9.]/g, '');
-          updateFormData({ price: numericValue });
-        }}
-      />
-    </View>
-    <View className="flex-1">
-      <Text className="text-sm text-gray-600 mb-1">{t('discounted_price')}</Text>
-      <TextInput
-        className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-        placeholder="0.00"
-        keyboardType="numeric"
-        value={formData.discountedPrice || ''}
-        onChangeText={(text) => {
-          const numericValue = text.replace(/[^0-9.]/g, '');
-          updateFormData({ discountedPrice: numericValue });
-        }}
-      />
-    </View>
-  </View>
-
-  <View className="mb-4">
-    <Text className="text-sm text-gray-600 mb-1">{t('sku')}</Text>
-    <TextInput
-      className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-      placeholder={t('enter_sku')}
-      value={formData.sku || ''}
-      onChangeText={(text) => updateFormData({ sku: text })}
-    />
-  </View>
-</View>
-
-{/* Inventory */}
-<View className="bg-white rounded-lg p-4 shadow-sm">
-  <Text className="text-sm font-medium text-gray-700 mb-4">{t('inventory')}</Text>
-  
-  <View className="mb-4">
-    <Text className="text-sm text-gray-600 mb-1">{t('stock_quantity')}</Text>
-    <TextInput
-      className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-      placeholder={t('enter_quantity')}
-      keyboardType="numeric"
-      value={formData.stock || ''}
-      onChangeText={(text) => {
-        const numericValue = text.replace(/[^0-9]/g, '');
-        updateFormData({ stock: numericValue });
-      }}
-    />
-  </View>
-
-  <View className="flex-row justify-between items-center">
-    <Text className="text-sm text-gray-600">{t('track_stock_quantity')}</Text>
-    <Switch
-      value={formData.stock ? !!parseInt(formData.stock) : false}
-      onValueChange={(value) => updateFormData({ stock: value ? '1' : '0' })}
-      trackColor={{ false: '#9CA3AF', true: '#E58F14' }}
-    />
-  </View>
-</View>
-
-{/* Manufacturer */}
-<View className="bg-white rounded-lg p-4 shadow-sm">
-  <Text className="text-sm font-medium text-gray-700 mb-4">{t('manufacturer')}</Text>
-  
-  <View className="mb-4">
-    <Text className="text-sm text-gray-600 mb-1">{t('manufacturer_name')}</Text>
-    <TextInput
-      className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-      placeholder={t('enter_manufacturer_name')}
-      value={formData.manufacturerName || ''}
-      onChangeText={(text) => updateFormData({ manufacturerName: text })}
-    />
-  </View>
-
-  <View className="mb-4">
-    <Text className="text-sm text-gray-600 mb-1">{t('manufacturer_address')}</Text>
-    <TextInput
-      className="border border-gray-300 rounded-md p-2.5 text-gray-900 h-20"
-      placeholder={t('enter_manufacturer_address')}
-      multiline
-      numberOfLines={3}
-      textAlignVertical="top"
-      value={formData.manufacturerAddress || ''}
-      onChangeText={(text) => updateFormData({ manufacturerAddress: text })}
-    />
-  </View>
-
-  <View className="flex-row space-x-4">
-    <View className="flex-1">
-      <Text className="text-sm text-gray-600 mb-1">{t('origin')}</Text>
-      <TextInput
-        className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-        placeholder={t('country_of_origin')}
-        value={formData.origin || ''}
-        onChangeText={(text) => updateFormData({ origin: text })}
-      />
-    </View>
-    <View className="flex-1">
-      <Text className="text-sm text-gray-600 mb-1">{t('expiry_date')}</Text>
-      <TextInput
-        className="border border-gray-300 rounded-md p-2.5 text-gray-900"
-        placeholder="DD/MM/YYYY"
-        value={formData.expiryDate || ''}
-        onChangeText={(text) => {
-          // Allow only numbers and slashes
-          const formattedText = text.replace(/[^0-9/]/g, '');
-          updateFormData({ expiryDate: formattedText });
-        }}
-      />
-    </View>
-  </View>
-
-  {/* Color Variants */}
-  <View className="mt-4">
-    <View className="flex-row justify-between items-center mb-2">
-      <Text className="text-sm font-medium text-gray-700">{t('color_variants')}</Text>
-      <TouchableOpacity 
-        className="bg-[#E58F14] px-3 py-1 rounded-md"
-        onPress={() => setShowColorPicker(true)}
+      <KeyboardAvoidingView 
+        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <Text className="text-white text-xs">{t('add_color')}</Text>
-      </TouchableOpacity>
-    </View>
-    
-    <View className="flex-row flex-wrap">
-      {Array.isArray(formData.colors) && formData.colors.map((color, index) => (
-        <View key={color?.id || index} className="relative mr-2 mb-2">
-          <View 
-            className="w-10 h-10 rounded-full border border-gray-300"
-            style={{ backgroundColor: color?.value || '#CCCCCC' }}
+        <View className="flex-1">
+          <ScrollView 
+            className="flex-1 p-4"
+            contentContainerStyle={{ paddingBottom: 20 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+        {/* Product Name */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">
+            Product Name <Text className="text-red-500">*</Text>
+          </Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Enter product name"
+            placeholderTextColor="#9CA3AF"
+            value={formData.name}
+            onChangeText={(text) => setFormData({ ...formData, name: text })}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
           />
+        </View>
+
+        {/* Category - Simplified Picker */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">
+            Category <Text className="text-red-500">*</Text>
+          </Text>
+          <View className="bg-white border border-gray-200 rounded-xl">
+            <Picker
+              selectedValue={formData.category || ''}
+              onValueChange={(itemValue) => {
+                console.log('Selected category ID:', itemValue);
+                setFormData(prev => ({ ...prev, category: itemValue }));
+              }}
+              style={{
+                color: formData.category ? '#1F2937' : '#9CA3AF',
+              }}
+              dropdownIconColor="#6B7280"
+            >
+              <Picker.Item 
+                label="Select a category" 
+                value="" 
+              />
+              {Array.isArray(categories) && categories.map((category) => (
+                <Picker.Item 
+                  key={category?._id || Math.random().toString()} 
+                  label={category?.name || 'Unnamed Category'} 
+                  value={category?._id || ''} 
+                />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
+        {/* Origin */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Origin</Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Product origin"
+            placeholderTextColor="#9CA3AF"
+            value={formData.origin}
+            onChangeText={(text) => setFormData({ ...formData, origin: text })}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+          />
+        </View>
+
+        {/* Manufacturer Name */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Manufacturer Name</Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Manufacturer name"
+            placeholderTextColor="#9CA3AF"
+            value={formData.manufacturername}
+            onChangeText={(text) => setFormData({ ...formData, manufacturername: text })}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+          />
+        </View>
+
+        {/* Manufacturer Address */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Manufacturer Address</Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Manufacturer address"
+            placeholderTextColor="#9CA3AF"
+            value={formData.manufactureradd}
+            onChangeText={(text) => setFormData({ ...formData, manufactureradd: text })}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+          />
+        </View>
+
+        {/* Expiry Date */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Expiry Date</Text>
           <TouchableOpacity 
-            className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1"
-            onPress={() => {
-              try {
-                const newColors = [...(formData.colors || [])].filter((_, i) => i !== index);
-                updateFormData({ colors: newColors });
-              } catch (error) {
-                console.error('Error removing color:', error);
-              }
+            className="bg-white p-4 rounded-xl border border-gray-200 flex-row justify-between items-center"
+            onPress={showDatepicker}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
             }}
           >
-            <XMarkIcon size={12} color="white" />
+            <Text className="text-gray-800 font-medium">{formatDate(formData.expirydate)}</Text>
+            <View className="bg-blue-50 p-2 rounded-lg">
+              <Text className="text-xl">📅</Text>
+            </View>
           </TouchableOpacity>
         </View>
-      ))}
-    </View>
 
-    {/* Color Picker Modal */}
-    {/* <Modal
-      visible={showColorPicker}
-      transparent={true}
-      animationType="slide"
-      onRequestClose={() => setShowColorPicker(false)}
-    >
-      <TouchableWithoutFeedback onPress={() => setShowColorPicker(false)}>
-        <View className="flex-1 justify-center items-center bg-black/50 p-4">
-          <TouchableWithoutFeedback>
-            <View className="bg-white p-4 rounded-lg w-full max-w-md">
-              <View className="flex-row justify-between items-center mb-4">
-                <Text className="text-lg font-medium">{t('select_color')}</Text>
-                <TouchableOpacity onPress={() => setShowColorPicker(false)}>
-                  <XMarkIcon size={24} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-              
-              <View className="h-64 mb-4">
-                <ColorPicker
-                  ref={colorPickerRef}
-                  color={currentColor}
-                  onColorChange={color => setCurrentColor(color)}
-                  thumbSize={30}
-                  sliderSize={30}
-                  noSnap={true}
-                  row={false}
-                  swatches={false}
-                />
-              </View>
-              
-              <View className="flex-row justify-between items-center mb-2">
-                <View className="flex-row items-center">
-                  <View 
-                    className="w-8 h-8 rounded-full border border-gray-300 mr-2"
-                    style={{ backgroundColor: currentColor }}
+        {/* Price */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">
+            Price (₹) <Text className="text-red-500">*</Text>
+          </Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Enter price"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="numeric"
+            value={formData.price}
+            onChangeText={(text) => setFormData({ ...formData, price: text })}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+          />
+        </View>
+
+        {/* Offer Price */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Offer Price (₹)</Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Enter offer price (optional)"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="numeric"
+            value={formData.Offerprice}
+            onChangeText={(text) => setFormData({ ...formData, Offerprice: text })}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+          />
+        </View>
+
+        {/* Minimum Quantity */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Minimum Quantity</Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Minimum quantity"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="numeric"
+            value={formData.minQuantity}
+            onChangeText={(text) => setFormData({ ...formData, minQuantity: text })}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+          />
+        </View>
+
+        {/* Total Pieces */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Total Pieces</Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Total pieces"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="numeric"
+            value={formData.pieces}
+            onChangeText={(text) => setFormData({ ...formData, pieces: text })}
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+          />
+        </View>
+
+        {/* Short Description */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Short Description</Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Short description"
+            placeholderTextColor="#9CA3AF"
+            value={formData.short_description}
+            onChangeText={(text) => setFormData({ ...formData, short_description: text })}
+            multiline
+            numberOfLines={3}
+            textAlignVertical="top"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+          />
+        </View>
+
+        {/* Long Description */}
+        <View className="mb-4">
+          <Text className="text-gray-800 mb-2 font-semibold text-base">Long Description</Text>
+          <TextInput
+            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+            placeholder="Detailed description"
+            placeholderTextColor="#9CA3AF"
+            value={formData.long_description}
+            onChangeText={(text) => setFormData({ ...formData, long_description: text })}
+            multiline
+            numberOfLines={5}
+            textAlignVertical="top"
+            style={{
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.05,
+              shadowRadius: 2,
+              elevation: 1,
+            }}
+          />
+        </View>
+
+        {/* Image Upload */}
+        <View className="mb-6">
+          <Text className="text-gray-800 mb-3 font-semibold text-base">Product Images</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+            <View className="flex-row">
+              {images.map((image, index) => (
+                <View key={index} className="relative mr-3">
+                  <Image 
+                    source={{ uri: image.uri }} 
+                    className="w-28 h-28 rounded-2xl"
+                    resizeMode="cover"
                   />
-                  <Text className="text-gray-700">{currentColor.toUpperCase()}</Text>
+                  <TouchableOpacity 
+                    className="absolute -top-2 -right-2 bg-red-500 rounded-full w-7 h-7 items-center justify-center"
+                    onPress={() => removeImage(index)}
+                    style={{
+                      shadowColor: '#EF4444',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.4,
+                      shadowRadius: 3,
+                      elevation: 4,
+                    }}
+                  >
+                    <Text className="text-white text-base font-bold">×</Text>
+                  </TouchableOpacity>
                 </View>
-                
+              ))}
+              {images.length < 5 && (
                 <TouchableOpacity 
-                  className="bg-[#E58F14] px-4 py-2 rounded-md"
-                  onPress={() => {
-                    try {
-                      // Ensure colors array exists
-                      const currentColors = Array.isArray(formData.colors) ? [...formData.colors] : [];
-                      
-                      // Add new color
-                      currentColors.push({ 
-                        id: Date.now(), 
-                        value: currentColor || '#000000',
-                        name: (currentColor || '#000000').toUpperCase()
-                      });
-                      
-                      // Update form data
-                      updateFormData({ colors: currentColors });
-                      setShowColorPicker(false);
-                    } catch (error) {
-                      console.error('Error adding color:', error);
-                      setShowColorPicker(false);
-                    }
+                  className="w-28 h-28 border-2 border-dashed border-blue-300 rounded-2xl items-center justify-center bg-blue-50"
+                  onPress={handleImagePick}
+                  style={{
+                    shadowColor: '#3B82F6',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 2,
+                    elevation: 2,
                   }}
                 >
-                  <Text className="text-white font-medium">{t('add_color')}</Text>
+                  <View className="bg-blue-100 w-12 h-12 rounded-full items-center justify-center mb-2">
+                    <Text className="text-blue-600 text-2xl font-bold">+</Text>
+                  </View>
+                  <Text className="text-blue-600 text-xs font-medium">Add Photo</Text>
                 </TouchableOpacity>
-              </View>
+              )}
             </View>
-          </TouchableWithoutFeedback>
+          </ScrollView>
+          <Text className="text-gray-500 text-xs">📷 You can add up to 5 images</Text>
         </View>
-      </TouchableWithoutFeedback>
-    </Modal> */}
-    <ColorPickerModal />
-  </View>
 
-  {/* Price Slots */}
-  <View className="mt-6">
-    <View className="flex-row justify-between items-center mb-3">
-      <Text className="text-sm font-medium text-gray-700">{t('price_slots')}</Text>
-      <TouchableOpacity 
-        className="bg-[#E58F14] px-3 py-1 rounded-md"
-        onPress={() => {
-          const newSlot = {
-            id: Date.now(),
-            quantity: '',
-            price: '',
-            offerPrice: ''
-          };
-          const updatedSlots = [...formData.priceSlots, newSlot];
-          updateFormData({ priceSlots: updatedSlots });
+      </ScrollView>
+      
+      {/* Fixed Submit Button */}
+      <View 
+        className="absolute bottom-0 left-0 right-0 bg-white px-4 pt-3 pb-6"
+        style={{
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.15,
+          shadowRadius: 6,
+          elevation: 10,
         }}
       >
-        <Text className="text-white text-xs">{t('add_slot')}</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity 
+          className={`p-4 rounded-2xl items-center justify-center ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
+          onPress={handleSubmit}
+          disabled={loading}
+          activeOpacity={0.8}
+          style={{
+            shadowColor: '#3B82F6',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.4,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+        >
+          <Text className="text-white font-bold text-lg">
+            {loading ? '⏳ Adding Product...' : '✓ Add Product'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-    {formData.priceSlots.map((slot, index) => (
-      <View key={slot.id} className="mb-4 border border-gray-200 rounded-lg p-3">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-sm font-medium text-gray-700">{t('slot')} {index + 1}</Text>
-          {formData.priceSlots.length > 1 && (
-            <TouchableOpacity 
-              className="bg-red-100 p-1 rounded-full"
-              onPress={() => {
-                const newSlots = formData.priceSlots.filter((_, i) => i !== index);
-                updateFormData({ priceSlots: newSlots });
+      {/* Custom Date Picker Modal */}
+      <Modal
+        visible={showDatePicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={cancelDate}
+      >
+        <TouchableOpacity 
+          className="flex-1 justify-end" 
+          style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
+          activeOpacity={1}
+          onPress={cancelDate}
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View className="bg-white rounded-t-3xl"
+              style={{
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -4 },
+                shadowOpacity: 0.25,
+                shadowRadius: 12,
+                elevation: 20,
               }}
             >
-              <XMarkIcon size={14} color="#EF4444" />
-            </TouchableOpacity>
-          )}
-        </View>
+              {/* Header */}
+              <View className="px-6 pt-5 pb-4">
+                <View className="flex-row justify-between items-center">
+                  <TouchableOpacity 
+                    onPress={cancelDate} 
+                    className="py-2"
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Text className="text-gray-600 text-base font-medium">Cancel</Text>
+                  </TouchableOpacity>
+                  <View className="items-center">
+                    <Text className="text-xl font-bold text-gray-900">Select Date</Text>
+                    <Text className="text-sm text-gray-500 mt-1">Expiry Date</Text>
+                  </View>
+                  <TouchableOpacity 
+                    onPress={confirmDate} 
+                    className="bg-blue-600 py-2 px-5 rounded-xl"
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    style={{
+                      shadowColor: '#3B82F6',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}
+                  >
+                    <Text className="text-white text-base font-bold">Done</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-        <View className="flex-row space-x-2 mb-2">
-          <View className="flex-1">
-            <Text className="text-xs text-gray-500 mb-1">{t('quantity')}</Text>
-            <TextInput
-              className="border border-gray-300 rounded-md p-2 text-sm"
-              placeholder={t('qty')}
-              keyboardType="numeric"
-              value={slot.quantity}
-              onChangeText={(text) => {
-                const newSlots = [...formData.priceSlots];
-                newSlots[index].quantity = text;
-                updateFormData({ priceSlots: newSlots });
-              }}
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-xs text-gray-500 mb-1">{t('price')} ($)</Text>
-            <TextInput
-              className="border border-gray-300 rounded-md p-2 text-sm"
-              placeholder={t('price')}
-              keyboardType="numeric"
-              value={slot.price}
-              onChangeText={(text) => {
-                const newSlots = [...formData.priceSlots];
-                newSlots[index].price = text;
-                updateFormData({ priceSlots: newSlots });
-              }}
-            />
-          </View>
-          <View className="flex-1">
-            <Text className="text-xs text-gray-500 mb-1">{t('offer_price')}</Text>
-            <TextInput
-              className="border border-gray-300 rounded-md p-2 text-sm"
-              placeholder={t('offer_price')}
-              keyboardType="numeric"
-              value={slot.offerPrice}
-              onChangeText={(text) => {
-                const newSlots = [...formData.priceSlots];
-                newSlots[index].offerPrice = text;
-                updateFormData({ priceSlots: newSlots });
-              }}
-            />
-          </View>
-        </View>
+              {/* Date Pickers Container */}
+              <View className="px-5 pb-6">
+                {/* Selected Date Preview */}
+                <View className="bg-blue-600 p-5 rounded-2xl mb-5"
+                  style={{
+                    shadowColor: '#3B82F6',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 6,
+                    elevation: 5,
+                  }}
+                >
+                  <Text className="text-center text-blue-100 text-sm font-medium mb-2 tracking-wide">
+                    SELECTED DATE
+                  </Text>
+                  <Text className="text-center text-white text-3xl font-bold tracking-wider">
+                    {selectedDay.toString().padStart(2, '0')} / {(selectedMonth + 1).toString().padStart(2, '0')} / {selectedYear}
+                  </Text>
+                </View>
+
+                {/* Date Pickers Row */}
+                <View className="flex-row justify-between">
+                  {/* Day Picker */}
+                  <View className="flex-1 mr-2 bg-white border-2 border-gray-200 rounded-2xl overflow-hidden"
+                    style={{
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}
+                  >
+                    <View className="bg-blue-600 py-3">
+                      <Text className="text-center text-base font-bold text-white tracking-wide">DAY</Text>
+                    </View>
+                    <Picker
+                      selectedValue={selectedDay}
+                      onValueChange={(value) => setSelectedDay(value)}
+                      style={{ height: 180 }}
+                      itemStyle={{ fontSize: 18 }}
+                    >
+                      {days.map((day) => (
+                        <Picker.Item 
+                          key={day} 
+                          label={day.toString().padStart(2, '0')} 
+                          value={day}
+                          style={{ fontSize: 18 }}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+
+                  {/* Month Picker */}
+                  <View className="flex-1 mx-1 bg-white border-2 border-gray-200 rounded-2xl overflow-hidden"
+                    style={{
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}
+                  >
+                    <View className="bg-blue-600 py-3">
+                      <Text className="text-center text-base font-bold text-white tracking-wide">MONTH</Text>
+                    </View>
+                    <Picker
+                      selectedValue={selectedMonth}
+                      onValueChange={(value) => setSelectedMonth(value)}
+                      style={{ height: 180 }}
+                      itemStyle={{ fontSize: 16 }}
+                    >
+                      {months.map((month) => (
+                        <Picker.Item 
+                          key={month.value} 
+                          label={month.label.slice(0, 3)} 
+                          value={month.value}
+                          style={{ fontSize: 16 }}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+
+                  {/* Year Picker */}
+                  <View className="flex-1 ml-2 bg-white border-2 border-gray-200 rounded-2xl overflow-hidden"
+                    style={{
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 4,
+                      elevation: 3,
+                    }}
+                  >
+                    <View className="bg-blue-600 py-3">
+                      <Text className="text-center text-base font-bold text-white tracking-wide">YEAR</Text>
+                    </View>
+                    <Picker
+                      selectedValue={selectedYear}
+                      onValueChange={(value) => setSelectedYear(value)}
+                      style={{ height: 180 }}
+                      itemStyle={{ fontSize: 18 }}
+                    >
+                      {years.map((year) => (
+                        <Picker.Item 
+                          key={year} 
+                          label={year.toString()} 
+                          value={year}
+                          style={{ fontSize: 18 }}
+                        />
+                      ))}
+                    </Picker>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
       </View>
-    ))}
-  </View>
-</View>
-
-{/* Status */}
-<View className="bg-white rounded-lg p-4 shadow-sm mb-6">
-  <Text className="text-sm font-medium text-gray-700 mb-4">{t('status')}</Text>
-  
-  <View className="flex-row justify-between items-center mb-4">
-    <View>
-      <Text className="text-sm font-medium text-gray-700">{t('active')}</Text>
-      <Text className="text-xs text-gray-500">When off, product will be hidden</Text>
-    </View>
-    <Switch
-      value={formData.isActive}
-      onValueChange={(value) => updateFormData({ isActive: value })}
-      trackColor={{ false: '#9CA3AF', true: '#E58F14' }}
-    />
-  </View>
-
-  <View className="flex-row justify-between items-center">
-    <View>
-      <Text className="text-sm font-medium text-gray-700">Featured</Text>
-      <Text className="text-xs text-gray-500">Show this product in featured section</Text>
-    </View>
-    <Switch
-      value={formData.isFeatured}
-      onValueChange={(value) => updateFormData({ isFeatured: value })}
-      trackColor={{ false: '#9CA3AF', true: '#E58F14' }}
-    />
-  </View>
-</View>
-
-{/* Submit Button */}
-<View className="px-4 pb-6">
-  <TouchableOpacity 
-    className="bg-[#E58F14] py-3 rounded-lg mt-6"
-    onPress={handleSubmit}
-    disabled={loading}
-  >
-    <Text className="text-white text-center font-medium">
-      {loading ? t('saving') : isEdit ? t('update_product') : t('add_product')}
-    </Text>
-  </TouchableOpacity>
-</View>
-
-
-        </View>
-      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
-}
+};
 
-
+export default AddProductScreen;

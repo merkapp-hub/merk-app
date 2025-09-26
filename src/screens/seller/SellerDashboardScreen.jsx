@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useIsFocused, useNavigation } from '@react-navigation/native';
+import { useIsFocused, useNavigation, CommonActions } from '@react-navigation/native';
 import { ArrowRightOnRectangleIcon, ExclamationTriangleIcon, UserGroupIcon } from 'react-native-heroicons/outline';
 import { Api } from '../../Helper/Service';
 import { AuthContext } from '../../context/AuthContext';
@@ -211,20 +211,27 @@ const SellerDashboardScreen = () => {
     }
   }, [isFocused]);
 
+  const { logout } = useContext(AuthContext);
+  
   const handleLogout = async () => {
     try {
-      await AsyncStorage.multiRemove(['userToken', 'userInfo']);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
+      // Call the logout function from AuthContext
+      await logout();
+      
+      // After logout, navigate to the Login screen
+      // Using a small timeout to ensure the state is properly updated
+      setTimeout(() => {
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Login' }],
+          })
+        );
+      }, 100);
     } catch (error) {
       console.error('Error during logout:', error);
-      // Even if logout fails, still navigate to login
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Login' }],
-      });
+      // Fallback to simple navigation if reset fails
+      navigation.dispatch(CommonActions.navigate('Login'));
     }
   };
 

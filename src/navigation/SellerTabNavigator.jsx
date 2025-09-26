@@ -16,6 +16,16 @@ const DashboardStack = createNativeStackNavigator();
 const OrdersStack = createNativeStackNavigator();
 const WalletStack = createNativeStackNavigator();
 const ProductsStack = createNativeStackNavigator();
+const InventoryStack = createNativeStackNavigator();
+
+// Inventory Stack
+function InventoryStackScreen() {
+  return (
+    <InventoryStack.Navigator screenOptions={{ headerShown: false }}>
+      <InventoryStack.Screen name="AddProduct" component={AddProductScreen} />
+    </InventoryStack.Navigator>
+  );
+}
 
 // Dashboard Stack
 function DashboardStackScreen() {
@@ -149,6 +159,16 @@ const SellerTabNavigator = () => {
             <Box width={size} height={size} color={color} />
           ),
           headerShown: false,
+        }}
+      />
+      <Tab.Screen 
+        name="Inventory" 
+        component={InventoryStackScreen}
+        options={{
+          tabBarLabel: 'Inventory',
+          tabBarIcon: ({ color, size }) => (
+            <Plus width={size} height={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

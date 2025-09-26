@@ -429,7 +429,12 @@ const fetchCarouselImages = async () => {
   };
 
   const renderCarouselItem = ({ item, index }) => (
-    <View key={`carousel-${index}`} style={{ width: width, height: 200, paddingHorizontal: 10 }}>
+    <TouchableOpacity 
+      key={`carousel-${index}`} 
+      style={{ width: width, height: 200, paddingHorizontal: 10 }}
+      onPress={() => navigation.navigate('BestSellingProducts')}
+      activeOpacity={0.8}
+    >
       <View style={{
         flex: 1,
         backgroundColor: '#f3f4f6',
@@ -451,7 +456,7 @@ const fetchCarouselImages = async () => {
           }}
         />
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   // Add this to handle initial scroll
@@ -579,16 +584,26 @@ const fetchCarouselImages = async () => {
     <View>
       {/* Simple Image Display with Index Change */}
       <View style={{width: width, alignItems: 'center', height: 200}}>
-        <Image
-          source={{uri: carouselImages[currentImageIndex]}}
+        <TouchableOpacity 
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate('BestSellingProducts')}
           style={{
             height: 180,
             width: width - 20,
             borderRadius: 20,
+            overflow: 'hidden',
             alignSelf: 'center',
           }}
-          resizeMode="stretch"
-        />
+        >
+          <Image
+            source={{uri: carouselImages[currentImageIndex]}}
+            style={{
+              height: '100%',
+              width: '100%',
+            }}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
       </View>
       
       {/* Dots */}
@@ -783,7 +798,10 @@ const fetchCarouselImages = async () => {
                 <View className="absolute bottom-4 left-4">
                   <Text className="text-white text-xl font-bold mb-1">{item.title}</Text>
                   <Text className="text-white text-sm mb-3 opacity-80">{item.subtitle}</Text>
-                  <TouchableOpacity>
+                  <TouchableOpacity 
+                    onPress={() => navigation.navigate('BestSellingProducts')}
+                    activeOpacity={0.8}
+                  >
                     <Text className="text-white text-sm underline">{t('shop_now')}</Text>
                   </TouchableOpacity>
                 </View>

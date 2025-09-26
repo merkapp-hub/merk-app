@@ -1,131 +1,408 @@
-import React from 'react';
-import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  Image, 
+  TouchableOpacity, 
+  StyleSheet,
+  SafeAreaView,
+  Dimensions,
+  ActivityIndicator
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { ArrowLeftIcon } from 'react-native-heroicons/outline';
 import { useTranslation } from 'react-i18next';
-import { PencilIcon, TrashIcon, PlusIcon } from 'react-native-heroicons/outline';
+import { GetApi } from '../Helper/Service';
 
-const ProductList = ({ 
-  products = [], 
-  loading = false, 
-  refreshing = false, 
-  onRefresh, 
-  onDeleteProduct,
-  showAddButton = true,
-  showActions = true 
-}) => {
+const { width } = Dimensions.get('window');
+
+const BestSellingProducts = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
-  const handleProductPress = (product) => {
-    navigation.navigate('SellerProductDetail', { 
-      productId: product.id,
-      title: product.name
-    });
+  const fetchProducts = useCallback(async (pageNum = 1, isRefreshing = false) => {
+    try {
+      if (isRefreshing) {
+        setRefreshing(true);
+      } else if (pageNum === 1) {
+        setLoading(true);
+      }
+      
+    
+      
+      if (!response) {
+        console.error('❌ No response from API');
+        return;
+      }
+      
+    
+      const newProducts = response.data || [];
+     
+      
+      // Update products state
+      setProducts(prevProducts => {
+        const updatedProducts = isRefreshing || pageNum === 1 ? 
+          [...newProducts] : 
+          [...prevProducts, ...newProducts.filter(p => !prevProducts.some(prev => prev._id === p._id))];
+        
+       
+        
+        return updatedProducts;
+      });
+      
+      // Update pagination state
+      if (response.pagination) {
+        const { currentPage, totalPages } = response.pagination;
+        // console.log('📄 Pagination:', { currentPage, totalPages, hasMore: currentPage < totalPages });
+        setHasMore(currentPage < totalPages);
+      } else {
+        setHasMore(newProducts.length > 0);
+      }
+    } catch (error) {
+      console.error('💥 Error fetching products:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      setInitialLoad(false);
+    
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log('🚀 Component mounted, calling fetchProducts');
+    fetchProducts(1);
+  }, [fetchProducts]);
+
+  const handleLoadMore = useCallback(() => {
+    console.log('📄 handleLoadMore called. loading:', loading, 'hasMore:', hasMore);
+    if (!loading && hasMore) {
+      const nextPage = page + 1;
+      console.log('⏭️ Loading more products, page:', nextPage);
+      setPage(nextPage);
+      fetchProducts(nextPage);
+    }
+  }, [loading, hasMore, page, fetchProducts]);
+
+  const handleRefresh = () => {
+    console.log('🔄 Refreshing products');
+    setPage(1);
+    fetchProducts(1, true);
   };
 
-  const renderProductItem = ({ item }) => (
-    <TouchableOpacity 
-      className="bg-white rounded-lg p-4 shadow-sm mb-3 flex-row"
-      onPress={() => handleProductPress(item)}
-      activeOpacity={0.8}
-    >
-      <Image 
-        source={{ uri: item.image }} 
-        className="w-20 h-20 rounded-lg mr-3"
-        resizeMode="cover"
-        onError={(e) => {
-          console.log('Image load error:', e.nativeEvent.error);
-        }}
-      />
-      <View className="flex-1">
-        <View className="flex-row justify-between">
-          <Text className="font-semibold text-gray-900 flex-1 mr-2" numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text className="text-indigo-600 font-medium">${item.price}</Text>
-        </View>
-        <Text className="text-sm text-gray-500 mb-1">{item.category}</Text>
-        <Text className="text-sm text-gray-700">{t('common:stock')}: {item.stock}</Text>
-        
-        <View className="flex-row justify-between mt-2">
-          {showActions && (
-            <View className="flex-row space-x-2">
-              <TouchableOpacity 
-                className="p-1"
-                onPress={() => navigation.navigate('AddProduct', { productId: item.id })}
-              >
-                <PencilIcon size={20} color="#4F46F5" />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                className="p-1"
-                onPress={() => onDeleteProduct && onDeleteProduct(item.id)}
-              >
-                <TrashIcon size={20} color="#EF4444" />
-              </TouchableOpacity>
-            </View>
-          )}
-          <View className="flex-row items-center">
-            <View className={`w-2 h-2 rounded-full mr-1 ${
-              item.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
-            }`} />
-            <Text className="text-xs text-gray-500">
-              {item.status === 'active' ? t('common:active') : t('common:inactive')}
+  const renderStars = (rating) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(
+        <Text key={`full-${i}`} style={styles.star}>
+          ★
+        </Text>
+      );
+    }
+    
+    if (hasHalfStar) {
+      stars.push(
+        <Text key="half" style={styles.star}>
+          ☆
+        </Text>
+      );
+    }
+    
+    for (let i = stars.length; i < 5; i++) {
+      stars.push(
+        <Text key={`empty-${i}`} style={styles.star}>
+          ☆
+        </Text>
+      );
+    }
+
+    return stars;
+  };
+
+  const renderFooter = () => {
+    if (!loading || refreshing) return null;
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  };
+
+  const renderProductItem = ({ item }) => {
+   
+    // Get the first price slot or default to 0
+    const priceSlot = item.price_slot?.[0];
+    
+    
+    const price = priceSlot?.price || 0;
+    const offerPrice = priceSlot?.Offerprice || null;
+    
+    
+    // Get the first variant's first image or empty string
+    const imageData = item.varients?.[0]?.image?.[0] || '';
+  
+    
+    const discountPercentage = (offerPrice && offerPrice < price) ? 
+      Math.round(((price - offerPrice) / price) * 100) : 0;
+   
+    
+    return (
+      <TouchableOpacity 
+        style={styles.productCard}
+        onPress={() => navigation.navigate('ProductDetail', { 
+          productId: item._id,
+          productName: item.name
+        })}
+      >
+        {/* Discount badge - Show if there's an offer price */}
+        {offerPrice && offerPrice < price && (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountText}>
+              {discountPercentage}% OFF
             </Text>
           </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+        )}
 
-  return (
-    <View className="flex-1">
-      {showAddButton && (
-        <View style={{ padding: 16, alignItems: 'flex-end' }}>
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#E58F14',
-              paddingVertical: 8,
-              paddingHorizontal: 16,
-              borderRadius: 6,
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-            onPress={() => navigation.navigate('AddProduct')}
-          >
-            <PlusIcon size={20} color="white" style={{ marginRight: 6 }} />
-            <Text style={{ color: 'white', fontWeight: '500', fontSize: 14 }}>
-              {t('common:add_product')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-      
-      <FlatList
-        data={products}
-        renderItem={renderProductItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16, paddingTop: showAddButton ? 0 : 16 }}
-        refreshControl={
-          onRefresh ? (
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          ) : undefined
-        }
-        ListEmptyComponent={
-          <View className="flex-1 justify-center items-center py-10">
-            <Text className="text-gray-500 text-lg text-center">{t('common:no_products_found')}</Text>
-            {showAddButton && (
-              <TouchableOpacity
-                className="mt-4 bg-indigo-600 px-6 py-2 rounded-lg"
-                onPress={() => navigation.navigate('AddProduct')}
-              >
-                <Text className="text-white font-medium">{t('common:add_first_product')}</Text>
-              </TouchableOpacity>
+        <Image
+         source={imageData ? { uri: imageData } : { uri: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop' }}
+          style={styles.productImage}
+          resizeMode="contain"
+          onError={(error) => console.log('❌ Image error:', error)}
+          onLoad={() => console.log('✅ Image loaded successfully')}
+        />
+
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={2}>
+            {item.name || 'No name'}
+          </Text>
+          
+          <View style={styles.priceContainer}>
+            {offerPrice && offerPrice < price ? (
+              <>
+                <Text style={styles.price}>${Number(offerPrice).toFixed(2)}</Text>
+                <Text style={styles.originalPrice}>${Number(price).toFixed(2)}</Text>
+              </>
+            ) : (
+              <Text style={styles.price}>${Number(price).toFixed(2)}</Text>
             )}
           </View>
-        }
+          
+          <View style={styles.ratingContainer}>
+            <View style={styles.starsContainer}>
+              {renderStars(4.0)}
+            </View>
+            <Text style={styles.soldText}>({item.sold_pieces || 0} sold)</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+
+
+  if (initialLoad) {
+    console.log('⏳ Showing initial loader');
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text style={{ marginTop: 10 }}>Loading products...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <ArrowLeftIcon size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('best_selling_products')}</Text>
+        <View style={{ width: 24 }} />
+      </View>
+
+      {/* Debug info */}
+      <View style={{ padding: 10, backgroundColor: '#f0f0f0', marginBottom: 5 }}>
+        <Text style={{ fontSize: 12, color: '#666' }}>
+          Debug: Products Count: {products.length} | Loading: {loading.toString()} | InitialLoad: {initialLoad.toString()}
+        </Text>
+      </View>
+
+      {/* Products List */}
+      <FlatList
+        data={products}
+        renderItem={(itemData) => {
+          console.log('📋 FlatList renderItem called with:', itemData.item.name);
+          return renderProductItem(itemData);
+        }}
+        keyExtractor={(item, index) => {
+          
+          return item._id ? item._id.toString() : index.toString();
+        }}
+        numColumns={2}
+        contentContainerStyle={styles.productList}
+        columnWrapperStyle={styles.columnWrapper}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={hasMore ? renderFooter : null}
+        ListEmptyComponent={() => {
+          console.log('📭 ListEmptyComponent showing');
+          return (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                No products found (Debug: Count: {products.length})
+              </Text>
+            </View>
+          );
+        }}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        removeClippedSubviews={false}
+        maxToRenderPerBatch={8}
+        updateCellsBatchingPeriod={100}
+        initialNumToRender={8}
+        windowSize={11}
+        showsVerticalScrollIndicator={false}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
-export default ProductList;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productList: {
+    padding: 8,
+    flexGrow: 1,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  productCard: {
+    width: width / 2 - 16,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+    padding: 12,
+    margin: 4,
+    position: 'relative',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  discountBadge: {
+    backgroundColor: '#1f2937',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    zIndex: 1,
+  },
+  discountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  productImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: '#f3f4f6',
+  },
+  productInfo: {
+    paddingHorizontal: 4,
+  },
+  productName: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#1f2937',
+    marginBottom: 4,
+    minHeight: 36,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  price: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#111827',
+    marginRight: 8,
+  },
+  originalPrice: {
+    fontSize: 12,
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    marginRight: 4,
+  },
+  star: {
+    color: '#f59e0b',
+    fontSize: 12,
+    marginRight: 1,
+  },
+  soldText: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+});
+
+export default BestSellingProducts;

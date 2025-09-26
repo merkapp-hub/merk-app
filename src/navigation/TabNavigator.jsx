@@ -19,6 +19,7 @@ import BestSellingProducts from '../screens/app/BestSellingProducts';
 import CategoryProducts from '../screens/app/CategoryProducts';
 import FlashSaleDetail from '../screens/app/FlashSaleDetail';
 import SearchResultScreen from '../screens/SearchResultScreen';
+import HelpCenter from '../screens/app/HelpCenter';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
@@ -132,6 +133,13 @@ function AccountStackScreen() {
       <AccountStack.Screen 
         name="Orders" 
         component={OrdersScreen}
+        options={{
+          headerShown: false,  
+        }}
+      />
+      <AccountStack.Screen 
+        name="HelpCenter" 
+        component={HelpCenter}
         options={{
           headerShown: false,  
         }}

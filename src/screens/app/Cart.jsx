@@ -11,7 +11,7 @@ import {
   TextInput
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GetApi, Post, Put, Delete } from '../../Helper/Service';
 import { useAuth } from '../../context/AuthContext';
@@ -342,7 +342,15 @@ const CartScreen = () => {
         <View className="flex-1 justify-center items-center p-4">
           <Text className="text-gray-500 text-lg mb-4">{t('cart_empty')}</Text>
           <TouchableOpacity 
-            onPress={() => navigation.navigate('HomeScreen')}
+            onPress={() => {
+              // Reset the navigation stack and navigate to the Home tab
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'HomeTab' }],
+                })
+              );
+            }}
             className="bg-orange-500 px-6 py-3 rounded-lg"
           >
             <Text className="text-white font-medium">{t('continue_shopping')}</Text>
