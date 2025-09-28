@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, Platform, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import './src/i18n';
-import SplashScreen from './src/components/SplashScreen';
+// import SplashScreen from './src/components/SplashScreen';
 
 import SignupScreen from "./src/screens/auth/SignupScreen";
 import LoginScreen from "./src/screens/auth/LoginScreen";
@@ -20,6 +20,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigationContainerRef } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
+import SplashScreen from 'react-native-splash-screen';
 
 Sentry.init({
   dsn: 'https://c20ad320af1fbfdfaac5f0090a939e0f@o4510084981391360.ingest.us.sentry.io/4510084987813888',
@@ -104,43 +105,45 @@ const RootNavigator = () => {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const navigationRef = useNavigationContainerRef();
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsSplashVisible(false);
-    }, 4000); // 3 seconds
-
-    return () => clearTimeout(timer);
+useEffect(() => {
+    SplashScreen.hide();
   }, []);
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     setIsSplashVisible(false);
+  //   }, 4000); // 3 seconds
 
-  useEffect(() => {
-    const prepare = async () => {
-      try {
-        console.log('Auth state changed, userToken:', userToken ? 'exists' : 'does not exist');
-        console.log('User info:', userInfo);
-      } catch (e) {
-        console.warn('Error in prepare:', e);
-      } finally {
-        setIsReady(true);
-      }
-    };
+  //   return () => clearTimeout(timer);
+  // }, []);
 
-    if (!isSplashVisible) {
-      prepare();
-    }
-  }, [isSplashVisible, userToken, userInfo]);
+  // useEffect(() => {
+  //   const prepare = async () => {
+  //     try {
+  //       console.log('Auth state changed, userToken:', userToken ? 'exists' : 'does not exist');
+  //       console.log('User info:', userInfo);
+  //     } catch (e) {
+  //       console.warn('Error in prepare:', e);
+  //     } finally {
+  //       setIsReady(true);
+  //     }
+  //   };
 
-  if (isSplashVisible) {
-    return <SplashScreen />;
-  }
+  //   if (!isSplashVisible) {
+  //     prepare();
+  //   }
+  // }, [isSplashVisible, userToken, userInfo]);
 
-  if (isLoading || !isReady) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
-  }
+  // if (isSplashVisible) {
+  //   return <SplashScreen />;
+  // }
+
+  // if (isLoading || !isReady) {
+  //   return (
+  //     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+  //       <ActivityIndicator size="large" color="#0000ff" />
+  //     </View>
+  //   );
+  // }
 
   return (
     <NavigationContainer ref={navigationRef}>

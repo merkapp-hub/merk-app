@@ -10,14 +10,14 @@ import {
   Alert, 
   PermissionsAndroid,
   Modal,
-  SafeAreaView,
-  KeyboardAvoidingView
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+// import { Picker } from '@react-native-picker/picker';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { API_URL } from '../../config';
 import axios from 'axios';
+import DateTimePicker from '@react-native-community/datetimepicker'
+import CoustomDropdown from '../../components/CustomDropdown'
 
 const AddProductScreen = () => {
   const navigation = useNavigation();
@@ -26,6 +26,7 @@ const AddProductScreen = () => {
   const [error, setError] = useState(null);
   const [images, setImages] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [categoryName, setcategoryName] = useState('');
   
   // Date picker states
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
@@ -254,7 +255,10 @@ const AddProductScreen = () => {
     setFormData({ ...formData, expirydate: newDate });
     setShowDatePicker(false);
   };
-
+const onDateChange=(event,selectDate)=>{
+setFormData({ ...formData, expirydate: selectDate });
+    setShowDatePicker(false);
+}
   const cancelDate = () => {
     setShowDatePicker(false);
   };
@@ -317,10 +321,16 @@ const AddProductScreen = () => {
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
-
+  const [showDrop, setShowDrop] = useState(false);
+const getDropValue = res => {
+    setShowDrop(false);
+    console.log('===>', res);
+    setFormData(prev => ({ ...prev, category: res?._id }));
+    setcategoryName(res?.name)
+  };
   if (error) {
     return (
-      <SafeAreaView className="flex-1 justify-center items-center bg-red-50 p-4">
+      <View className="flex-1 justify-center items-center bg-red-50 p-4">
         <Text className="text-red-600 text-lg font-bold mb-2">Error Loading Categories</Text>
         <Text className="text-red-500 text-center mb-4">{error}</Text>
         <TouchableOpacity 
@@ -329,12 +339,12 @@ const AddProductScreen = () => {
         >
           <Text className="text-white font-medium">Try Again</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       <KeyboardAvoidingView 
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -342,7 +352,7 @@ const AddProductScreen = () => {
         <View className="flex-1">
           <ScrollView 
             className="flex-1 p-4"
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={{ paddingBottom: 90 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
@@ -372,13 +382,15 @@ const AddProductScreen = () => {
           <Text className="text-gray-800 mb-2 font-semibold text-base">
             Category <Text className="text-red-500">*</Text>
           </Text>
-          <View className="bg-white border border-gray-200 rounded-xl">
-            <Picker
+          <TouchableOpacity className="bg-white border border-gray-200 rounded-xl" onPress={()=>setShowDrop(true)}>
+            <Text className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800">{categoryName?categoryName:'Select Category'}</Text>
+            {/* <Picker
               selectedValue={formData.category || ''}
-              onValueChange={(itemValue) => {
-                console.log('Selected category ID:', itemValue);
-                setFormData(prev => ({ ...prev, category: itemValue }));
-              }}
+              // onValueChange={(itemValue) => {
+              //   console.log('Selected category ID:', itemValue);
+              //   setFormData(prev => ({ ...prev, category: itemValue }));
+              // }}
+              onChangeText={text => console.log("text",text)}
               style={{
                 color: formData.category ? '#1F2937' : '#9CA3AF',
               }}
@@ -395,9 +407,18 @@ const AddProductScreen = () => {
                   value={category?._id || ''} 
                 />
               ))}
-            </Picker>
-          </View>
+            </Picker> */}
+          </TouchableOpacity>
         </View>
+        <CoustomDropdown
+        visible={showDrop}
+        setVisible={setShowDrop}
+        onClose={() => {
+          setShowDrop(!showDrop);
+        }}
+        getDropValue={getDropValue}
+        data={categories}
+      />
 
         {/* Origin */}
         <View className="mb-4">
@@ -607,7 +628,7 @@ const AddProductScreen = () => {
         </View>
 
         {/* Image Upload */}
-        <View className="mb-6">
+        <View className="mb-30">
           <Text className="text-gray-800 mb-3 font-semibold text-base">Product Images</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
             <View className="flex-row">
@@ -656,11 +677,9 @@ const AddProductScreen = () => {
           <Text className="text-gray-500 text-xs">📷 You can add up to 5 images</Text>
         </View>
 
-      </ScrollView>
-      
       {/* Fixed Submit Button */}
-      <View 
-        className="absolute bottom-0 left-0 right-0 bg-white px-4 pt-3 pb-6"
+      {/* <View 
+        className=" bg-white px-4 pt-3 pb-6"
         style={{
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -3 },
@@ -668,9 +687,9 @@ const AddProductScreen = () => {
           shadowRadius: 6,
           elevation: 10,
         }}
-      >
+      > */}
         <TouchableOpacity 
-          className={`p-4 rounded-2xl items-center justify-center ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
+          className={`p-4 mt-3 rounded-2xl items-center justify-center ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
           onPress={handleSubmit}
           disabled={loading}
           activeOpacity={0.8}
@@ -686,10 +705,17 @@ const AddProductScreen = () => {
             {loading ? '⏳ Adding Product...' : '✓ Add Product'}
           </Text>
         </TouchableOpacity>
-      </View>
-
+      {/* </View> */}
+      </ScrollView>
+      
+{showDatePicker&&<DateTimePicker
+        mode='date'
+        value={formData.expirydate}
+        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+        onChange={onDateChange}
+      />}
       {/* Custom Date Picker Modal */}
-      <Modal
+      {/* <Modal
         visible={showDatePicker}
         transparent={true}
         animationType="slide"
@@ -714,7 +740,6 @@ const AddProductScreen = () => {
                 elevation: 20,
               }}
             >
-              {/* Header */}
               <View className="px-6 pt-5 pb-4">
                 <View className="flex-row justify-between items-center">
                   <TouchableOpacity 
@@ -745,9 +770,7 @@ const AddProductScreen = () => {
                 </View>
               </View>
 
-              {/* Date Pickers Container */}
               <View className="px-5 pb-6">
-                {/* Selected Date Preview */}
                 <View className="bg-blue-600 p-5 rounded-2xl mb-5"
                   style={{
                     shadowColor: '#3B82F6',
@@ -765,9 +788,7 @@ const AddProductScreen = () => {
                   </Text>
                 </View>
 
-                {/* Date Pickers Row */}
                 <View className="flex-row justify-between">
-                  {/* Day Picker */}
                   <View className="flex-1 mr-2 bg-white border-2 border-gray-200 rounded-2xl overflow-hidden"
                     style={{
                       shadowColor: '#000',
@@ -797,7 +818,6 @@ const AddProductScreen = () => {
                     </Picker>
                   </View>
 
-                  {/* Month Picker */}
                   <View className="flex-1 mx-1 bg-white border-2 border-gray-200 rounded-2xl overflow-hidden"
                     style={{
                       shadowColor: '#000',
@@ -827,7 +847,6 @@ const AddProductScreen = () => {
                     </Picker>
                   </View>
 
-                  {/* Year Picker */}
                   <View className="flex-1 ml-2 bg-white border-2 border-gray-200 rounded-2xl overflow-hidden"
                     style={{
                       shadowColor: '#000',
@@ -861,10 +880,10 @@ const AddProductScreen = () => {
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
-      </Modal>
+      </Modal> */}
       </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
