@@ -36,7 +36,7 @@ const Header = () => {
     const query = searchQuery.trim();
     console.log('Searching for:', query || '[empty query]');
     Keyboard.dismiss();
-    
+
     // Navigate to SearchResult in the Home stack
     navigation.navigate('HomeTab', {
       screen: 'SearchResult',
@@ -48,10 +48,10 @@ const Header = () => {
     <View className="bg-slate-800 px-4 py-3">
       <View className="flex-row items-center justify-between mb-3">
         <View className="flex-row items-center">
-          <MapPin width={20} height={20} color="white" />
-          <Text className="text-white ml-2">Your Location</Text>
+          {/* <MapPin width={20} height={20} color="white" /> */}
+          <Text className="text-white ml-2">Hi {userInfo?.firstName}!</Text>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => {
             if (userToken) {
               navigation.navigate('MainTabs', { screen: 'Account' });
@@ -74,7 +74,7 @@ const Header = () => {
           )}
         </TouchableOpacity>
       </View>
-      
+
       <View className="relative">
         <View className="flex-row items-center bg-white rounded-lg px-3 py-2">
           <Search width={20} height={20} color="#6b7280" />

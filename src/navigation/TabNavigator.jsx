@@ -20,6 +20,7 @@ import CategoryProducts from '../screens/app/CategoryProducts';
 import FlashSaleDetail from '../screens/app/FlashSaleDetail';
 import SearchResultScreen from '../screens/SearchResultScreen';
 import HelpCenter from '../screens/app/HelpCenter';
+import { COLORS } from '../config';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
@@ -31,44 +32,44 @@ function HomeStackScreen() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeScreen" component={HomeScreen} />
-      <HomeStack.Screen 
-        name="ProductDetail" 
+      <HomeStack.Screen
+        name="ProductDetail"
         component={ProductDetails}
         options={{
           animation: 'slide_from_right',
         }}
       />
-      <HomeStack.Screen 
-        name="Categories" 
+      <HomeStack.Screen
+        name="Categories"
         component={CategoriesScreen}
         options={{
           animation: 'slide_from_right',
         }}
       />
-      <HomeStack.Screen 
-        name="BestSellingProducts" 
+      <HomeStack.Screen
+        name="BestSellingProducts"
         component={BestSellingProducts}
         options={{
           animation: 'slide_from_right',
         }}
       />
-      <HomeStack.Screen 
-        name="CategoryProducts" 
+      <HomeStack.Screen
+        name="CategoryProducts"
         component={CategoryProducts}
         options={{
           animation: 'slide_from_right',
         }}
       />
-      <HomeStack.Screen 
-        name="FlashSaleDetail" 
+      <HomeStack.Screen
+        name="FlashSaleDetail"
         component={FlashSaleDetail}
         options={{
           animation: 'slide_from_right',
           title: 'Flash Sale'
         }}
       />
-      <HomeStack.Screen 
-        name="SearchResult" 
+      <HomeStack.Screen
+        name="SearchResult"
         component={SearchResultScreen}
         options={{
           animation: 'slide_from_right',
@@ -84,8 +85,8 @@ function CartStackScreen() {
   return (
     <CartStack.Navigator screenOptions={{ headerShown: false }}>
       <CartStack.Screen name="CartScreen" component={CartScreen} />
-      <CartStack.Screen 
-        name="BillingDetails" 
+      <CartStack.Screen
+        name="BillingDetails"
         component={BillingDetails}
         options={{
           animation: 'slide_from_right',
@@ -101,8 +102,8 @@ function CartStackScreen() {
           },
         }}
       />
-      <CartStack.Screen 
-        name="OrderConfirmation" 
+      <CartStack.Screen
+        name="OrderConfirmation"
         component={OrderConfirmation}
         options={{
           headerShown: false,
@@ -119,29 +120,29 @@ function AccountStackScreen() {
     <AccountStack.Navigator
       initialRouteName="AccountScreen"
       screenOptions={{
-        headerShown: false,  
+        headerShown: false,
         animation: 'slide_from_right'
       }}
     >
-      <AccountStack.Screen 
-        name="AccountScreen" 
+      <AccountStack.Screen
+        name="AccountScreen"
         component={AccountScreen}
         options={{
-          headerShown: false,  
+          headerShown: false,
         }}
       />
-      <AccountStack.Screen 
-        name="Orders" 
+      <AccountStack.Screen
+        name="Orders"
         component={OrdersScreen}
         options={{
-          headerShown: false,  
+          headerShown: false,
         }}
       />
-      <AccountStack.Screen 
-        name="HelpCenter" 
+      <AccountStack.Screen
+        name="HelpCenter"
         component={HelpCenter}
         options={{
-          headerShown: false,  
+          headerShown: false,
         }}
       />
     </AccountStack.Navigator>
@@ -162,7 +163,7 @@ const TabNavigator = () => {
           paddingBottom: 8,
           paddingTop: 10,
           paddingHorizontal: 10,
-          backgroundColor: '#ffffff',
+          backgroundColor: COLORS.mainColor,
           borderTopWidth: 0,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
@@ -189,8 +190,8 @@ const TabNavigator = () => {
         },
       }}
     >
-      <Tab.Screen 
-        name="HomeTab" 
+      <Tab.Screen
+        name="HomeTab"
         component={HomeStackScreen}
         options={{
           tabBarLabel: 'Home',
@@ -199,8 +200,8 @@ const TabNavigator = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="CategoriesTab" 
+      <Tab.Screen
+        name="CategoriesTab"
         component={CategoriesScreen}
         options={{
           tabBarLabel: 'Categories',
@@ -209,8 +210,8 @@ const TabNavigator = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="FavoritesTab" 
+      <Tab.Screen
+        name="FavoritesTab"
         component={FavoritesScreen}
         options={{
           tabBarLabel: 'Favorites',
@@ -242,8 +243,8 @@ const TabNavigator = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="CartStack" 
+      <Tab.Screen
+        name="CartStack"
         component={CartStackScreen}
         options={{
           tabBarLabel: 'Cart',
@@ -276,8 +277,8 @@ const TabNavigator = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="Account" 
+      <Tab.Screen
+        name="Account"
         component={AccountStackScreen}
         options={{
           tabBarLabel: 'Account',

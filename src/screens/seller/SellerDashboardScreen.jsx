@@ -34,14 +34,14 @@ const SellerDashboardScreen = () => {
       {
         name: 'Products',
         population: 68,
-        color: '#4F46F5',
+        color: '#1B293D',
         legendFontColor: '#7F7F7F',
         legendFontSize: 13,
       },
       {
         name: 'Services',
         population: 32,
-        color: '#10B981',
+        color: '#FF9D00',
         legendFontColor: '#7F7F7F',
         legendFontSize: 13,
       }
@@ -53,29 +53,29 @@ const SellerDashboardScreen = () => {
   const verifySellerStatus = async () => {
     try {
       const userData = JSON.parse(await AsyncStorage.getItem('userInfo'));
-      
+
       if (!userData) {
         setError('User data not found. Please login again.');
         return false;
       }
-      
+
       // Set user data to state
       setUser({
         ...userData,
         firstName: userData.firstName || userData.name?.split(' ')[0] || 'Seller',
         lastName: userData.lastName || userData.name?.split(' ').slice(1).join(' ') || ''
       });
-      
+
       if (userData?.role !== 'seller') {
         setError('Access restricted to sellers only');
         return false;
       }
-      
+
       if (userData.status !== 'Verified') {
         setError('Your seller account is pending verification');
         return false;
       }
-      
+
       setIsVerified(true);
       return true;
     } catch (error) {
@@ -89,13 +89,13 @@ const SellerDashboardScreen = () => {
     try {
       setLoading(true);
       setError('');
-      
+
       const isSellerVerified = await verifySellerStatus();
       if (!isSellerVerified) {
         setLoading(false);
         return;
       }
-      
+
       // Fetch dashboard stats
       const [statsRes, salesRes] = await Promise.all([
         GetApi('getDashboardStats'),
@@ -105,17 +105,17 @@ const SellerDashboardScreen = () => {
       // Extract data from the actual API response format
       const statsData = statsRes?.data || {};
       const salesData = salesRes?.data || {};
-      
+
       // Extract totals from the stats response
       const totalSales = parseInt(statsData.transactions?.total) || 0;
       const totalOrders = parseInt(statsData.orders?.total) || 0;
       const totalProducts = parseInt(statsData.products?.total) || 0;
       const totalCustomers = parseInt(statsData.users?.total) || 0;
-      
+
       // Process sales data from the series
-      let labels = Array.isArray(salesData.categories) ? 
+      let labels = Array.isArray(salesData.categories) ?
         salesData.categories.map(m => m || '') : [];
-      
+
       let values = [];
       if (Array.isArray(salesData.series) && salesData.series[0]?.data) {
         values = salesData.series[0].data.map(val => parseInt(val) || 0);
@@ -123,23 +123,23 @@ const SellerDashboardScreen = () => {
         // Fallback to empty array if data structure is unexpected
         values = new Array(labels.length).fill(0);
       }
-      
+
       // For pie chart, we'll use a simple distribution based on available data
       const productRevenue = Math.round(totalSales * 0.7); // 70% of total sales
       const serviceRevenue = Math.round(totalSales * 0.3); // 30% of total sales
-      
+
       const pieData = [
         {
           name: t('products'),
           population: productRevenue,
-          color: '#4F46F5',
+          color: '#1B293D',
           legendFontColor: '#7F7F7F',
           legendFontSize: 13,
         },
         {
           name: t('services'),
           population: serviceRevenue,
-          color: '#10B981',
+          color: '#FF9D00',
           legendFontColor: '#7F7F7F',
           legendFontSize: 13,
         }
@@ -159,11 +159,11 @@ const SellerDashboardScreen = () => {
         recentOrders: statsRes?.data?.recentOrders || [],
         topSellingProducts: statsRes?.data?.topProducts || []
       });
-      
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setError('Failed to load dashboard data. Please try again.');
-      
+
       // Fallback to mock data if API fails
       setStats({
         totalSales: 0,
@@ -179,14 +179,14 @@ const SellerDashboardScreen = () => {
           {
             name: 'Products',
             population: 0,
-            color: '#4F46F5',
+            color: '#1B293D',
             legendFontColor: '#7F7F7F',
             legendFontSize: 13,
           },
           {
             name: 'Services',
             population: 0,
-            color: '#10B981',
+            color: '#FF9D00',
             legendFontColor: '#7F7F7F',
             legendFontSize: 13,
           }
@@ -212,12 +212,12 @@ const SellerDashboardScreen = () => {
   }, [isFocused]);
 
   const { logout } = useContext(AuthContext);
-  
+
   const handleLogout = async () => {
     try {
       // Call the logout function from AuthContext
       await logout();
-      
+
       // After logout, navigate to the Login screen
       // Using a small timeout to ensure the state is properly updated
       setTimeout(() => {
@@ -269,19 +269,19 @@ const SellerDashboardScreen = () => {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
-      <ScrollView 
+      <ScrollView
         className="flex-1"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Header */}
-        <View className="p-4 bg-white shadow-sm">
+        <View className="p-4 bg-slate-800 shadow-sm">
           <View className="flex-row justify-between items-center">
             <View>
-              <Text className="text-2xl font-bold text-gray-900">{t('dashboard')}</Text>
+              <Text className="text-2xl font-bold text-white">{t('dashboard')}</Text>
               <Text className="text-gray-500">
-                {user?.firstName 
+                {user?.firstName
                   ? t('welcome_back_seller', { name: user.firstName })
                   : t('welcome_back_seller', { name: 'Seller' })}
               </Text>
@@ -298,17 +298,17 @@ const SellerDashboardScreen = () => {
         {/* Stats */}
         <View className="p-4">
           <StatsCards stats={stats} t={t} />
-          
+
           {/* Sales Chart */}
           <SalesChart data={stats.salesData} t={t} />
-          
+
           {/* Revenue Pie Chart */}
           <RevenuePieChart data={stats.revenueData} t={t} />
         </View>
 
-      
 
-       
+
+
       </ScrollView>
     </SafeAreaView>
   );

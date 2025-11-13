@@ -1,38 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
-  Image, 
-  Platform, 
-  Alert, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Platform,
+  Alert,
   PermissionsAndroid,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
 // import { Picker } from '@react-native-picker/picker';
 import { launchImageLibrary } from 'react-native-image-picker';
-import { useNavigation } from '@react-navigation/native';
-import { API_URL } from '../../config';
+import { useIsFocused, useNavigation, useRoute } from '@react-navigation/native';
+import { API_BASE_URL } from '../../config';
 import axios from 'axios';
 import DateTimePicker from '@react-native-community/datetimepicker'
 import CoustomDropdown from '../../components/CustomDropdown'
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GetApi } from '../../Helper/Service';
 
-const AddProductScreen = () => {
+const AddProductScreen = (props) => {
   const navigation = useNavigation();
+  const isFocused = useIsFocused()
+  const route = useRoute();
+  const { productId } = route.params;
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState(null);
   const [images, setImages] = useState([]);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [categoryName, setcategoryName] = useState('');
-  
+
   // Date picker states
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -49,20 +55,7 @@ const AddProductScreen = () => {
     pieces: '1',
   });
 
-  useEffect(() => {
-    console.log('Component mounted, fetching categories...');
-    fetchCategories().catch(err => {
-      console.error('Error in fetchCategories:', err);
-      setError(err.message);
-    });
-  }, []);
 
-  // Debug render
-  console.log('Rendering with state:', {
-    categories: categories?.length || 0,
-    formDataCategory: formData.category,
-    error
-  });
 
   const fetchCategories = async () => {
     try {
@@ -70,7 +63,7 @@ const AddProductScreen = () => {
       setError(null);
       // Reset categories to empty array first
       setCategories([]);
-      
+
       console.log('Fetching categories from API...');
       const response = await axios.get('https://api.merkapp.net/api/getCategory', {
         timeout: 10000,
@@ -79,10 +72,10 @@ const AddProductScreen = () => {
           'Accept': 'application/json'
         }
       });
-      
-      console.log('API Response received, status:', response?.status);
-      console.log('Response data:', JSON.stringify(response?.data, null, 2));
-      
+
+      // console.log('API Response received, status:', response?.status);
+      // console.log('Response data:', JSON.stringify(response?.data, null, 2));
+
       // More defensive check for response data
       if (response && response.data) {
         if (response.data.status === true && Array.isArray(response.data.data)) {
@@ -94,7 +87,7 @@ const AddProductScreen = () => {
       } else {
         console.warn('Empty or invalid API response');
       }
-      
+
       // If we reach here, there was an issue with the response format
       Alert.alert('Error', 'Could not load categories. Please try again later.');
     } catch (error) {
@@ -104,9 +97,9 @@ const AddProductScreen = () => {
         response: error.response?.data,
         stack: error.stack
       });
-      
+
       let errorMessage = 'Failed to load categories';
-      
+
       if (error.response) {
         // The request was made and the server responded with a status code
         // that falls out of the range of 2xx
@@ -122,7 +115,7 @@ const AddProductScreen = () => {
         console.error('Error message:', error.message);
         errorMessage = error.message || 'Failed to process request';
       }
-      
+
       Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
@@ -131,12 +124,12 @@ const AddProductScreen = () => {
 
   const handleImagePick = async () => {
     try {
-      
+
       if (Platform.OS === 'android') {
         const androidVersion = Platform.Version;
-        
+
         if (androidVersion >= 33) {
-          
+
           const granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
             {
@@ -146,7 +139,7 @@ const AddProductScreen = () => {
               buttonNegative: 'Deny',
             }
           );
-          
+
           if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
             Alert.alert('Permission Denied', 'Media access permission is required to upload images', [
               {
@@ -171,7 +164,7 @@ const AddProductScreen = () => {
               buttonNegative: 'Deny',
             }
           );
-          
+
           if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
             Alert.alert('Permission Denied', 'Storage permission is required to upload images', [
               {
@@ -255,10 +248,10 @@ const AddProductScreen = () => {
     setFormData({ ...formData, expirydate: newDate });
     setShowDatePicker(false);
   };
-const onDateChange=(event,selectDate)=>{
-setFormData({ ...formData, expirydate: selectDate });
+  const onDateChange = (event, selectDate) => {
+    setFormData({ ...formData, expirydate: selectDate });
     setShowDatePicker(false);
-}
+  }
   const cancelDate = () => {
     setShowDatePicker(false);
   };
@@ -271,9 +264,9 @@ setFormData({ ...formData, expirydate: selectDate });
       }
 
       setLoading(true);
-      
+
       const data = new FormData();
-      
+
       Object.keys(formData).forEach(key => {
         if (key === 'expirydate') {
           data.append(key, formData[key].toISOString().split('T')[0]);
@@ -293,14 +286,29 @@ setFormData({ ...formData, expirydate: selectDate });
       data.append('price_slot[0][value]', '1');
       data.append('price_slot[0][price]', formData.price);
       data.append('price_slot[0][Offerprice]', formData.Offerprice || formData.price);
-
-      const response = await axios.post(`${API_URL}/addProduct`, data, {
+      let token = await AsyncStorage.getItem('userToken');
+      const response = await axios.post(`${API_BASE_URL}createProduct`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`,
         }
       });
-
+      console.log('Add Product Response:', response);
       if (response.data.status) {
+        setFormData({
+          name: '',
+          category: '',
+          origin: '',
+          expirydate: new Date(),
+          manufacturername: '',
+          manufactureradd: '',
+          short_description: '',
+          long_description: '',
+          price: '',
+          Offerprice: '',
+          minQuantity: '1',
+          pieces: '1',
+        })
         Alert.alert('Success', 'Product added successfully', [
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
@@ -308,7 +316,7 @@ setFormData({ ...formData, expirydate: selectDate });
         throw new Error(response.data.message || 'Failed to add product');
       }
     } catch (error) {
-      console.error('Error adding product:', error);
+      console.error('Error adding product:', error.response);
       Alert.alert('Error', error.response?.data?.message || 'Failed to add product');
     } finally {
       setLoading(false);
@@ -322,18 +330,74 @@ setFormData({ ...formData, expirydate: selectDate });
     return `${day}/${month}/${year}`;
   };
   const [showDrop, setShowDrop] = useState(false);
-const getDropValue = res => {
+  const getDropValue = res => {
     setShowDrop(false);
     console.log('===>', res);
     setFormData(prev => ({ ...prev, category: res?._id }));
     setcategoryName(res?.name)
   };
+
+  const fetchProductDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await GetApi(`getProductById/${productId}`);
+      console.log('Productttttttt API Response:', response);
+
+      if (response && response.status) {
+        setFormData({
+          name: response?.data?.name,
+          // category: '',
+          origin: response?.data?.origin || '',
+          expirydate: new Date(response?.data?.expirydate) || new Date(),
+          manufacturername: response?.data?.manufacturername || '',
+          manufactureradd: response?.data?.manufactureradd || '',
+          short_description: response?.data?.short_description || '',
+          long_description: response?.data?.long_description || '',
+          price: response?.data?.price || '',
+          Offerprice: response?.data?.Offerprice || '',
+          minQuantity: response?.data?.minQuantity?.toString() || '1',
+          pieces: response?.data?.pieces?.toString() || '1',
+        })
+        // setProduct(response.data);
+        // If reviews are included in product response
+      } else {
+        throw new Error(response?.message || 'Failed to load product details');
+      }
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      setError(error.message || 'Failed to load product details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    console.log('Component mounted, fetching categories...');
+    console.log('AddProductScreen props:', props);
+    fetchCategories().catch(err => {
+      console.error('Error in fetchCategories:', err);
+      setError(err.message);
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchProductDetails();
+  }, [productId]);
+
+  // Debug render
+  console.log('Rendering with state:', {
+    categories: categories?.length || 0,
+    formDataCategory: formData.category,
+    error
+  });
   if (error) {
     return (
       <View className="flex-1 justify-center items-center bg-red-50 p-4">
         <Text className="text-red-600 text-lg font-bold mb-2">Error Loading Categories</Text>
         <Text className="text-red-500 text-center mb-4">{error}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           className="bg-blue-500 px-6 py-3 rounded-lg"
           onPress={fetchCategories}
         >
@@ -345,46 +409,46 @@ const getDropValue = res => {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <View className="flex-1">
-          <ScrollView 
+          <ScrollView
             className="flex-1 p-4"
             contentContainerStyle={{ paddingBottom: 90 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-        {/* Product Name */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">
-            Product Name <Text className="text-red-500">*</Text>
-          </Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Enter product name"
-            placeholderTextColor="#9CA3AF"
-            value={formData.name}
-            onChangeText={(text) => setFormData({ ...formData, name: text })}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
+            {/* Product Name */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">
+                Product Name <Text className="text-red-500">*</Text>
+              </Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Enter product name"
+                placeholderTextColor="#9CA3AF"
+                value={formData.name}
+                onChangeText={(text) => setFormData({ ...formData, name: text })}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
 
-        {/* Category - Simplified Picker */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">
-            Category <Text className="text-red-500">*</Text>
-          </Text>
-          <TouchableOpacity className="bg-white border border-gray-200 rounded-xl" onPress={()=>setShowDrop(true)}>
-            <Text className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800">{categoryName?categoryName:'Select Category'}</Text>
-            {/* <Picker
+            {/* Category - Simplified Picker */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">
+                Category <Text className="text-red-500">*</Text>
+              </Text>
+              <TouchableOpacity className="bg-white border border-gray-200 rounded-xl" onPress={() => setShowDrop(true)}>
+                <Text className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800">{categoryName ? categoryName : 'Select Category'}</Text>
+                {/* <Picker
               selectedValue={formData.category || ''}
               // onValueChange={(itemValue) => {
               //   console.log('Selected category ID:', itemValue);
@@ -408,277 +472,277 @@ const getDropValue = res => {
                 />
               ))}
             </Picker> */}
-          </TouchableOpacity>
-        </View>
-        <CoustomDropdown
-        visible={showDrop}
-        setVisible={setShowDrop}
-        onClose={() => {
-          setShowDrop(!showDrop);
-        }}
-        getDropValue={getDropValue}
-        data={categories}
-      />
-
-        {/* Origin */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Origin</Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Product origin"
-            placeholderTextColor="#9CA3AF"
-            value={formData.origin}
-            onChangeText={(text) => setFormData({ ...formData, origin: text })}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
-
-        {/* Manufacturer Name */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Manufacturer Name</Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Manufacturer name"
-            placeholderTextColor="#9CA3AF"
-            value={formData.manufacturername}
-            onChangeText={(text) => setFormData({ ...formData, manufacturername: text })}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
-
-        {/* Manufacturer Address */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Manufacturer Address</Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Manufacturer address"
-            placeholderTextColor="#9CA3AF"
-            value={formData.manufactureradd}
-            onChangeText={(text) => setFormData({ ...formData, manufactureradd: text })}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
-
-        {/* Expiry Date */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Expiry Date</Text>
-          <TouchableOpacity 
-            className="bg-white p-4 rounded-xl border border-gray-200 flex-row justify-between items-center"
-            onPress={showDatepicker}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          >
-            <Text className="text-gray-800 font-medium">{formatDate(formData.expirydate)}</Text>
-            <View className="bg-blue-50 p-2 rounded-lg">
-              <Text className="text-xl">📅</Text>
+              </TouchableOpacity>
             </View>
-          </TouchableOpacity>
-        </View>
+            <CoustomDropdown
+              visible={showDrop}
+              setVisible={setShowDrop}
+              onClose={() => {
+                setShowDrop(!showDrop);
+              }}
+              getDropValue={getDropValue}
+              data={categories}
+            />
 
-        {/* Price */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">
-            Price ($) <Text className="text-red-500">*</Text>
-          </Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Enter price"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={formData.price}
-            onChangeText={(text) => setFormData({ ...formData, price: text })}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
+            {/* Origin */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">Origin</Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Product origin"
+                placeholderTextColor="#9CA3AF"
+                value={formData.origin}
+                onChangeText={(text) => setFormData({ ...formData, origin: text })}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
 
-        {/* Offer Price */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Offer Price ($)</Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Enter offer price (optional)"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={formData.Offerprice}
-            onChangeText={(text) => setFormData({ ...formData, Offerprice: text })}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
+            {/* Manufacturer Name */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">Manufacturer Name</Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Manufacturer name"
+                placeholderTextColor="#9CA3AF"
+                value={formData.manufacturername}
+                onChangeText={(text) => setFormData({ ...formData, manufacturername: text })}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
 
-        {/* Minimum Quantity */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Minimum Quantity</Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Minimum quantity"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={formData.minQuantity}
-            onChangeText={(text) => setFormData({ ...formData, minQuantity: text })}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
+            {/* Manufacturer Address */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">Manufacturer Address</Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Manufacturer address"
+                placeholderTextColor="#9CA3AF"
+                value={formData.manufactureradd}
+                onChangeText={(text) => setFormData({ ...formData, manufactureradd: text })}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
 
-        {/* Total Pieces */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Total Pieces</Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Total pieces"
-            placeholderTextColor="#9CA3AF"
-            keyboardType="numeric"
-            value={formData.pieces}
-            onChangeText={(text) => setFormData({ ...formData, pieces: text })}
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
-
-        {/* Short Description */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Short Description</Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Short description"
-            placeholderTextColor="#9CA3AF"
-            value={formData.short_description}
-            onChangeText={(text) => setFormData({ ...formData, short_description: text })}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
-
-        {/* Long Description */}
-        <View className="mb-4">
-          <Text className="text-gray-800 mb-2 font-semibold text-base">Long Description</Text>
-          <TextInput
-            className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
-            placeholder="Detailed description"
-            placeholderTextColor="#9CA3AF"
-            value={formData.long_description}
-            onChangeText={(text) => setFormData({ ...formData, long_description: text })}
-            multiline
-            numberOfLines={5}
-            textAlignVertical="top"
-            style={{
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.05,
-              shadowRadius: 2,
-              elevation: 1,
-            }}
-          />
-        </View>
-
-        {/* Image Upload */}
-        <View className="mb-30">
-          <Text className="text-gray-800 mb-3 font-semibold text-base">Product Images</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
-            <View className="flex-row">
-              {images.map((image, index) => (
-                <View key={index} className="relative mr-3">
-                  <Image 
-                    source={{ uri: image.uri }} 
-                    className="w-28 h-28 rounded-2xl"
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity 
-                    className="absolute -top-2 -right-2 bg-red-500 rounded-full w-7 h-7 items-center justify-center"
-                    onPress={() => removeImage(index)}
-                    style={{
-                      shadowColor: '#EF4444',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.4,
-                      shadowRadius: 3,
-                      elevation: 4,
-                    }}
-                  >
-                    <Text className="text-white text-base font-bold">×</Text>
-                  </TouchableOpacity>
+            {/* Expiry Date */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">Expiry Date</Text>
+              <TouchableOpacity
+                className="bg-white p-4 rounded-xl border border-gray-200 flex-row justify-between items-center"
+                onPress={showDatepicker}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              >
+                <Text className="text-gray-800 font-medium">{formatDate(formData.expirydate)}</Text>
+                <View className="bg-blue-50 p-2 rounded-lg">
+                  <Text className="text-xl">📅</Text>
                 </View>
-              ))}
-              {images.length < 5 && (
-                <TouchableOpacity 
-                  className="w-28 h-28 border-2 border-dashed border-blue-300 rounded-2xl items-center justify-center bg-blue-50"
-                  onPress={handleImagePick}
-                  style={{
-                    shadowColor: '#3B82F6',
-                    shadowOffset: { width: 0, height: 1 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 2,
-                    elevation: 2,
-                  }}
-                >
-                  <View className="bg-blue-100 w-12 h-12 rounded-full items-center justify-center mb-2">
-                    <Text className="text-blue-600 text-2xl font-bold">+</Text>
-                  </View>
-                  <Text className="text-blue-600 text-xs font-medium">Add Photo</Text>
-                </TouchableOpacity>
-              )}
+              </TouchableOpacity>
             </View>
-          </ScrollView>
-          <Text className="text-gray-500 text-xs">📷 You can add up to 5 images</Text>
-        </View>
 
-      {/* Fixed Submit Button */}
-      {/* <View 
+            {/* Price */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">
+                Price ($) <Text className="text-red-500">*</Text>
+              </Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Enter price"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+                value={formData.price}
+                onChangeText={(text) => setFormData({ ...formData, price: text })}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
+
+            {/* Offer Price */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">Offer Price ($)</Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Enter offer price (optional)"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+                value={formData.Offerprice}
+                onChangeText={(text) => setFormData({ ...formData, Offerprice: text })}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
+
+            {/* Minimum Quantity */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">Minimum Quantity</Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Minimum quantity"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+                value={formData.minQuantity}
+                onChangeText={(text) => setFormData({ ...formData, minQuantity: text })}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
+
+            {/* Total Pieces */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">Total Pieces</Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Total pieces"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="numeric"
+                value={formData.pieces}
+                onChangeText={(text) => setFormData({ ...formData, pieces: text })}
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
+
+            {/* Short Description */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">Short Description</Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Short description"
+                placeholderTextColor="#9CA3AF"
+                value={formData.short_description}
+                onChangeText={(text) => setFormData({ ...formData, short_description: text })}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
+
+            {/* Long Description */}
+            <View className="mb-4">
+              <Text className="text-gray-800 mb-2 font-semibold text-base">Long Description</Text>
+              <TextInput
+                className="bg-white p-4 rounded-xl border border-gray-200 text-gray-800"
+                placeholder="Detailed description"
+                placeholderTextColor="#9CA3AF"
+                value={formData.long_description}
+                onChangeText={(text) => setFormData({ ...formData, long_description: text })}
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+                style={{
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.05,
+                  shadowRadius: 2,
+                  elevation: 1,
+                }}
+              />
+            </View>
+
+            {/* Image Upload */}
+            <View className="mb-30">
+              <Text className="text-gray-800 mb-3 font-semibold text-base">Product Images</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3">
+                <View className="flex-row">
+                  {images.map((image, index) => (
+                    <View key={index} className="relative mr-3">
+                      <Image
+                        source={{ uri: image.uri }}
+                        className="w-28 h-28 rounded-2xl"
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        className="absolute -top-2 -right-2 bg-red-500 rounded-full w-7 h-7 items-center justify-center"
+                        onPress={() => removeImage(index)}
+                        style={{
+                          shadowColor: '#EF4444',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.4,
+                          shadowRadius: 3,
+                          elevation: 4,
+                        }}
+                      >
+                        <Text className="text-white text-base font-bold">×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  {images.length < 5 && (
+                    <TouchableOpacity
+                      className="w-28 h-28 border-2 border-dashed border-blue-300 rounded-2xl items-center justify-center bg-blue-50"
+                      onPress={handleImagePick}
+                      style={{
+                        shadowColor: '#3B82F6',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 2,
+                        elevation: 2,
+                      }}
+                    >
+                      <View className="bg-blue-100 w-12 h-12 rounded-full items-center justify-center mb-2">
+                        <Text className="text-blue-600 text-2xl font-bold">+</Text>
+                      </View>
+                      <Text className="text-blue-600 text-xs font-medium">Add Photo</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </ScrollView>
+              <Text className="text-gray-500 text-xs">📷 You can add up to 5 images</Text>
+            </View>
+
+            {/* Fixed Submit Button */}
+            {/* <View 
         className=" bg-white px-4 pt-3 pb-6"
         style={{
           shadowColor: '#000',
@@ -688,34 +752,34 @@ const getDropValue = res => {
           elevation: 10,
         }}
       > */}
-        <TouchableOpacity 
-          className={`p-4 mt-3 rounded-2xl items-center justify-center ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
-          onPress={handleSubmit}
-          disabled={loading}
-          activeOpacity={0.8}
-          style={{
-            shadowColor: '#3B82F6',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.4,
-            shadowRadius: 8,
-            elevation: 8,
-          }}
-        >
-          <Text className="text-white font-bold text-lg">
-            {loading ? '⏳ Adding Product...' : '✓ Add Product'}
-          </Text>
-        </TouchableOpacity>
-      {/* </View> */}
-      </ScrollView>
-      
-{showDatePicker&&<DateTimePicker
-        mode='date'
-        value={formData.expirydate}
-        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-        onChange={onDateChange}
-      />}
-      {/* Custom Date Picker Modal */}
-      {/* <Modal
+            <TouchableOpacity
+              className={`p-4 mt-3 rounded-2xl items-center justify-center ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
+              onPress={handleSubmit}
+              disabled={loading}
+              activeOpacity={0.8}
+              style={{
+                shadowColor: '#3B82F6',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.4,
+                shadowRadius: 8,
+                elevation: 8,
+              }}
+            >
+              <Text className="text-white font-bold text-lg">
+                {loading ? '⏳ Adding Product...' : '✓ Add Product'}
+              </Text>
+            </TouchableOpacity>
+            {/* </View> */}
+          </ScrollView>
+
+          {showDatePicker && <DateTimePicker
+            mode='date'
+            value={formData.expirydate}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onDateChange}
+          />}
+          {/* Custom Date Picker Modal */}
+          {/* <Modal
         visible={showDatePicker}
         transparent={true}
         animationType="slide"
@@ -881,7 +945,7 @@ const getDropValue = res => {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal> */}
-      </View>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );

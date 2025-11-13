@@ -1,6 +1,6 @@
 
 
-   export const API_BASE_URL = 'https://api.merkapp.net/api/';
+export const API_BASE_URL = 'https://api.merkapp.net/api/';
 
 
 
@@ -17,3 +17,8 @@ export const API_ENDPOINTS = {
   },
   // Add more endpoints here as needed
 };
+
+export const COLORS = {
+  mainColor: '#1B293D',
+  secondaryColor: '#FF9D00',
+}

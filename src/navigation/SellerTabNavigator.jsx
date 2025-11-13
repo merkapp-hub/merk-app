@@ -57,6 +57,7 @@ import OrderDetailsScreen from '../screens/seller/OrderDetailsScreen';
 import WithdrawalRequestScreen from '../screens/seller/WithdrawalRequestScreen';
 import ProductScreen from '../screens/seller/ProductScreen';
 import SellerProductDetailScreen from '../screens/seller/SellerProductDetailScreen';
+import { COLORS } from '../config';
 
 // Wallet Stack
 function WalletStackScreen() {
@@ -92,7 +93,7 @@ const SellerTabNavigator = () => {
           paddingBottom: 8,
           paddingTop: 10,
           paddingHorizontal: 10,
-          backgroundColor: '#ffffff',
+          backgroundColor: COLORS.mainColor,
           borderTopWidth: 0,
           borderTopLeftRadius: 20,
           borderTopRightRadius: 20,
@@ -120,8 +121,8 @@ const SellerTabNavigator = () => {
         tabBarHideOnKeyboard: true,
       }}
     >
-      <Tab.Screen 
-        name="Dashboard" 
+      <Tab.Screen
+        name="Dashboard"
         component={DashboardStackScreen}
         options={{
           tabBarLabel: 'Dashboard',
@@ -130,8 +131,8 @@ const SellerTabNavigator = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="Orders" 
+      <Tab.Screen
+        name="Orders"
         component={OrdersStackScreen}
         options={{
           tabBarLabel: 'Orders',
@@ -140,8 +141,8 @@ const SellerTabNavigator = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="Wallet" 
+      <Tab.Screen
+        name="Wallet"
         component={WalletStackScreen}
         options={{
           tabBarLabel: 'Wallet',
@@ -150,8 +151,8 @@ const SellerTabNavigator = () => {
           ),
         }}
       />
-      <Tab.Screen 
-        name="ProductsStack" 
+      <Tab.Screen
+        name="ProductsStack"
         component={ProductsStackScreen}
         options={{
           tabBarLabel: 'Products',
@@ -161,8 +162,8 @@ const SellerTabNavigator = () => {
           headerShown: false,
         }}
       />
-      <Tab.Screen 
-        name="Inventory" 
+      <Tab.Screen
+        name="Inventory"
         component={InventoryStackScreen}
         options={{
           tabBarLabel: 'Inventory',

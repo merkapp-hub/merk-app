@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
-  RefreshControl, 
-  Alert, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  Alert,
+  ActivityIndicator,
   FlatList
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,14 +21,12 @@ import ProductList from '../../components/ProductList';
 const TabButton = ({ title, active, onPress }) => (
   <TouchableOpacity
     onPress={onPress}
-    className={`flex-1 py-3 items-center justify-center border-b-2 ${
-      active ? 'border-indigo-600' : 'border-gray-200'
-    }`}
+    className={`flex-1 py-3 items-center justify-center border-b-2 ${active ? 'border-indigo-600' : 'border-gray-200'
+      }`}
   >
     <Text
-      className={`text-sm font-medium ${
-        active ? 'text-indigo-600' : 'text-gray-500'
-      }`}
+      className={`text-sm font-medium ${active ? 'text-indigo-600' : 'text-gray-500'
+        }`}
     >
       {title}
     </Text>
@@ -43,7 +41,7 @@ export default function SellerOrdersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
-  
+
   // Infinite scroll states
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -58,34 +56,34 @@ export default function SellerOrdersScreen() {
       } else {
         setLoadingMore(true);
       }
-      
+
       // Get seller ID from AsyncStorage
       const user = await AsyncStorage.getItem('userInfo');
       const userDetail = user ? JSON.parse(user) : null;
       const sellerId = userDetail?._id;
-      
+
       console.log(t('user_info_from_async_storage_orders'), userDetail);
-      
+
       if (!sellerId) {
         throw new Error(t('seller_id_not_found'));
       }
-      
+
       console.log(t('fetching_orders_for_seller_id'), sellerId, 'Page:', page);
-      
+
       // Fetch orders for the seller with pagination
       const limit = 20;
       const response = await Post(
-        `getOrderBySeller?page=${page}&limit=${limit}`, 
+        `getOrderBySeller?page=${page}&limit=${limit}`,
         { seller_id: sellerId }
       );
-      
+
       console.log(t('orders_api_response'), response);
-      
+
       if (response && response.status) {
         // Transform the API response to match your component's expected format
         const apiOrders = response.data || [];
-        
-        const formattedOrders = apiOrders.map(order => ({
+
+        let formattedOrders = apiOrders.map(order => ({
           id: order._id,
           orderNumber: order.orderId || `ORD-${order._id.slice(-6).toUpperCase()}`,
           customerName: (order.user ? `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim() : null) || t('guest_user'),
@@ -97,21 +95,21 @@ export default function SellerOrdersScreen() {
             name: item.product?.name || item.productDetails?.name || t('unknown_product'),
             price: item.price || 0,
             quantity: item.qty || item.quantity || 1,
-            image: Array.isArray(item.image) && item.image.length > 0 
-              ? item.image[0] 
+            image: Array.isArray(item.image) && item.image.length > 0
+              ? item.image[0]
               : (item.product?.images?.[0]?.url || 'https://via.placeholder.com/150?text=No+Image')
           })) || []
         }));
-        
+
         console.log(t('formatted_orders'), formattedOrders);
-        
+
         // Update pagination info
         if (response.pagination) {
           setTotalPages(response.pagination.totalPages || 1);
           setCurrentPage(response.pagination.currentPage || page);
           setHasMoreData(page < (response.pagination.totalPages || 1));
         }
-        
+
         if (isLoadMore && page > 1) {
           // Append new orders to existing list
           setOrders(prevOrders => [...prevOrders, ...formattedOrders]);
@@ -126,7 +124,7 @@ export default function SellerOrdersScreen() {
     } catch (error) {
       console.error(t('error_fetching_orders'), error);
       Alert.alert(t('error'), error.message || t('failed_to_load_orders'));
-      
+
       // Only show fallback data on initial load, not for load more
       if (!isLoadMore) {
         // Fallback to mock data if API fails (for testing)
@@ -164,25 +162,25 @@ export default function SellerOrdersScreen() {
       } else {
         setLoadingMore(true);
       }
-      
+
       // Get seller ID from AsyncStorage
       const user = await AsyncStorage.getItem('userInfo');
       const userDetail = user ? JSON.parse(user) : null;
       const sellerId = userDetail?._id;
-      
+
       console.log(t('user_info_from_async_storage_products'), userDetail);
-      
+
       if (!sellerId) {
         throw new Error(t('seller_id_not_found'));
       }
-      
+
       console.log(t('fetching_products_for_seller_id'), sellerId, 'Page:', page);
-      
+
       // Use the seller-specific endpoint for products
       const response = await GetApi(`getSellerProducts?seller_id=${sellerId}&page=${page}&limit=20`, {});
-      
+
       console.log('Products API Response:', response);
-      
+
       if (response && response.status) {
         // Transform the API response to match your component's expected format
         const apiProducts = response.data || [];
@@ -190,7 +188,7 @@ export default function SellerOrdersScreen() {
           // Get price from price_slot array
           const priceSlot = product.price_slot && product.price_slot.length > 0 ? product.price_slot[0] : null;
           const price = priceSlot?.price || priceSlot?.Offerprice || 0;
-          
+
           // Get image from variants - FIX: Handle base64 image data
           let imageUrl = 'https://via.placeholder.com/150?text=No+Image';
           if (product.varients && product.varients.length > 0 && product.varients[0].image) {
@@ -203,13 +201,13 @@ export default function SellerOrdersScreen() {
               imageUrl = imageData;
             }
           }
-          
+
           return {
             id: product._id,
             name: product.name || t('unnamed_product'),
             price: price,
             stock: product.sold_pieces || 0,
-            image: imageUrl, 
+            image: imageUrl,
             category: product.category?.name || t('uncategorized'),
             status: product.status === 'verified' ? t('active_status') : t('inactive_status'),
             description: product.short_description || '',
@@ -217,16 +215,16 @@ export default function SellerOrdersScreen() {
             createdAt: product.createdAt
           };
         });
-        
+
         console.log('Formatted products:', formattedProducts);
-        
+
         // Update pagination info
         if (response.pagination) {
           setTotalPages(response.pagination.totalPages || 1);
           setCurrentPage(response.pagination.currentPage || page);
           setHasMoreData(page < (response.pagination.totalPages || 1));
         }
-        
+
         if (isLoadMore && page > 1) {
           // Append new products to existing list
           setProducts(prevProducts => [...prevProducts, ...formattedProducts]);
@@ -269,7 +267,7 @@ export default function SellerOrdersScreen() {
                 setLoading(true);
                 // Call the API to delete the product
                 const response = await Api.delete(`products/delete/${productId}`);
-                
+
                 if (response && response.success) {
                   // Refresh the products list after successful deletion
                   await fetchProducts(1, false);
@@ -295,14 +293,14 @@ export default function SellerOrdersScreen() {
 
   // Debounced load more to prevent multiple rapid calls
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  
+
   // Handle infinite scroll - load more data when user reaches end
   const handleLoadMore = React.useCallback(() => {
     if (!loadingMore && !isLoadingMore && hasMoreData && currentPage < totalPages) {
       setIsLoadingMore(true);
       const nextPage = currentPage + 1;
       console.log('Loading more data, page:', nextPage);
-      
+
       setTimeout(() => {
         if (activeTab === 'orders') {
           fetchOrders(nextPage, true);
@@ -319,7 +317,7 @@ export default function SellerOrdersScreen() {
     setRefreshing(true);
     setCurrentPage(1);
     setHasMoreData(true);
-    
+
     if (activeTab === 'orders') {
       fetchOrders(1, false);
     } else {
@@ -331,7 +329,7 @@ export default function SellerOrdersScreen() {
   React.useEffect(() => {
     setCurrentPage(1);
     setHasMoreData(true);
-    
+
     if (activeTab === 'orders') {
       fetchOrders(1, false);
     } else {
@@ -343,10 +341,10 @@ export default function SellerOrdersScreen() {
     navigation.navigate('OrderDetails', { orderId: order.id });
   };
 
-  const renderOrderItem = React.memo(({ item }) => {
+  const renderOrderItem = ({ item }) => {
     // Get the translated status text
     const getStatusText = (status) => {
-      switch(status) {
+      switch (status) {
         case 'Delivered':
           return t('delivered_status');
         case 'Processing':
@@ -358,9 +356,9 @@ export default function SellerOrdersScreen() {
     };
 
     const statusText = getStatusText(item.status);
-    
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         className="bg-white rounded-lg p-4 shadow-sm mb-3"
         onPress={() => navigation.navigate('OrderDetails', { orderId: item.id })}
         activeOpacity={0.7}
@@ -373,16 +371,14 @@ export default function SellerOrdersScreen() {
           </View>
           <View className="items-end">
             <Text className="font-semibold">${item.amount?.toFixed(2) || '0.00'}</Text>
-            <View className={`px-2 py-1 rounded-full mt-1 ${
-              item.status === 'Delivered' ? 'bg-green-100' :
+            <View className={`px-2 py-1 rounded-full mt-1 ${item.status === 'Delivered' ? 'bg-green-100' :
               item.status === 'Processing' || item.status === 'Pending' ? 'bg-yellow-100' :
-              'bg-blue-100'
-            }`}>
-              <Text className={`text-xs ${
-                item.status === 'Delivered' ? 'text-green-800' :
+                'bg-blue-100'
+              }`}>
+              <Text className={`text-xs ${item.status === 'Delivered' ? 'text-green-800' :
                 item.status === 'Processing' || item.status === 'Pending' ? 'text-yellow-800' :
-                'text-blue-800'
-              }`} numberOfLines={1}>
+                  'text-blue-800'
+                }`} numberOfLines={1}>
                 {statusText}
               </Text>
             </View>
@@ -390,12 +386,12 @@ export default function SellerOrdersScreen() {
         </View>
       </TouchableOpacity>
     );
-  });
+  };
 
   // Footer component for loading indicator
   const renderFooter = () => {
     if (!loadingMore) return null;
-    
+
     return (
       <View className="py-6 items-center justify-center bg-gray-50">
         <ActivityIndicator size="large" color="#4F46F5" />
@@ -435,7 +431,7 @@ export default function SellerOrdersScreen() {
         initialNumToRender={15}
         updateCellsBatchingPeriod={50}
         getItemLayout={(data, index) => (
-          {length: 100, offset: 100 * index, index} // Approximate item height
+          { length: 100, offset: 100 * index, index } // Approximate item height
         )}
         ListEmptyComponent={
           <View className="flex-1 justify-center items-center py-10">

@@ -6,6 +6,7 @@ import { ArrowLeftIcon, CreditCardIcon, BanknotesIcon, ArrowUpTrayIcon, ListBull
 import { Api, GetApi, Post } from '../../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { COLORS } from '../../config';
 
 const styles = {};
 
@@ -43,26 +44,26 @@ export default function SellerWalletScreen() {
   const fetchWalletData = async () => {
     try {
       setLoading(true);
-      
+
       // First fetch seller profile to get seller ID
       const profile = await fetchSellerProfile();
       const sellerId = profile._id;
-      
+
       console.log('Seller ID:', sellerId); // Debug line
-      
+
       if (!sellerId) {
         throw new Error('Seller ID not found');
       }
-      
+
       // Fetch wallet summary and withdrawal requests in parallel
       const [walletRes, withdrawRes] = await Promise.all([
         GetApi(`sellerWalletSummary?sellerId=${sellerId}`),
         GetApi(`getWithdrawreqbyseller?sellerId=${sellerId}`)
       ]);
-      
+
       // Format transactions from both endpoints
       const creditTransactions = (walletRes?.data?.transactions || []).map(tx => {
-        
+
         return {
           id: tx._id || Date.now().toString(),
           type: 'credit',
@@ -75,9 +76,9 @@ export default function SellerWalletScreen() {
           notes: tx.notes || ''
         };
       });
-      
+
       const debitTransactions = (withdrawRes?.data || []).map(wd => {
-       
+
         return {
           id: wd._id || `wd-${Date.now()}`,
           type: 'debit',
@@ -95,11 +96,11 @@ export default function SellerWalletScreen() {
           notes: wd.notes || ''
         };
       });
-      
+
       // Combine and sort all transactions by date (newest first)
       const allTransactions = [...creditTransactions, ...debitTransactions]
         .sort((a, b) => new Date(b.date) - new Date(a.date));
-      
+
       // Update wallet data
       const formattedData = {
         balance: walletRes?.data?.wallet?.toString() || '0.00',
@@ -108,7 +109,7 @@ export default function SellerWalletScreen() {
         total_withdrawn: walletRes?.data?.totalWithdrawn?.toString() || '0.00',
         transactions: allTransactions
       };
-      
+
       setWalletData(formattedData);
     } catch (error) {
       console.error('Error fetching wallet data:', error);
@@ -141,15 +142,15 @@ export default function SellerWalletScreen() {
 
     try {
       setIsSubmitting(true);
-      
+
       // Get seller profile for ID
       const profile = await fetchSellerProfile();
       const sellerId = profile._id;
-      
+
       if (!sellerId) {
         throw new Error('Seller ID not found');
       }
-      
+
       // Call the withdrawal API with correct endpoint and format
       const response = await Post('createWithdrawreq', {
         seller_id: sellerId,
@@ -164,9 +165,9 @@ export default function SellerWalletScreen() {
       if (response && (response.success || response.data || response.status === 'success')) {
         // Refresh wallet data after successful withdrawal request
         await fetchWalletData();
-        
+
         Alert.alert('Success', 'Withdrawal request submitted successfully');
-        
+
         // Reset form and close modal
         setWithdrawAmount('');
         setWithdrawDescription('');
@@ -226,20 +227,20 @@ export default function SellerWalletScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <ScrollView 
+      <ScrollView
         className="flex-1 p-4"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         <Text className="text-2xl font-bold text-gray-900 mb-6">{t('my_wallet')}</Text>
-        
+
         {/* Balance Summary */}
         <View className="space-y-4 mb-6">
           <View className="bg-white rounded-xl p-5 shadow-sm">
             <Text className="text-gray-500 text-sm mb-1">{t('available_balance')}</Text>
             <Text className="text-3xl font-bold text-gray-900">${parseFloat(walletData.balance).toFixed(2)}</Text>
-            
+
             <View className="mt-4 flex-row justify-between items-center">
               {/* <View>
                 <Text className="text-gray-500 text-xs">Total Earned</Text>
@@ -251,10 +252,10 @@ export default function SellerWalletScreen() {
                 <Text className="text-red-600 font-semibold">${walletData.total_withdrawn}</Text>
               </View> */}
             </View>
-            
+
             <View className="flex-row justify-between mt-4" style={{ gap: 12 }}>
               {/* Withdraw Button - Left side */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -275,16 +276,16 @@ export default function SellerWalletScreen() {
                   {isSubmitting ? t('processing') + '...' : t('withdraw')}
                 </Text>
               </TouchableOpacity>
-              
+
               {/* View Requests Button - Right side */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
                   paddingHorizontal: 24,
                   paddingVertical: 8,
-                  backgroundColor: '#EEF2FF',
+                  backgroundColor: COLORS.mainColor,
                   borderColor: '#C7D2FE',
                   borderWidth: 1,
                   borderRadius: 8,
@@ -295,13 +296,12 @@ export default function SellerWalletScreen() {
                 disabled={isSubmitting}
                 activeOpacity={0.7}
               >
-                <ListBulletIcon size={18} color="#4F46E5" />
-                <Text style={{ color: '#4F46E5', fontWeight: '500', fontSize: 14, marginLeft: 8 }}>{t('view_requests')}</Text>
+                <Text style={{ color: 'white', fontWeight: '500', fontSize: 14, marginLeft: 8 }}>{t('view_requests')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
-        
+
         {/* Recent Transactions */}
         <View>
           <View className="flex-row justify-between items-center mb-4">
@@ -310,7 +310,7 @@ export default function SellerWalletScreen() {
               <Text className="text-blue-600 text-sm">{t('view_all')}</Text>
             </TouchableOpacity>
           </View>
-          
+
           {walletData.transactions.length === 0 ? (
             <View className="bg-white rounded-xl p-5 items-center justify-center">
               <Text className="text-gray-500">{t('no_transactions_yet')}</Text>
@@ -321,9 +321,8 @@ export default function SellerWalletScreen() {
                 <View key={txn.id} className="bg-white rounded-xl p-4 border-b border-gray-100">
                   <View className="flex-row justify-between items-start">
                     <View className="flex-row items-start flex-1 pr-2">
-                      <View className={`w-10 h-10 rounded-full ${
-                        txn.type === 'credit' ? 'bg-green-100' : 'bg-red-100'
-                      } items-center justify-center mr-3 mt-1 flex-shrink-0`}>
+                      <View className={`w-10 h-10 rounded-full ${txn.type === 'credit' ? 'bg-green-100' : 'bg-red-100'
+                        } items-center justify-center mr-3 mt-1 flex-shrink-0`}>
                         {txn.type === 'credit' ? (
                           <ArrowDownTrayIcon size={16} color="#10B981" />
                         ) : (
@@ -332,12 +331,10 @@ export default function SellerWalletScreen() {
                       </View>
                       <View className="flex-1">
                         <View className="flex-row flex-wrap items-center">
-                          <View className={`px-2 py-0.5 rounded-full mr-2 ${
-                            txn.type === 'credit' ? 'bg-green-100' : 'bg-red-100'
-                          }`}>
-                            <Text className={`text-xs font-medium ${
-                              txn.type === 'credit' ? 'text-green-800' : 'text-red-800'
+                          <View className={`px-2 py-0.5 rounded-full mr-2 ${txn.type === 'credit' ? 'bg-green-100' : 'bg-red-100'
                             }`}>
+                            <Text className={`text-xs font-medium ${txn.type === 'credit' ? 'text-green-800' : 'text-red-800'
+                              }`}>
                               {txn.type === 'credit' ? t('credit') : t('debit')}
                             </Text>
                           </View>
@@ -368,10 +365,9 @@ export default function SellerWalletScreen() {
                       </View>
                     </View>
                     <View className="items-end ml-2 flex-shrink-0">
-                      <Text 
-                        className={`font-semibold text-right ${
-                          txn.type === 'credit' ? 'text-green-600' : 'text-red-600'
-                        }`}
+                      <Text
+                        className={`font-semibold text-right ${txn.type === 'credit' ? 'text-green-600' : 'text-red-600'
+                          }`}
                         numberOfLines={1}
                       >
                         {txn.type === 'credit' ? '+' : '-'}${parseFloat(txn.amount).toLocaleString('en-IN')}
@@ -403,7 +399,7 @@ export default function SellerWalletScreen() {
                 <XMarkIcon size={24} color="#6B7280" />
               </TouchableOpacity>
             </View>
-            
+
             <View className="mb-4">
               <Text className="text-sm font-medium text-gray-700 mb-1">{t('common:amount_usd')}</Text>
               <View className="relative">
@@ -418,7 +414,7 @@ export default function SellerWalletScreen() {
               </View>
               <Text className="text-xs text-gray-500 mt-1">{t('common:available')}: ${parseFloat(walletData.balance).toFixed(2)}</Text>
             </View>
-            
+
             <View className="mb-6">
               <Text className="text-sm font-medium text-gray-700 mb-1">{t('common:description_optional')}</Text>
               <TextInput
@@ -431,17 +427,17 @@ export default function SellerWalletScreen() {
                 onChangeText={setWithdrawDescription}
               />
             </View>
-            
+
             <View className="flex-row justify-between">
-              <TouchableOpacity 
+              <TouchableOpacity
                 className="flex-1 border border-gray-300 py-3 rounded-lg mr-3"
                 onPress={closeModal}
                 disabled={isSubmitting}
               >
                 <Text className="text-center font-medium text-gray-700">{t('common:cancel')}</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 className={`flex-1 bg-[#E58F14] py-3 rounded-lg ${isSubmitting ? 'opacity-70' : ''}`}
                 onPress={handleWithdraw}
                 disabled={isSubmitting}

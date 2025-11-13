@@ -1,7 +1,7 @@
 import "./global.css";
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, View, Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, Platform, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import './src/i18n';
 // import SplashScreen from './src/components/SplashScreen';
@@ -42,8 +42,8 @@ const Stack = createNativeStackNavigator();
 const AuthStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen 
-        name="Login" 
+      <Stack.Screen
+        name="Login"
         component={LoginScreen}
         options={({ route }) => ({
           message: route.params?.message
@@ -57,7 +57,7 @@ const AuthStack = () => {
 
 const AppStack = () => {
   const { userInfo } = useAuth();
-  
+  console.log('User Info in AppStack:', userInfo);
   // Set initial route based on user role and verification status
   const getInitialRouteName = () => {
     if (userInfo?.role === 'seller') {
@@ -74,18 +74,18 @@ const AppStack = () => {
       }}
     >
       <Stack.Screen name="MainTabs" component={TabNavigator} />
-      <Stack.Screen 
-        name="SellerTabs" 
-        component={SellerTabNavigator} 
+      <Stack.Screen
+        name="SellerTabs"
+        component={SellerTabNavigator}
         options={{
           // Prevent going back to CreateStore if user is verified
-          gestureEnabled: userInfo?.status === 'Verified', 
+          gestureEnabled: userInfo?.status === 'Verified',
           headerLeft: () => null
         }}
       />
-      <Stack.Screen 
-        name="CreateStore" 
-        component={CreateStoreScreen} 
+      <Stack.Screen
+        name="CreateStore"
+        component={CreateStoreScreen}
         options={{
           // Prevent going back to login
           gestureEnabled: false,
@@ -105,7 +105,7 @@ const RootNavigator = () => {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const navigationRef = useNavigationContainerRef();
-useEffect(() => {
+  useEffect(() => {
     SplashScreen.hide();
   }, []);
   // useEffect(() => {
@@ -161,10 +161,11 @@ useEffect(() => {
 export default Sentry.wrap(function App() {
   return (
     <AuthProvider>
+      <StatusBar barStyle="light-content" />
       <SafeAreaView
         style={styles.container}
-        edges={Platform.OS === 'ios' 
-          ? ['left', 'top', 'right'] 
+        edges={Platform.OS === 'ios'
+          ? ['left', 'top', 'right']
           : ['bottom', 'left', 'right', 'top']
         }
       >
@@ -177,6 +178,6 @@ export default Sentry.wrap(function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff'
+    backgroundColor: '#1B293D'
   }
 });

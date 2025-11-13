@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Dimensions } from 'react-native';
 import { LineChart, PieChart } from 'react-native-chart-kit';
+import { COLORS } from '../config';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -24,7 +25,7 @@ export const SalesChart = ({ data, t }) => {
   // Ensure we have valid labels and data
   const defaultLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
   const defaultData = [0, 0, 0, 0, 0, 0];
-  
+
   // Use provided data or fallback to defaults
   const chartData = {
     labels: data?.labels && data.labels.length > 0 ? data.labels : defaultLabels,
@@ -49,9 +50,9 @@ export const SalesChart = ({ data, t }) => {
       alignItems: 'center',
       width: '100%',
     }}>
-      <Text style={{ 
-        fontSize: 18, 
-        fontWeight: 'bold', 
+      <Text style={{
+        fontSize: 18,
+        fontWeight: 'bold',
         marginBottom: 16,
         alignSelf: 'flex-start',
         paddingLeft: 8,
@@ -59,47 +60,47 @@ export const SalesChart = ({ data, t }) => {
         {t('sales_overview')}
       </Text>
       <View style={{ width: '100%', overflow: 'hidden' }}>
-      <LineChart
-  data={chartData}
-  width={screenWidth - 32}
-  height={220}
-  chartConfig={{
-    ...chartConfig,
-    formatXLabel: (value) => {
-     
-      if (typeof value === 'number' && value >= 0 && value <= 11) {
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return months[value];
-      }
-     
-      if (typeof value === 'string') {
-        return value.length > 3 ? value.substring(0, 3) : value;
-      }
-      return value || '';
-    },
-  }}
-  bezier
-  fromZero
-  withInnerLines={true}
-  withOuterLines={false}
-  withVerticalLines={false}
-  withHorizontalLines={true}
-  withShadow={false}
-  withDots={true}
-  withVerticalLabels={true}  // ye false se true karo
-  withHorizontalLabels={true}
-  segments={5}
-  xLabelsOffset={-5}
-  yLabelsOffset={10}
-  verticalLabelRotation={0}
-  horizontalLabelRotation={0}
-  style={{
-    marginVertical: 8,
-    borderRadius: 16,
-    paddingRight: 0,
-    marginLeft: -10,
-  }}
-/>
+        <LineChart
+          data={chartData}
+          width={screenWidth - 32}
+          height={220}
+          chartConfig={{
+            ...chartConfig,
+            formatXLabel: (value) => {
+
+              if (typeof value === 'number' && value >= 0 && value <= 11) {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return months[value];
+              }
+
+              if (typeof value === 'string') {
+                return value.length > 3 ? value.substring(0, 3) : value;
+              }
+              return value || '';
+            },
+          }}
+          bezier
+          fromZero
+          withInnerLines={true}
+          withOuterLines={false}
+          withVerticalLines={false}
+          withHorizontalLines={true}
+          withShadow={false}
+          withDots={true}
+          withVerticalLabels={true}  // ye false se true karo
+          withHorizontalLabels={true}
+          segments={5}
+          xLabelsOffset={-5}
+          yLabelsOffset={10}
+          verticalLabelRotation={0}
+          horizontalLabelRotation={0}
+          style={{
+            marginVertical: 8,
+            borderRadius: 16,
+            paddingRight: 0,
+            marginLeft: -10,
+          }}
+        />
       </View>
     </View>
   );
@@ -142,7 +143,7 @@ export const RevenuePieChart = ({ data, t }) => {
 
 export const StatsCards = ({ stats, t }) => {
   const statItems = [
-    { label: t('total_sales'), value: stats?.totalSales || '0', color: '#4F46F5' },
+    { label: t('total_sales'), value: stats?.totalSales || '0', color: COLORS.mainColor },
     { label: t('total_orders'), value: stats?.totalOrders || '0', color: '#10B981' },
     { label: t('total_revenue'), value: `$${stats?.totalRevenue || '0'}`, color: '#F59E0B' },
   ];
@@ -150,7 +151,7 @@ export const StatsCards = ({ stats, t }) => {
   return (
     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
       {statItems.map((item, index) => (
-        <View 
+        <View
           key={index}
           style={{
             flex: 1,

@@ -1,12 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  ActivityIndicator, 
-  TouchableOpacity, 
-  Alert, 
-  RefreshControl, 
+import {
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  TouchableOpacity,
+  Alert,
+  RefreshControl,
   Image,
   Platform,
   Modal,
@@ -16,12 +16,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
-import { API_BASE_URL } from '../../config';
+import { API_BASE_URL, COLORS } from '../../config';
 import { GetApi } from '../../Helper/Service';
 import { useAuth } from '../../context/AuthContext';
 import ConnectionCheck from '../../Helper/ConnectionCheck';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { Edit, Trash2 } from 'react-native-feather';
 
 export default function ProductScreen() {
   const { t } = useTranslation();
@@ -54,30 +55,30 @@ export default function ProductScreen() {
       const user = await AsyncStorage.getItem('userInfo');
       const userDetail = user ? JSON.parse(user) : null;
       const sellerId = userDetail?._id;
-      
+
       if (!sellerId) {
         throw new Error('Seller ID not found in user info');
       }
-      
+
       const response = await GetApi(`getSellerProducts?seller_id=${sellerId}&page=${pageNum}&limit=10`, {});
       console.log('responsessss', response);
       if (response && response.status) {
         const newProducts = response.data || [];
-        
+
         setProducts(prevProducts => {
           if (isRefreshing || pageNum === 1) {
             return newProducts;
           }
           return [...prevProducts, ...newProducts.filter(p => !prevProducts.some(prev => prev._id === p._id))];
         });
-        
+
         if (response.pagination) {
           const { currentPage, totalPages } = response.pagination;
           setHasMore(currentPage < totalPages);
         } else {
           setHasMore(newProducts.length > 0);
         }
-        
+
         setPage(pageNum);
       } else {
         throw new Error(response?.message || 'Failed to fetch products');
@@ -92,7 +93,7 @@ export default function ProductScreen() {
     }
   };
 
-  
+
   const confirmDelete = (productId) => {
     setSelectedProductId(productId);
     setShowDeleteModal(true);
@@ -101,35 +102,35 @@ export default function ProductScreen() {
 
   const handleDeleteConfirm = async () => {
     if (!selectedProductId) return;
-    
+
     try {
-    
+
       const isConnected = await ConnectionCheck.isConnected();
       if (!isConnected) {
         throw new Error('No internet connection');
       }
-      
+
       setShowDeleteModal(false);
       setLoading(true);
-      
+
       console.log('1. Starting product deletion for ID:', selectedProductId);
-      
+
       // Get the token from AsyncStorage or auth context
       let token = await AsyncStorage.getItem('userToken');
       console.log('2. Retrieved token from storage:', token ? 'Token exists' : 'No token found');
-      
+
       // If no token in storage but we have it in context, update storage
       if (!token && authToken) {
         console.log('3. Using token from AuthContext');
         token = authToken;
         await AsyncStorage.setItem('userToken', token);
       }
-      
+
       if (!token) {
         console.log('4. No authentication token found');
         // Clear any existing tokens and redirect to login
         await AsyncStorage.removeItem('userToken');
-        navigation.replace('Auth', { 
+        navigation.replace('Auth', {
           screen: 'Login',
           params: { message: 'Your session has expired. Please login again.' }
         });
@@ -137,7 +138,7 @@ export default function ProductScreen() {
       }
 
       console.log('4. Making API call to delete product...');
-      
+
       // Make direct Axios call with timeout
       const response = await axios({
         method: 'delete',
@@ -150,23 +151,23 @@ export default function ProductScreen() {
         timeout: 15000, // 15 second timeout
         validateStatus: (status) => status < 500 // Reject only if status is 500 or higher
       });
-      
+
       console.log('5. API Response:', {
         status: response.status,
         data: response.data,
         headers: response.headers
       });
-      
+
       if (response.status === 401) {
         // Token is invalid or expired
         await AsyncStorage.removeItem('userToken');
-        navigation.replace('Auth', { 
+        navigation.replace('Auth', {
           screen: 'Login',
           params: { message: 'Your session has expired. Please login again.' }
         });
         throw new Error('Session expired. Please login again.');
       }
-      
+
       // Check for success in either response.data.status or response.data.success
       if ((response.data && response.data.status === true) || (response.data && response.data.success === true)) {
         console.log('6. Product deleted successfully');
@@ -181,13 +182,13 @@ export default function ProductScreen() {
     } catch (error) {
       console.error('Error deleting product:', error);
       const errorMessage = error.response?.data?.message || error.message || t('common:delete_failed');
-      
+
       if (error.response?.status === 401) {
         // If unauthorized, remove token and redirect to login
         await AsyncStorage.removeItem('userToken');
         navigation.replace('Auth');
       }
-      
+
       Alert.alert(t('common:error'), errorMessage);
     } finally {
       setLoading(false);
@@ -212,11 +213,11 @@ export default function ProductScreen() {
 
   const renderColorVariants = (colors) => {
     if (!colors || colors.length === 0) return null;
-    
+
     return (
       <View className="flex-row flex-wrap gap-1 mt-2">
         {colors.slice(0, 4).map((color, index) => (
-          <View 
+          <View
             key={index}
             className="w-4 h-4 rounded-full border border-gray-300"
             style={{ backgroundColor: color.toLowerCase() }}
@@ -242,13 +243,13 @@ export default function ProductScreen() {
   };
 
   const renderProductItem = ({ item }) => {
-   
+
     const getImageSource = () => {
-     
-      const variants = item.varients || item.variants; 
+
+      const variants = item.varients || item.variants;
       if (variants?.[0]?.image?.[0]) {
         const variantImage = variants[0].image[0];
-      
+
         if (typeof variantImage === 'string' && variantImage.startsWith('data:image')) {
           return { uri: variantImage };
         } else if (typeof variantImage === 'string') {
@@ -257,7 +258,7 @@ export default function ProductScreen() {
           return { uri: variantImage.uri };
         }
       }
-     
+
       if (item.images?.[0]) {
         if (typeof item.images[0] === 'string' && item.images[0].startsWith('data:image')) {
           return { uri: item.images[0] };
@@ -266,21 +267,21 @@ export default function ProductScreen() {
       }
       return null;
     };
-    
+
     const imageSource = getImageSource();
-    
+
     // Handle price from price_slot if available, otherwise use main price
     const price = item.price_slot?.[0]?.Offerprice || item.price || 0;
     const originalPrice = item.price_slot?.[0]?.price;
     const discount = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
-    
+
     const stockStatus = getStockStatus(item.stock || item.quantity || 0);
     const isActive = item.status === 'verified';
-    
-   
-    
+
+
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         className="bg-white mx-4 my-2 rounded-xl shadow-sm border border-gray-100 overflow-hidden"
         onPress={() => navigation.navigate('SellerProductDetail', { productId: item._id })}
         activeOpacity={0.7}
@@ -299,19 +300,25 @@ export default function ProductScreen() {
               </Text>
             </View>
           </View>
-          
+
           <View className="flex-row gap-2">
-            <TouchableOpacity 
-              className="bg-blue-500 p-2 rounded-lg"
-              onPress={() => navigation.navigate('EditProduct', { productId: item._id })}
+            <TouchableOpacity
+              style={{ backgroundColor: COLORS.mainColor }}
+              className="p-2 rounded-lg"
+              onPress={() => {
+                console.log('Editing product ID:', item._id);
+                navigation.navigate('Inventory', { screen: 'AddProduct', params: { productId: item._id } });
+              }}
             >
-              <Text className="text-white text-xs font-bold">✏️</Text>
+              <Edit width={14} height={14} color="white" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              className="bg-red-500 p-2 rounded-lg"
+            <TouchableOpacity
+              style={{ backgroundColor: COLORS.secondaryColor }}
+              className=" p-2 rounded-lg"
               onPress={() => confirmDelete(item._id)}
             >
-              <Text className="text-white text-xs font-bold">🗑️</Text>
+              <Trash2 width={14} height={14} color={COLORS.mainColor} />
+              {/* <Text className="text-white text-xs font-bold">🗑️</Text> */}
             </TouchableOpacity>
           </View>
         </View>
@@ -321,7 +328,7 @@ export default function ProductScreen() {
           {/* Product Image */}
           <View className="w-24 h-24 mr-4">
             {imageSource ? (
-              <Image 
+              <Image
                 source={imageSource}
                 className="w-full h-full rounded-lg"
                 resizeMode="contain"
@@ -343,13 +350,13 @@ export default function ProductScreen() {
 
             {/* Price */}
             <View className="flex-row items-center gap-2 mb-2">
-              <Text className="text-2xl font-bold text-orange-600">
-               ${price.toFixed(2)}
+              <Text className="text-2xl font-bold " style={{ color: COLORS.mainColor }}>
+                ${price.toFixed(2)}
               </Text>
               {originalPrice && (
                 <>
                   <Text className="text-lg text-gray-400 line-through">
-                   ${originalPrice.toFixed(2)}
+                    ${originalPrice.toFixed(2)}
                   </Text>
                   <Text className="text-sm bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
                     {discount}% OFF
@@ -374,7 +381,7 @@ export default function ProductScreen() {
                   {(item.varients || item.variants || []).map((variant, idx) => (
                     <View key={idx} className="flex-row items-center gap-1 bg-gray-100 px-2 py-1 rounded-full">
                       {variant.color && (
-                        <View 
+                        <View
                           className="w-3 h-3 rounded-full border border-gray-300"
                           style={{ backgroundColor: variant.color }}
                         />
@@ -412,7 +419,7 @@ export default function ProductScreen() {
                 {item.description}
               </Text>
             )}
-            
+
             {item.variants && item.variants.length > 0 && (
               <View className="flex-row flex-wrap gap-1">
                 <Text className="text-xs text-gray-500 mr-2">Variants:</Text>
@@ -457,7 +464,7 @@ export default function ProductScreen() {
             <Text style={styles.successIcon}>✓</Text>
           </View>
           <Text style={styles.successText}>{message}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.successButton}
             onPress={onClose}
           >
@@ -485,20 +492,20 @@ export default function ProductScreen() {
             {t('common:delete_product_message') || 'Are you sure you want to delete this product? This action cannot be undone.'}
           </Text>
           <View style={styles.deleteModalButtons}>
-  <TouchableOpacity 
-    style={styles.cancelButton}
-    onPress={onCancel}
-  >
-    <Text style={styles.cancelButtonText}>Cancel</Text>
-  </TouchableOpacity>
-  
-  <TouchableOpacity 
-    style={styles.confirmDeleteButton}
-    onPress={onConfirm}
-  >
-    <Text style={styles.deleteButtonText}>Delete</Text>
-  </TouchableOpacity>
-</View>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={onCancel}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.confirmDeleteButton}
+              onPress={onConfirm}
+            >
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </Modal>
@@ -506,21 +513,21 @@ export default function ProductScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      
+      {/* <StatusBar barStyle="dark-content" backgroundColor="#fff" /> */}
+
       {/* Success Message Modal */}
-      <SuccessMessage 
+      <SuccessMessage
         message={successMessage}
         onClose={() => setShowSuccessModal(false)}
       />
-      
+
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         visible={showDeleteModal}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setShowDeleteModal(false)}
       />
-      
+
       {initialLoad ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#E58F14" />
