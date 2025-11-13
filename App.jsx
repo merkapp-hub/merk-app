@@ -20,6 +20,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigationContainerRef } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
+import BootSplash from "react-native-bootsplash";
 // import SplashScreen from 'react-native-splash-screen';
 
 Sentry.init({
@@ -55,11 +56,13 @@ const AuthStack = () => {
   );
 };
 
-const AppStack = () => {
+const AppStack = async () => {
   const { userInfo } = useAuth();
   console.log('User Info in AppStack:', userInfo);
   // Set initial route based on user role and verification status
+
   const getInitialRouteName = () => {
+    // await BootSplash.hide({ fade: true })
     if (userInfo?.role === 'seller') {
       return userInfo?.status === 'Verified' ? 'SellerTabs' : 'CreateStore';
     }
@@ -105,9 +108,16 @@ const RootNavigator = () => {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const navigationRef = useNavigationContainerRef();
-  // useEffect(() => {
-  //   SplashScreen.hide();
-  // }, []);
+  useEffect(() => {
+    const init = async () => {
+      // …do multiple sync or async tasks
+    };
+
+    init().finally(async () => {
+      await BootSplash.hide({ fade: true });
+      console.log("BootSplash has been hidden successfully");
+    });
+  }, []);
   // useEffect(() => {
   //   const timer = setTimeout(() => {
   //     setIsSplashVisible(false);
