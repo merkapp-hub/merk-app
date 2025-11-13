@@ -105,9 +105,9 @@ const RootNavigator = () => {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const navigationRef = useNavigationContainerRef();
-  useEffect(() => {
-    SplashScreen.hide();
-  }, []);
+  // useEffect(() => {
+  //   SplashScreen.hide();
+  // }, []);
   // useEffect(() => {
   //   const timer = setTimeout(() => {
   //     setIsSplashVisible(false);
