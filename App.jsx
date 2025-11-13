@@ -20,7 +20,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigationContainerRef } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
-import SplashScreen from 'react-native-splash-screen';
+// import SplashScreen from 'react-native-splash-screen';
 
 Sentry.init({
   dsn: 'https://c20ad320af1fbfdfaac5f0090a939e0f@o4510084981391360.ingest.us.sentry.io/4510084987813888',
