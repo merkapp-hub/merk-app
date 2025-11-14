@@ -25,7 +25,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     window = UIWindow(frame: UIScreen.main.bounds)
 
     factory.startReactNative(
-      withModuleName: "MerkApp",
+      withModuleName: "merkapp",
       in: window,
       launchOptions: launchOptions
     )
@@ -46,7 +46,6 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
       Bundle.main.url(forResource: "main", withExtension: "jsbundle")
     #endif
   }
-
   override func customize(_ rootView: RCTRootView) {
     super.customize(rootView)
     RNBootSplash.initWithStoryboard("LaunchScreen", rootView: rootView)  // ⬅️ initialize the splash screen
