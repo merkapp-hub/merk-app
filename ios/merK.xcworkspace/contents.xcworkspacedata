@@ -7,7 +7,8 @@
    <FileRef
       location = "group:Pods/Pods.xcodeproj">
    </FileRef>
-   <FileRef
-      location = "group:merkapp.xcodeproj">
+    <FileRef
+      location = "group:merK.xcodeproj">
    </FileRef>
+  
 </Workspace>
