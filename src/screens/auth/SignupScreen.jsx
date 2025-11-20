@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Image,
   ActivityIndicator,
@@ -21,7 +20,7 @@ const SignupScreen = () => {
   const navigation = useNavigation();
   const { register } = useAuth();
   const { t } = useTranslation();
-  
+
   const [activeTab, setActiveTab] = useState('user');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -36,21 +35,21 @@ const SignupScreen = () => {
       setError(t('all_fields_required'));
       return false;
     }
-    
+
     if (password.length < 6) {
       setError(t('password_min_length'));
       return false;
     }
-    
+
     return true;
   };
 
   const handleSignup = async () => {
     if (!validateForm()) return;
-    
+
     setError('');
     setIsLoading(true);
-    
+
     try {
       // Format the data exactly as expected by the API
       const userData = {
@@ -60,11 +59,11 @@ const SignupScreen = () => {
         password: password,
         role: activeTab  // Use the selected tab as the role
       };
-      
+
       console.log('Sending registration data:', userData);
       const result = await register(userData);
       console.log('Registration result:', result);
-      
+
       if (result.success) {
         // If seller registration, navigate to login with a special flag
         if (userData.role === 'seller') {
@@ -75,7 +74,7 @@ const SignupScreen = () => {
               {
                 text: 'OK',
                 onPress: () => {
-                  navigation.replace('Login', { 
+                  navigation.replace('Login', {
                     email: userData.email,
                     message: 'Please login to complete your seller setup.',
                     isSeller: true
@@ -93,7 +92,7 @@ const SignupScreen = () => {
               {
                 text: 'OK',
                 onPress: () => {
-                  navigation.replace('Login', { 
+                  navigation.replace('Login', {
                     email: userData.email,
                     message: 'Registration successful! Please login.'
                   });
@@ -119,17 +118,17 @@ const SignupScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
-      
+
       <View className="flex-1 justify-center px-6">
         {/* Logo */}
         <View className="items-center mb-8">
-         <Image
-  source={require('../../assets/logo.png')}
-  className="w-56 h-20 rounded-full"
-  resizeMode="cover"
-/>
+          <Image
+            source={require('../../assets/logo.png')}
+            className="w-56 h-20 rounded-full"
+            resizeMode="cover"
+          />
         </View>
 
         {/* Header */}
@@ -137,10 +136,10 @@ const SignupScreen = () => {
           <Text className="text-2xl font-semibold text-gray-900 mb-6 text-center">
             {t('create_account')}
           </Text>
-          
+
           {/* Tabs */}
           <View className="flex-row justify-center mb-6">
-            <TouchableOpacity 
+            <TouchableOpacity
               className={`px-7 py-2.5 rounded-l-full ${activeTab === 'user' ? 'bg-[#E58F14]' : 'bg-gray-200'}`}
               onPress={() => setActiveTab('user')}
             >
@@ -148,7 +147,7 @@ const SignupScreen = () => {
                 {t('user')}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               className={`px-7 py-2.5 rounded-r-full ${activeTab === 'seller' ? 'bg-[#E58F14]' : 'bg-gray-200'}`}
               onPress={() => setActiveTab('seller')}
             >
@@ -157,7 +156,7 @@ const SignupScreen = () => {
               </Text>
             </TouchableOpacity>
           </View>
-          
+
           <Text className="text-gray-600 text-sm text-center mb-2">
             {activeTab === 'user' ? t('sign_up_explore') : t('create_seller_account')}
           </Text>
@@ -169,7 +168,7 @@ const SignupScreen = () => {
             <Text className="text-red-700 text-sm">{error}</Text>
           </View>
         ) : null}
-        
+
         <View className="space-y-4">
           {/* First Name */}
           <View>
@@ -239,24 +238,24 @@ const SignupScreen = () => {
         {error ? (
           <Text className="text-red-500 text-sm mb-2 text-center">{error}</Text>
         ) : null}
-        
+
         <Text className="text-gray-600 text-sm text-center pt-10  px-4">
           {t('by_clicking_signup')}{" "}
-          <Text 
+          <Text
             className="text-[#E58F14] font-bold"
             onPress={() => Linking.openURL('https://main.d36jzzlm0f9au8.amplifyapp.com/terms')}
           >
             {t('terms_conditions')}
           </Text>{" "}
           {t('and')}{" "}
-          <Text 
+          <Text
             className="text-[#E58F14] font-bold"
             onPress={() => Linking.openURL('https://main.d36jzzlm0f9au8.amplifyapp.com/privacy-policy')}
           >
             {t('privacy_policy')}
           </Text>
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           className="w-full bg-[#E58F14] py-4 rounded-lg items-center mt-4 shadow-sm"
           onPress={handleSignup}
           disabled={isLoading}
@@ -282,7 +281,7 @@ const SignupScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

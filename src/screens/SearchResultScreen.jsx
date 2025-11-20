@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  Image, 
-  TouchableOpacity, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
+
   Dimensions
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { GetApi } from '../Helper/Service';
 import Header from '../components/Header';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const SearchResultScreen = () => {
   const route = useRoute();
@@ -45,9 +46,9 @@ const SearchResultScreen = () => {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
-    
+
     GetApi(`productsearch?key=${encodeURIComponent(query)}`, null).then(
       (res) => {
         setLoading(false);
@@ -72,14 +73,14 @@ const SearchResultScreen = () => {
     const priceSlot = item.price_slot?.[0] || {};
     const price = parseFloat(priceSlot.Offerprice || priceSlot.price || 0);
     const originalPrice = priceSlot.price ? parseFloat(priceSlot.price) : null;
-    const discount = originalPrice && originalPrice > price 
+    const discount = originalPrice && originalPrice > price
       ? `${Math.round(((originalPrice - price) / originalPrice) * 100)}% OFF`
       : null;
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.productCard}
-        onPress={() => navigation.navigate('ProductDetails', { 
+        onPress={() => navigation.navigate('ProductDetails', {
           productId: item.slug || item._id,
           productName: item.name
         })}
@@ -101,7 +102,7 @@ const SearchResultScreen = () => {
 
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-          
+
           <View style={styles.priceContainer}>
             <Text style={styles.price}>${price.toFixed(2)}</Text>
             {originalPrice && originalPrice > price && (
@@ -110,19 +111,19 @@ const SearchResultScreen = () => {
               </Text>
             )}
           </View>
-        
-        <View style={styles.ratingContainer}>
-          <View style={styles.starsContainer}>
-            {renderStars(item.rating || 4.0)}
+
+          <View style={styles.ratingContainer}>
+            <View style={styles.starsContainer}>
+              {renderStars(item.rating || 4.0)}
+            </View>
+            {item.soldPieces !== undefined && (
+              <Text style={styles.soldText}>({item.sold_pieces || 0} sold)</Text>
+            )}
           </View>
-          {item.soldPieces !== undefined && (
-            <Text style={styles.soldText}>({item.sold_pieces || 0} sold)</Text>
-          )}
         </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
+      </TouchableOpacity>
+    );
+  };
 
   const renderStars = (rating) => {
     const stars = [];

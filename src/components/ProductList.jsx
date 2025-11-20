@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  Image, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Dimensions,
   ActivityIndicator
 } from 'react-native';
@@ -14,13 +13,15 @@ import { useNavigation } from '@react-navigation/native';
 import { ArrowLeftIcon } from 'react-native-heroicons/outline';
 import { useTranslation } from 'react-i18next';
 import { GetApi } from '../Helper/Service';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const { width } = Dimensions.get('window');
 
 const BestSellingProducts = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
-  
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -35,29 +36,29 @@ const BestSellingProducts = () => {
       } else if (pageNum === 1) {
         setLoading(true);
       }
-      
-    
-      
+
+
+
       if (!response) {
         console.error('❌ No response from API');
         return;
       }
-      
-    
+
+
       const newProducts = response.data || [];
-     
-      
+
+
       // Update products state
       setProducts(prevProducts => {
-        const updatedProducts = isRefreshing || pageNum === 1 ? 
-          [...newProducts] : 
+        const updatedProducts = isRefreshing || pageNum === 1 ?
+          [...newProducts] :
           [...prevProducts, ...newProducts.filter(p => !prevProducts.some(prev => prev._id === p._id))];
-        
-       
-        
+
+
+
         return updatedProducts;
       });
-      
+
       // Update pagination state
       if (response.pagination) {
         const { currentPage, totalPages } = response.pagination;
@@ -72,7 +73,7 @@ const BestSellingProducts = () => {
       setLoading(false);
       setRefreshing(false);
       setInitialLoad(false);
-    
+
     }
   }, []);
 
@@ -109,7 +110,7 @@ const BestSellingProducts = () => {
         </Text>
       );
     }
-    
+
     if (hasHalfStar) {
       stars.push(
         <Text key="half" style={styles.star}>
@@ -117,7 +118,7 @@ const BestSellingProducts = () => {
         </Text>
       );
     }
-    
+
     for (let i = stars.length; i < 5; i++) {
       stars.push(
         <Text key={`empty-${i}`} style={styles.star}>
@@ -139,27 +140,27 @@ const BestSellingProducts = () => {
   };
 
   const renderProductItem = ({ item }) => {
-   
+
     // Get the first price slot or default to 0
     const priceSlot = item.price_slot?.[0];
-    
-    
+
+
     const price = priceSlot?.price || 0;
     const offerPrice = priceSlot?.Offerprice || null;
-    
-    
+
+
     // Get the first variant's first image or empty string
     const imageData = item.varients?.[0]?.image?.[0] || '';
-  
-    
-    const discountPercentage = (offerPrice && offerPrice < price) ? 
+
+
+    const discountPercentage = (offerPrice && offerPrice < price) ?
       Math.round(((price - offerPrice) / price) * 100) : 0;
-   
-    
+
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.productCard}
-        onPress={() => navigation.navigate('ProductDetail', { 
+        onPress={() => navigation.navigate('ProductDetail', {
           productId: item._id,
           productName: item.name
         })}
@@ -174,7 +175,7 @@ const BestSellingProducts = () => {
         )}
 
         <Image
-         source={imageData ? { uri: imageData } : { uri: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop' }}
+          source={imageData ? { uri: imageData } : { uri: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop' }}
           style={styles.productImage}
           resizeMode="contain"
           onError={(error) => console.log('❌ Image error:', error)}
@@ -185,7 +186,7 @@ const BestSellingProducts = () => {
           <Text style={styles.productName} numberOfLines={2}>
             {item.name || 'No name'}
           </Text>
-          
+
           <View style={styles.priceContainer}>
             {offerPrice && offerPrice < price ? (
               <>
@@ -196,7 +197,7 @@ const BestSellingProducts = () => {
               <Text style={styles.price}>${Number(price).toFixed(2)}</Text>
             )}
           </View>
-          
+
           <View style={styles.ratingContainer}>
             <View style={styles.starsContainer}>
               {renderStars(4.0)}
@@ -224,7 +225,7 @@ const BestSellingProducts = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -249,7 +250,7 @@ const BestSellingProducts = () => {
           return renderProductItem(itemData);
         }}
         keyExtractor={(item, index) => {
-          
+
           return item._id ? item._id.toString() : index.toString();
         }}
         numColumns={2}

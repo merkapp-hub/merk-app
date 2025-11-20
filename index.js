@@ -8,4 +8,4 @@ import { name as appName } from './app.json';
 
 console.log(appName)
 
-AppRegistry.registerComponent('merkapp', () => App);
+AppRegistry.registerComponent(appName, () => App);

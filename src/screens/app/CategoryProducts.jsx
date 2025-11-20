@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  Image, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ActivityIndicator,
   Dimensions,
   ScrollView
@@ -15,6 +14,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArrowLeftIcon } from 'react-native-heroicons/outline';
 import { GetApi } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const { width } = Dimensions.get('window');
 
@@ -23,7 +24,7 @@ const CategoryProducts = () => {
   const route = useRoute();
   const { categoryId, categoryName } = route.params || {};
   const { t } = useTranslation();
-  
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,7 +34,7 @@ const CategoryProducts = () => {
 
   const fetchProducts = useCallback(async () => {
     if (!categoryId) return;
-    
+
     try {
       // Only show loading indicator on first page load or refresh
       if (page === 1) {
@@ -42,28 +43,28 @@ const CategoryProducts = () => {
       } else {
         setLoading(false);
       }
-      
+
       setError(null);
-      
+
       console.log('Fetching products for category ID:', categoryId, 'Page:', page);
-      
+
       // Use the correct endpoint that filters by category on the server side
       const response = await GetApi(`getProductByCategory/${categoryId}?page=${page}&limit=${limit}`);
-      
+
       console.log('API Response:', {
         status: response?.status,
         dataCount: response?.data?.length,
         firstProduct: response?.data?.[0],
         pagination: response?.pagination
       });
-      
+
       if (!response || !response.data) {
         throw new Error('Invalid API response');
       }
 
       const productsData = response.data;
       const pagination = response.pagination || {};
-      
+
       if (Array.isArray(productsData)) {
         // Debug: Log the first product's category
         if (productsData.length > 0) {
@@ -83,8 +84,8 @@ const CategoryProducts = () => {
           price: product.price_slot?.[0]?.Offerprice || 0,
           originalPrice: product.price_slot?.[0]?.price || 0,
           discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
-            ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) / 
-                 product.price_slot[0].price * 100))
+            ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
+              product.price_slot[0].price * 100))
             : 0,
           rating: 4.0,
           image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
@@ -92,22 +93,22 @@ const CategoryProducts = () => {
           soldPieces: product.sold_pieces || 0,
           _raw: product
         }));
-       
-        
-        
+
+
+
         setProducts(prev => {
-         
+
           if (page === 1) {
             return formattedProducts;
           }
-       
+
           return [...prev, ...formattedProducts];
         });
-        
+
         // Update hasMore based on pagination
         const hasMorePages = pagination.currentPage < pagination.totalPages;
-        console.log('Pagination:', { 
-          currentPage: pagination.currentPage, 
+        console.log('Pagination:', {
+          currentPage: pagination.currentPage,
           totalPages: pagination.totalPages,
           hasMore: hasMorePages,
           itemsPerPage: pagination.itemsPerPage,
@@ -134,11 +135,11 @@ const CategoryProducts = () => {
       setLoading(true);
     }
   }, [categoryId]);
-  
+
   // Fetch products when page or category changes
   useEffect(() => {
     if (categoryId) {
-     
+
       const fetchData = async () => {
         try {
           await fetchProducts();
@@ -146,7 +147,7 @@ const CategoryProducts = () => {
           console.error('Error in fetchData:', error);
           // If the first attempt fails, try the alternative endpoint
           if (page === 1) {
-           
+
             try {
               const response = await GetApi(`getProducts?category=${categoryId}&page=${page}&limit=${limit}`);
               if (response && response.data) {
@@ -157,8 +158,8 @@ const CategoryProducts = () => {
                   price: product.price_slot?.[0]?.Offerprice || 0,
                   originalPrice: product.price_slot?.[0]?.price || 0,
                   discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
-                    ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) / 
-                         product.price_slot[0].price * 100))
+                    ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
+                      product.price_slot[0].price * 100))
                     : 0,
                   rating: 4.0,
                   image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
@@ -182,7 +183,7 @@ const CategoryProducts = () => {
 
   // Debug effect
   useEffect(() => {
-  
+
     if (products.length > 0) {
       console.log('Sample product data:', {
         id: products[0].id,
@@ -208,11 +209,11 @@ const CategoryProducts = () => {
   const renderItem = ({ item }) => {
     const discountText = item.discount > 0 ? `${item.discount}% OFF` : null;
     const isOnSale = item.price < item.originalPrice;
-    
+
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.productCard}
-        onPress={() => navigation.navigate('ProductDetail', { 
+        onPress={() => navigation.navigate('ProductDetail', {
           productId: item.slug || item.id,
           productName: item.name
         })}
@@ -231,7 +232,7 @@ const CategoryProducts = () => {
 
         <View style={styles.productInfo}>
           <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-          
+
           <View style={styles.priceContainer}>
             {isOnSale ? (
               <>
@@ -259,7 +260,7 @@ const CategoryProducts = () => {
     return (
       <SafeAreaView style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.retryButton}
           onPress={fetchProducts}
         >
@@ -273,7 +274,7 @@ const CategoryProducts = () => {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -307,7 +308,7 @@ const CategoryProducts = () => {
               <ActivityIndicator size="small" color="#0000ff" />
             </View>
           ) : hasMore ? (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.loadMoreButton}
               onPress={loadMore}
             >

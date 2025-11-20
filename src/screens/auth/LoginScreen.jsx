@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Image,
   ActivityIndicator,
@@ -134,7 +133,7 @@ const LoginScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <View className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         {/* Language Selector */}
@@ -270,7 +269,7 @@ const LoginScreen = () => {
         onSelectLanguage={handleLanguageSelect}
         currentLanguage={currentLanguage}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
