@@ -35,7 +35,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'merkapp' do
+target 'merK' do
   config = use_native_modules!
 pod 'RNFS', :path => '../node_modules/react-native-fs'
 

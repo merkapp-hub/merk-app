@@ -1,4 +1,4 @@
-import RNBootSplash
+// import RNBootSplash
 import React
 import ReactAppDependencyProvider
 import React_RCTAppDelegate
@@ -46,8 +46,8 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
       Bundle.main.url(forResource: "main", withExtension: "jsbundle")
     #endif
   }
-  override func customize(_ rootView: RCTRootView) {
-    super.customize(rootView)
-    RNBootSplash.initWithStoryboard("LaunchScreen", rootView: rootView)  // ⬅️ initialize the splash screen
-  }
+  // override func customize(_ rootView: RCTRootView) {
+  //   super.customize(rootView)
+  //   RNBootSplash.initWithStoryboard("LaunchScreen", rootView: rootView)  // ⬅️ initialize the splash screen
+  // }
 }
