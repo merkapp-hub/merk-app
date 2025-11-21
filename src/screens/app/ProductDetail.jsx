@@ -197,7 +197,7 @@ const fetchProductDetails = async () => {
     }
   };
 
-  // Update local storage for favorites
+  
   const updateLocalFavorites = async (productId, isFav) => {
     try {
       const favorites = await AsyncStorage.getItem('favorites');
@@ -207,8 +207,7 @@ const fetchProductDetails = async () => {
         favArray = JSON.parse(favorites);
       }
   
-      console.log('Current favorites before update:', favArray);
-      console.log('Adding/Removing product:', productId, 'isFav:', isFav);
+     
   
       let updated = false;
       
