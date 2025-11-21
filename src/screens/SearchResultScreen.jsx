@@ -85,7 +85,7 @@ const SearchResultScreen = () => {
         })}
         activeOpacity={0.9}
       >
-        {/* Discount badge */}
+       
         {discount && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>{discount}</Text>
