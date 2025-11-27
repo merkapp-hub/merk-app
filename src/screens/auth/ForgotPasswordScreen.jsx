@@ -4,7 +4,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
+
   StatusBar,
   Image,
   Alert,
@@ -32,7 +32,7 @@ const ForgotPasswordScreen = () => {
       Alert.alert(t('error'), t('please_enter_email'));
       return;
     }
-    
+
     try {
       setLoading(true);
       const response = await Post('auth/sendOTP', { email });
@@ -52,14 +52,14 @@ const ForgotPasswordScreen = () => {
       Alert.alert(t('error'), t('enter_valid_otp'));
       return;
     }
-    
+
     try {
       setLoading(true);
-      const response = await Post('auth/verifyOTP', { 
-        email, 
-        otp 
+      const response = await Post('auth/verifyOTP', {
+        email,
+        otp
       });
-      
+
       if (response) {
         Alert.alert(t('success'), t('otp_verified'));
         setStep(3);
@@ -76,12 +76,12 @@ const ForgotPasswordScreen = () => {
       Alert.alert(t('error'), t('passwords_not_match'));
       return;
     }
-    
+
     if (newPassword.length < 6) {
       Alert.alert(t('error'), t('password_min_length'));
       return;
     }
-    
+
     try {
       setLoading(true);
       const response = await Post('auth/resetPassword', {
@@ -89,7 +89,7 @@ const ForgotPasswordScreen = () => {
         otp,
         newPassword
       });
-      
+
       if (response) {
         Alert.alert(t('success'), t('password_reset_success'), [
           { text: t('ok'), onPress: () => navigation.navigate('Login') }
@@ -103,11 +103,11 @@ const ForgotPasswordScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
-      
+
       <View className="flex-1 justify-center px-6">
-     
+
         <View className="items-center mb-8">
           <Image
             source={require('../../assets/logo.png')}
@@ -116,23 +116,23 @@ const ForgotPasswordScreen = () => {
           />
         </View>
 
-        
+
         <View className="mb-8">
           <Text className="text-2xl font-semibold text-gray-900 mb-2 text-center">
             {step === 1 ? t('forgot_password') : step === 2 ? t('enter_otp') : t('reset_password')}
           </Text>
           <Text className="text-gray-600 text-base text-center">
-            {step === 1 
-              ? t('enter_email_otp') 
-              : step === 2 
-                ? t('enter_6digit_otp') 
+            {step === 1
+              ? t('enter_email_otp')
+              : step === 2
+                ? t('enter_6digit_otp')
                 : t('enter_new_password')}
           </Text>
         </View>
 
         {step === 1 && (
           <>
-          
+
             <View className="mb-6">
               <TextInput
                 className="w-full py-4 px-0 text-gray-900 text-base border-0 border-b border-gray-300 bg-transparent focus:border-gray-500 focus:outline-none"
@@ -146,8 +146,8 @@ const ForgotPasswordScreen = () => {
               />
             </View>
 
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               className="bg-[#E58F14] rounded-lg py-4 mt-4 shadow-sm"
               activeOpacity={0.9}
               onPress={handleSendOtp}
@@ -161,7 +161,7 @@ const ForgotPasswordScreen = () => {
 
         {step === 2 && (
           <>
-           
+
             <View className="mb-6">
               <TextInput
                 className="w-full py-4 px-0 text-gray-900 text-base border-0 border-b border-gray-300 bg-transparent focus:border-gray-500 focus:outline-none text-center text-xl"
@@ -175,20 +175,20 @@ const ForgotPasswordScreen = () => {
               />
             </View>
 
-           
-            <TouchableOpacity 
+
+            <TouchableOpacity
               className="bg-[#E58F14] rounded-lg py-4 mt-4 shadow-sm"
               activeOpacity={0.9}
               onPress={handleVerifyOtp}
               disabled={otp.length !== 6}
-              style={{opacity: otp.length === 6 ? 1 : 0.5}}
+              style={{ opacity: otp.length === 6 ? 1 : 0.5 }}
             >
               <Text className="text-white text-center text-base font-medium">
                 {t('verify_otp')}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               className="mt-4"
               onPress={() => setStep(1)}
             >
@@ -201,7 +201,7 @@ const ForgotPasswordScreen = () => {
 
         {step === 3 && (
           <>
-            
+
             <View className="mb-6">
               <View className="relative">
                 <TextInput
@@ -248,7 +248,7 @@ const ForgotPasswordScreen = () => {
               </View>
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               className="bg-[#E58F14] rounded-lg py-4 mt-4 shadow-sm"
               activeOpacity={0.9}
               onPress={handleResetPassword}
@@ -258,7 +258,7 @@ const ForgotPasswordScreen = () => {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity
               className="mt-4"
               onPress={() => setStep(2)}
             >
@@ -269,7 +269,7 @@ const ForgotPasswordScreen = () => {
           </>
         )}
 
-       
+
         <View className="flex-row justify-center mt-6">
           <Text className="text-gray-600 text-base">
             {t('remember_password')}{' '}
@@ -281,7 +281,7 @@ const ForgotPasswordScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

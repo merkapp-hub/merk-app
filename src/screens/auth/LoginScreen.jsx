@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Image,
   ActivityIndicator,
@@ -24,7 +23,7 @@ const LoginScreen = () => {
   const route = useRoute();
   const { login, setUserToken, setUserInfo } = useAuth();
   const { t } = useTranslation();
-  
+
   const [email, setEmail] = useState(route.params?.email || '');
   const [password, setPassword] = useState('');
   const [successMessage, setSuccessMessage] = useState(route.params?.message || '');
@@ -33,12 +32,12 @@ const LoginScreen = () => {
   const [error, setError] = useState('');
   const [currentLanguage, setCurrentLanguage] = useState(i18n.language);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
-  
+
   // Load saved language on component mount
   React.useEffect(() => {
     loadLanguage();
   }, []);
-  
+
   const loadLanguage = async () => {
     try {
       const savedLanguage = await AsyncStorage.getItem('@app_language');
@@ -50,7 +49,7 @@ const LoginScreen = () => {
       console.error('Error loading language:', error);
     }
   };
-  
+
   const handleLanguageSelect = async (language) => {
     try {
       await AsyncStorage.setItem('@app_language', language.code);
@@ -61,7 +60,7 @@ const LoginScreen = () => {
       console.error('Error saving language:', error);
     }
   };
-  
+
   // Show success message if it exists in route params
   React.useEffect(() => {
     if (route.params?.message) {
@@ -82,26 +81,26 @@ const LoginScreen = () => {
 
     setError('');
     setIsLoading(true);
-    
+
     try {
       console.log('Attempting to login with:', { email });
       const result = await login(email, password, navigation);
-      
+
       if (result.success) {
         const user = result.user || {};
         console.log('Login successful, user data:', JSON.stringify(user, null, 2));
-        
+
         // Check if user is a seller
         if (user.role === 'seller') {
           const isVerified = user.status === 'Verified';
           console.log('Seller login detected, verification status:', user.status);
-          
-        
+
+
           // The AppStack will handle routing based on verification status
           console.log('Seller login detected, verification status:', user.status);
           // No need to navigate here, the AppStack will determine the correct screen
           return;
-        } 
+        }
         // For regular users
         else {
           console.log('Regular user login, navigating to MainTabs');
@@ -116,7 +115,7 @@ const LoginScreen = () => {
     } catch (error) {
       console.error('Login error:', error);
       let errorMessage = t('login_failed');
-      
+
       // Handle specific error cases
       if (error.message.includes('Network Error')) {
         errorMessage = t('network_error');
@@ -126,7 +125,7 @@ const LoginScreen = () => {
         // Use the error message from the server if available
         errorMessage = error.message;
       }
-      
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -134,12 +133,12 @@ const LoginScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <View className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" />
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         {/* Language Selector */}
         <View className="items-end px-4 pt-2">
-          <TouchableOpacity 
+          <TouchableOpacity
             className="flex-row items-center border border-gray-200 rounded-full px-3 py-1.5"
             onPress={() => setLanguageModalVisible(true)}
           >
@@ -149,120 +148,120 @@ const LoginScreen = () => {
             <ChevronDownIcon size={16} color="#4B5563" />
           </TouchableOpacity>
         </View>
-      
-      <View className="flex-1 justify-center px-6">
-        {/* Logo */}
-        <View className="items-center mb-8">
-          <Image
-            source={require('../../assets/logo.png')}
-            className="w-56 h-20 rounded-full"
-            resizeMode="cover"
-          />
-        </View>
 
-        {/* Header */}
-        <View className="mb-8">
-          <Text className="text-2xl font-semibold text-gray-900 mb-2 text-center">
-            {t('welcome_back')}
-          </Text>
-          <Text className="text-gray-600 text-base text-center">
-            {t('sign_in_to_account')}
-          </Text>
-        </View>
-        
-        {/* Messages */}
-        <View className="mb-6">
-          {successMessage ? (
-            <View className="bg-green-50 border-l-4 border-green-400 p-4 mb-4 rounded">
-              <Text className="text-green-700">{successMessage}</Text>
-            </View>
-          ) : null}
-          
-          {error ? (
-            <View className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 rounded">
-              <Text className="text-red-700">{error}</Text>
-            </View>
-          ) : null}
-        </View>
-
-        {/* Form */}
-        <View className="space-y-4 mb-6">
-          {/* Email */}
-          <View>
-            <TextInput
-              className="w-full py-4 px-0 text-gray-900 text-base border-0 border-b border-gray-300 bg-transparent focus:border-gray-500 focus:outline-none"
-              placeholder={t('email')}
-              placeholderTextColor="#9ca3af"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
+        <View className="flex-1 justify-center px-6">
+          {/* Logo */}
+          <View className="items-center mb-8">
+            <Image
+              source={require('../../assets/logo.png')}
+              className="w-56 h-20 rounded-full"
+              resizeMode="cover"
             />
           </View>
 
-          {/* Password */}
-          <View className="relative">
-            <TextInput
-              className="w-full py-4 px-0 pr-10 text-gray-900 text-base border-0 border-b border-gray-300 bg-transparent focus:border-gray-500 focus:outline-none"
-              placeholder={t('password')}
-              placeholderTextColor="#9ca3af"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity 
-              className="absolute right-0 top-4"
-              onPress={() => setShowPassword(!showPassword)}
+          {/* Header */}
+          <View className="mb-8">
+            <Text className="text-2xl font-semibold text-gray-900 mb-2 text-center">
+              {t('welcome_back')}
+            </Text>
+            <Text className="text-gray-600 text-base text-center">
+              {t('sign_in_to_account')}
+            </Text>
+          </View>
+
+          {/* Messages */}
+          <View className="mb-6">
+            {successMessage ? (
+              <View className="bg-green-50 border-l-4 border-green-400 p-4 mb-4 rounded">
+                <Text className="text-green-700">{successMessage}</Text>
+              </View>
+            ) : null}
+
+            {error ? (
+              <View className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 rounded">
+                <Text className="text-red-700">{error}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Form */}
+          <View className="space-y-4 mb-6">
+            {/* Email */}
+            <View>
+              <TextInput
+                className="w-full py-4 px-0 text-gray-900 text-base border-0 border-b border-gray-300 bg-transparent focus:border-gray-500 focus:outline-none"
+                placeholder={t('email')}
+                placeholderTextColor="#9ca3af"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            {/* Password */}
+            <View className="relative">
+              <TextInput
+                className="w-full py-4 px-0 pr-10 text-gray-900 text-base border-0 border-b border-gray-300 bg-transparent focus:border-gray-500 focus:outline-none"
+                placeholder={t('password')}
+                placeholderTextColor="#9ca3af"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                className="absolute right-0 top-4"
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeSlashIcon size={20} color="#6b7280" />
+                ) : (
+                  <EyeIcon size={20} color="#6b7280" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Forgot Password Link */}
+          <View className="mb-8">
+            <TouchableOpacity
+              className="self-end"
+              onPress={() => navigation.navigate('ForgotPassword')}
             >
-              {showPassword ? (
-                <EyeSlashIcon size={20} color="#6b7280" />
-              ) : (
-                <EyeIcon size={20} color="#6b7280" />
-              )}
+              <Text className="text-[#E58F14] text-sm font-medium">{t('forgot_password')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Login Button */}
+          <TouchableOpacity
+            onPress={handleLogin}
+            disabled={isLoading}
+            className="w-full bg-[#E58F14] py-4 rounded-lg items-center shadow-sm"
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Text className="text-white text-base font-medium">
+                {t('sign_in')}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Sign up link */}
+          <View className="flex-row justify-center mt-6">
+            <Text className="text-gray-600 text-base">
+              {t('dont_have_account')}{' '}
+            </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
+              <Text className="text-[#E58F14] text-base font-medium">
+                {t('sign_up')}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Forgot Password Link */}
-        <View className="mb-8">
-          <TouchableOpacity 
-            className="self-end"
-            onPress={() => navigation.navigate('ForgotPassword')}
-          >
-            <Text className="text-[#E58F14] text-sm font-medium">{t('forgot_password')}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Login Button */}
-        <TouchableOpacity
-          onPress={handleLogin}
-          disabled={isLoading}
-          className="w-full bg-[#E58F14] py-4 rounded-lg items-center shadow-sm"
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text className="text-white text-base font-medium">
-              {t('sign_in')}
-            </Text>
-          )}
-        </TouchableOpacity>
-
-        {/* Sign up link */}
-        <View className="flex-row justify-center mt-6">
-          <Text className="text-gray-600 text-base">
-            {t('dont_have_account')}{' '}
-          </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-            <Text className="text-[#E58F14] text-base font-medium">
-              {t('sign_up')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
       </ScrollView>
-      
+
       {/* Language Selection Modal */}
       <LanguageModal
         visible={languageModalVisible}
@@ -270,7 +269,7 @@ const LoginScreen = () => {
         onSelectLanguage={handleLanguageSelect}
         currentLanguage={currentLanguage}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

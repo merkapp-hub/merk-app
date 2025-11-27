@@ -26,7 +26,7 @@ const AddProductScreen = (props) => {
   const navigation = useNavigation();
   const isFocused = useIsFocused()
   const route = useRoute();
-  const { productId } = route.params;
+  // const { productId } = route?.params;
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
   const [error, setError] = useState(null);
@@ -382,9 +382,11 @@ const AddProductScreen = (props) => {
     });
   }, []);
 
-  useEffect(() => {
-    fetchProductDetails();
-  }, [productId]);
+  // useEffect(() => {
+  //   if (productId) {
+  //     fetchProductDetails();
+  //   }
+  // }, [productId]);
 
   // Debug render
   console.log('Rendering with state:', {

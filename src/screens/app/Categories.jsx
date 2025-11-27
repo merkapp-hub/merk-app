@@ -1,13 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  Image, 
-  TouchableOpacity, 
-  ActivityIndicator, 
-  SafeAreaView, 
-  RefreshControl, 
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
   Dimensions,
   StyleSheet
 } from 'react-native';
@@ -16,6 +15,8 @@ import { GetApi } from '../../Helper/Service';
 import Header from '../../components/Header';
 import ProductCard from '../../components/ProductCard';
 import { useTranslation } from 'react-i18next';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 
 const { width } = Dimensions.get('window');
 
@@ -51,7 +52,7 @@ const Categories = () => {
   }, []);
 
   const renderCategoryItem = ({ item, index }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       key={`category-${item._id || index}`}
       className="w-1/4 p-2"
       onPress={() => {
@@ -71,7 +72,7 @@ const Categories = () => {
           className="w-16 h-16 rounded-full mb-2"
           resizeMode="cover"
         />
-        <Text 
+        <Text
           className="text-xs text-center text-gray-800 font-medium"
           numberOfLines={2}
         >
@@ -84,7 +85,7 @@ const Categories = () => {
   return (
     <SafeAreaView className="flex-1 bg-white">
       <Header title={t('all_categories')} showBack={true} />
-      
+
       {loading ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#000" />

@@ -26,7 +26,8 @@ const LANGUAGE_DETECTOR = {
 
       // Otherwise, try to detect the best available language
       try {
-        const bestFit = RNLocalize.findBestAvailableLanguage(LANG_CODES);
+        const bestFit = RNLocalize.findBestLanguageTag(LANG_CODES);
+        console.log('1Using detected language:', bestFit);
         const languageTag = bestFit?.languageTag || 'en';
         console.log('Using detected language:', languageTag);
         callback(languageTag);
@@ -36,7 +37,7 @@ const LANGUAGE_DETECTOR = {
       }
     });
   },
-  init: () => {},
+  init: () => { },
   cacheUserLanguage: language => {
     AsyncStorage.setItem('@app_language', language);
   },

@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>merkapp</string>
+	<string>merK</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -31,8 +31,16 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+    <key>NSCameraUsageDescription</key>
+	<string>merK Will use Camera to click and upload the documents for verification.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>merK Will use Location to show nearby drivers </string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>merK Will use Location to show nearby drivers </string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string>merK Will use Location to show nearby drivers.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>merK Will use Photo Library to upload the documents for verification.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

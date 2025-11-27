@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, ShoppingBag, CreditCard, Box, Plus } from 'react-native-feather';
@@ -89,7 +89,7 @@ const SellerTabNavigator = () => {
         tabBarActiveTintColor: '#E58F14',
         tabBarInactiveTintColor: '#9CA3AF',
         tabBarStyle: {
-          height: 70,
+          minHeight: Platform?.OS === 'android' ? 70 : 95,
           paddingBottom: 8,
           paddingTop: 10,
           paddingHorizontal: 10,
