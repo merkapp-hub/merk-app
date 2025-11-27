@@ -13,7 +13,7 @@ import {
   StyleSheet,
   StatusBar
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { API_BASE_URL, COLORS } from '../../config';
@@ -23,6 +23,7 @@ import ConnectionCheck from '../../Helper/ConnectionCheck';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { Edit, Trash2 } from 'react-native-feather';
+import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 
 export default function ProductScreen() {
   const { t } = useTranslation();
@@ -512,8 +513,19 @@ export default function ProductScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      {/* <StatusBar barStyle="dark-content" backgroundColor="#fff" /> */}
+    <View className="flex-1 bg-gray-50">
+      <View className="bg-slate-800 px-4 py-3">
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="mr-4"
+          >
+            <ChevronLeftIcon size={24} color="white" />
+          </TouchableOpacity>
+          <Text className="text-white text-xl font-semibold">{t('products')}</Text>
+        </View>
+      </View>
+      {/* <StatusBar barStyle="light-content" backgroundColor="#fff" /> */}
 
       {/* Success Message Modal */}
       <SuccessMessage
@@ -564,7 +576,7 @@ export default function ProductScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

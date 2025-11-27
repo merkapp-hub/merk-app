@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StatusBar,
-  SafeAreaView,
   ScrollView,
   Alert,
   Image,
@@ -20,6 +19,8 @@ import LanguageModal from '../../components/LanguageModal';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
 
+
+
 const AccountScreen = () => {
   const navigation = useNavigation();
   const { logout, userInfo } = useAuth();
@@ -29,31 +30,31 @@ const AccountScreen = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFinalConfirm, setShowFinalConfirm] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  
+
   const menuItems = [
     { id: 1, title: t('my_orders'), hasArrow: true },
-    { 
-      id: 2, 
-      title: t('change_language'), 
-      subtitle: currentLanguage === 'en' ? t('english') : t('spanish'), 
+    {
+      id: 2,
+      title: t('change_language'),
+      subtitle: currentLanguage === 'en' ? t('english') : t('spanish'),
       hasArrow: true,
       onPress: () => setLanguageModalVisible(true)
     },
-    { 
-      id: 3, 
-      title: t('help_center'), 
+    {
+      id: 3,
+      title: t('help_center'),
       hasArrow: true,
       onPress: () => navigation.navigate('HelpCenter')
     },
     { id: 4, title: t('delete_account'), hasArrow: true },
     { id: 5, title: t('log_out'), hasArrow: true },
   ];
-  
+
   // Load saved language on component mount
   React.useEffect(() => {
     loadLanguage();
   }, []);
-  
+
   const loadLanguage = async () => {
     try {
       const savedLanguage = await AsyncStorage.getItem('@app_language');
@@ -64,7 +65,7 @@ const AccountScreen = () => {
       console.error('Error loading language:', error);
     }
   };
-  
+
   const handleLanguageSelect = async (language) => {
     try {
       await AsyncStorage.setItem('@app_language', language.code);
@@ -102,7 +103,7 @@ const AccountScreen = () => {
       item.onPress();
       return;
     }
-    
+
     if (item.title === t('log_out')) {
       setShowLogoutConfirm(true);
     } else if (item.title === t('my_orders')) {
@@ -117,15 +118,15 @@ const AccountScreen = () => {
   // Debug log to check userInfo
   console.log('User Info in Account:', userInfo);
   const userData = userInfo?.data || userInfo; // Handle both nested and flat structures
-  
+
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       <StatusBar barStyle="light-content" backgroundColor="#1e293b" />
-      
+
       {/* Header */}
       <View className="bg-slate-800 px-4 py-3">
         <View className="flex-row items-center">
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => navigation.goBack()}
             className="mr-4"
           >
@@ -138,17 +139,17 @@ const AccountScreen = () => {
       <ScrollView className="flex-1 px-4 pt-6">
         {/* Profile Section */}
         <View className="flex-row items-center mb-5">
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => navigation.navigate('Profile')}
             className="w-16 h-16 rounded-full items-center justify-center mr-4 overflow-hidden border-2 border-slate-200"
           >
             {userData?.profilePicture ? (
-              <Image 
-                source={{ 
-                  uri: userData.profilePicture.startsWith('http') 
-                    ? userData.profilePicture 
+              <Image
+                source={{
+                  uri: userData.profilePicture.startsWith('http')
+                    ? userData.profilePicture
                     : `data:image/jpeg;base64,${userData.profilePicture}`
-                }} 
+                }}
                 style={{ width: '100%', height: '100%' }}
                 resizeMode="cover"
                 onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
@@ -193,7 +194,7 @@ const AccountScreen = () => {
           ))}
         </View>
       </ScrollView>
-      
+
       {/* Language Selection Modal */}
       <LanguageModal
         visible={languageModalVisible}
@@ -236,7 +237,7 @@ const AccountScreen = () => {
         onCancel={() => setShowFinalConfirm(false)}
         type="danger"
       />
-    </SafeAreaView>
+    </View>
   );
 
 };

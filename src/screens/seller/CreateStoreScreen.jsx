@@ -17,7 +17,7 @@ import {
   Dimensions,
   Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { ArrowLeftIcon, ArrowUpTrayIcon, BuildingOfficeIcon, DocumentIcon, EnvelopeIcon, GlobeAltIcon, MapPinIcon, PhoneIcon, PhotoIcon, UserIcon } from 'react-native-heroicons/outline';
@@ -72,7 +72,7 @@ const countryList = [
 export default function CreateStoreScreen() {
   const navigation = useNavigation();
   const { t } = useTranslation();
-  
+
   // Get the logout function from AuthContext
   const { logout } = useContext(AuthContext);
 
@@ -81,7 +81,7 @@ export default function CreateStoreScreen() {
     try {
       // Call the logout function to clear user data
       await logout();
-      
+
       // Navigate to the Login screen
       navigation.reset({
         index: 0,
@@ -95,7 +95,7 @@ export default function CreateStoreScreen() {
   const [logo, setLogo] = useState(null);
   const [kbisDoc, setKbisDoc] = useState(null);
   const [identityDoc, setIdentityDoc] = useState(null);
-  
+
   // Form data state
   const [formData, setFormData] = useState({
     firstName: '',
@@ -108,7 +108,7 @@ export default function CreateStoreScreen() {
     kbis: null,
     identity: null
   });
-  
+
   const [errors, setErrors] = useState({});
   const [country, setCountry] = useState('');
   const [countryName, setCountryName] = useState('');
@@ -137,28 +137,28 @@ export default function CreateStoreScreen() {
         const uri = response.assets[0].uri;
         const fileName = response.assets[0].fileName || `${type}.jpg`;
         const fileType = response.assets[0].type || 'image/jpeg';
-        
+
         if (type === 'logo') {
           setLogo(uri);
         } else if (type === 'kbis') {
           setKbisDoc(uri);
-          setFormData(prev => ({ 
-            ...prev, 
-            kbis: { 
+          setFormData(prev => ({
+            ...prev,
+            kbis: {
               uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
               type: fileType,
               name: fileName
-            } 
+            }
           }));
         } else if (type === 'identity') {
           setIdentityDoc(uri);
-          setFormData(prev => ({ 
-            ...prev, 
-            identity: { 
+          setFormData(prev => ({
+            ...prev,
+            identity: {
               uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
               type: fileType,
               name: fileName
-            } 
+            }
           }));
         }
       }
@@ -205,15 +205,15 @@ export default function CreateStoreScreen() {
 
     try {
       setIsLoading(true);
-      
+
       // Get user token
       const userToken = await AsyncStorage.getItem('userToken');
-      
+
       if (!userToken) {
         console.error('No user token found in AsyncStorage');
         throw new Error('Authentication required. Please login again.');
       }
-      
+
       // Decode JWT token to get user ID
       let userId;
       try {
@@ -222,12 +222,12 @@ export default function CreateStoreScreen() {
         if (tokenParts.length !== 3) {
           throw new Error('Invalid token format: Expected 3 parts');
         }
-        
+
         const base64Url = tokenParts[1];
         if (!base64Url) {
           throw new Error('Invalid token format: Missing payload');
         }
-        
+
         // Add proper base64 padding if needed
         let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const pad = base64.length % 4;
@@ -237,9 +237,9 @@ export default function CreateStoreScreen() {
           }
           base64 += '==='.slice(0, 4 - pad);
         }
-        
+
         console.log('Base64 payload:', base64);
-        
+
         // Decode base64 to string
         const jsonPayload = decodeURIComponent(
           atob(base64)
@@ -247,15 +247,15 @@ export default function CreateStoreScreen() {
             .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
             .join('')
         );
-        
+
         console.log('Decoded token payload:', jsonPayload);
-        
+
         const tokenData = JSON.parse(jsonPayload);
         console.log('Token data:', tokenData);
-        
+
         // Try different possible user ID fields
         userId = tokenData?.id || tokenData?._id || tokenData?.sub || tokenData?.userId;
-        
+
         if (!userId) {
           console.error('Token data missing user ID. Available fields:', Object.keys(tokenData));
           throw new Error('Could not determine user ID from token');
@@ -264,13 +264,13 @@ export default function CreateStoreScreen() {
         console.error('Error decoding token:', error);
         throw new Error('Failed to process authentication token');
       }
-      
+
       // Prepare form data
       const formDataToSend = new FormData();
-      
+
       // First, log the user ID to verify it's correct
       console.log('User ID being sent:', userId);
-      
+
       // Create a plain object with all the form data
       // Note: Backend might be expecting 'userId' instead of 'userid'
       const storeData = {
@@ -285,17 +285,17 @@ export default function CreateStoreScreen() {
         phone: formData.phone,
         email: formData.email,
       };
-      
+
       // Log the data being sent
       console.log('Store data being sent:', JSON.stringify(storeData, null, 2));
-      
+
       // Append all fields to FormData
       Object.entries(storeData).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           formDataToSend.append(key, value);
         }
       });
-      
+
       // Append files if they exist
       if (formData.kbis) {
         formDataToSend.append('kbis', {
@@ -304,7 +304,7 @@ export default function CreateStoreScreen() {
           name: formData.kbis.fileName || `kbis_${Date.now()}.jpg`
         });
       }
-      
+
       if (formData.identity) {
         formDataToSend.append('identity', {
           uri: formData.identity.uri,
@@ -315,7 +315,7 @@ export default function CreateStoreScreen() {
 
       // Import axios
       const axios = require('axios');
-      
+
       // Log the complete request data
       const apiUrl = 'https://api.merkapp.net/api/createStore';
       console.log('Sending request to:', apiUrl);
@@ -325,13 +325,13 @@ export default function CreateStoreScreen() {
         'Content-Type': 'multipart/form-data',
         'X-User-ID': userId  // Add user ID in header as well
       });
-      
+
       // Log FormData content
       console.log('FormData content:');
       for (let [key, value] of formDataToSend._parts) {
         console.log(`${key}:`, value);
       }
-      
+
       // Make API call with axios
       // Try sending as JSON first, fallback to FormData if needed
       let response;
@@ -380,12 +380,12 @@ export default function CreateStoreScreen() {
       }
 
       console.log('Store creation response:', response.data);
-      
+
       if (response.data?.status) {
         // Store the response and show thank you modal
         setApiResponse(response.data);
         setShowThankYouModal(true);
-        
+
         // Only reset form if status is verified
         if (response.data?.storeStatus === 'verified') {
           setFormData({
@@ -410,9 +410,9 @@ export default function CreateStoreScreen() {
     } catch (error) {
       console.error('Error creating store:', error);
       Alert.alert(
-        'Error', 
-        error.response?.data?.message || 
-        error.message || 
+        'Error',
+        error.response?.data?.message ||
+        error.message ||
         'Something went wrong. Please try again.'
       );
     } finally {
@@ -431,7 +431,7 @@ export default function CreateStoreScreen() {
       };
 
       const result = await launchImageLibrary(options);
-      
+
       if (result.didCancel) {
         console.log('User cancelled image picker');
       } else if (result.error) {
@@ -439,7 +439,7 @@ export default function CreateStoreScreen() {
         Alert.alert('Error', 'Failed to pick image. Please try again.');
       } else {
         const source = { uri: result.assets[0].uri };
-        
+
         if (type === 'kbis') {
           setKbisDoc(source);
           setFormData(prev => ({ ...prev, kbis: result.assets[0] }));
@@ -476,7 +476,7 @@ export default function CreateStoreScreen() {
           <Text style={styles.modalText}>
             Kindly wait until the verification process is complete. Thank you for your patience.
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalButton}
             onPress={() => {
               onClose();
@@ -500,40 +500,40 @@ export default function CreateStoreScreen() {
   // Remove the handleOutsideClick function
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <ThankYouModal 
-        visible={showThankYouModal} 
+    <View style={{ flex: 1 }}>
+      <ThankYouModal
+        visible={showThankYouModal}
         onClose={() => setShowThankYouModal(false)}
         isVerified={apiResponse?.storeStatus === 'verified'}
       />
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={{flex: 1}}>
-              <SafeAreaView style={styles.container}>
-                <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-                
-                {/* Header */}
-                <View style={styles.header}>
-                  <TouchableOpacity 
-                    style={styles.backButton}
-                    onPress={handleBackPress}
-                  >
-                    <ArrowLeftIcon size={24} color="#000" />
-                  </TouchableOpacity>
-                  <Text style={styles.headerTitle}>{t('create_store')}</Text>
-                  <View style={{ width: 24 }} />
-                </View>
+          <View style={{ flex: 1 }}>
+            <View style={styles.container}>
+              <StatusBar barStyle="light-content" backgroundColor="#fff" />
 
-          <ScrollView 
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollViewContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {/* Store Illustration */}
-            {/* <View style={styles.illustrationContainer}>
+              {/* Header */}
+              <View style={styles.header}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={handleBackPress}
+                >
+                  <ArrowLeftIcon size={24} color="#000" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>{t('create_store')}</Text>
+                <View style={{ width: 24 }} />
+              </View>
+
+              <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollViewContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Store Illustration */}
+                {/* <View style={styles.illustrationContainer}>
               <Image 
                 source={{ uri: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80' }}
                 style={styles.illustration}
@@ -541,283 +541,283 @@ export default function CreateStoreScreen() {
               />
             </View> */}
 
-            {/* Personal Information Section */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <UserIcon size={24} color="#12344D" style={{marginRight: 8}} />
-                <Text style={styles.sectionTitle}>Personal Information</Text>
-              </View>
-              <View style={styles.divider} />
-              
-              {/* First Name & Last Name */}
-              <View style={styles.row}>
-                <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
-                  <Text style={styles.label}>First Name *</Text>
-                  <View style={[styles.inputWrapper, errors.firstName && styles.inputError]}>
-                    <UserIcon size={20} color="#6B7280" style={[styles.inputIcon, {marginRight: 10}]} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your first name"
-                      value={formData.firstName}
-                      onChangeText={(text) => handleInputChange('firstName', text)}
-                      placeholderTextColor="#9CA3AF"
-                    />
+                {/* Personal Information Section */}
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <UserIcon size={24} color="#12344D" style={{ marginRight: 8 }} />
+                    <Text style={styles.sectionTitle}>Personal Information</Text>
                   </View>
-                  {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
+                  <View style={styles.divider} />
+
+                  {/* First Name & Last Name */}
+                  <View style={styles.row}>
+                    <View style={[styles.inputContainer, { flex: 1, marginRight: 10 }]}>
+                      <Text style={styles.label}>First Name *</Text>
+                      <View style={[styles.inputWrapper, errors.firstName && styles.inputError]}>
+                        <UserIcon size={20} color="#6B7280" style={[styles.inputIcon, { marginRight: 10 }]} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Enter your first name"
+                          value={formData.firstName}
+                          onChangeText={(text) => handleInputChange('firstName', text)}
+                          placeholderTextColor="#9CA3AF"
+                        />
+                      </View>
+                      {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
+                    </View>
+
+                    <View style={[styles.inputContainer, { flex: 1 }]}>
+                      <Text style={styles.label}>Last Name *</Text>
+                      <View style={[styles.inputWrapper, errors.lastName && styles.inputError]}>
+                        <UserIcon size={20} color="#6B7280" style={[styles.inputIcon, { marginRight: 10 }]} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="Enter your last name"
+                          value={formData.lastName}
+                          onChangeText={(text) => handleInputChange('lastName', text)}
+                          placeholderTextColor="#9CA3AF"
+                        />
+                      </View>
+                      {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
+                    </View>
+                  </View>
+
+                  {/* Company Name */}
+                  <View style={styles.countryInputContainer}>
+                    <Text style={styles.label}>Company Name (Optional)</Text>
+                    <View style={styles.inputWrapper}>
+                      <View style={styles.inputIcon}>
+                        <BuildingOfficeIcon size={20} color="#6B7280" />
+                      </View>
+                      <TextInput
+                        style={[styles.input, { paddingLeft: 40 }]}
+                        placeholder="Company Name (Optional)"
+                        value={formData.companyName}
+                        onChangeText={(text) => handleInputChange('companyName', text)}
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                  </View>
                 </View>
 
-                <View style={[styles.inputContainer, { flex: 1 }]}>
-                  <Text style={styles.label}>Last Name *</Text>
-                  <View style={[styles.inputWrapper, errors.lastName && styles.inputError]}>
-                    <UserIcon size={20} color="#6B7280" style={[styles.inputIcon, {marginRight: 10}]} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your last name"
-                      value={formData.lastName}
-                      onChangeText={(text) => handleInputChange('lastName', text)}
-                      placeholderTextColor="#9CA3AF"
-                    />
+                {/* Address Section */}
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <MapPinIcon size={24} color="#12344D" style={{ marginRight: 8 }} />
+                    <Text style={styles.sectionTitle}>Address Details</Text>
                   </View>
-                  {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
-                </View>
-              </View>
+                  <View style={styles.divider} />
 
-              {/* Company Name */}
-              <View style={styles.countryInputContainer}>
-                <Text style={styles.label}>Company Name (Optional)</Text>
-                <View style={styles.inputWrapper}>
-                  <View style={styles.inputIcon}>
-                    <BuildingOfficeIcon size={20} color="#6B7280" />
+                  {/* Country */}
+                  <View style={styles.countryInputContainer}>
+                    <Text style={styles.label}>Country/Region *</Text>
+                    <View style={[styles.inputWrapper, errors.country && styles.inputError]}>
+                      <View style={styles.inputIcon}>
+                        <GlobeAltIcon size={20} color="#6B7280" />
+                      </View>
+                      <TextInput
+                        style={[styles.input, { paddingLeft: 40 }]}
+                        placeholder="Enter country name"
+                        value={selectedCountry || countryName}
+                        onChangeText={(text) => {
+                          setCountryName(text);
+                          // Find matching country
+                          const matchedCountry = countryList.find(c =>
+                            c.name.toLowerCase().includes(text.toLowerCase())
+                          );
+                          setCountry(matchedCountry?.code || '');
+                        }}
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                    {countryName && (
+                      <View style={styles.suggestionsContainer}>
+                        {countryList
+                          .filter(country =>
+                            country.name.toLowerCase().includes(countryName.toLowerCase())
+                          )
+                          .slice(0, 5) // Show max 5 suggestions
+                          .map(country => (
+                            <TouchableOpacity
+                              key={country.code}
+                              style={styles.suggestionItem}
+                              onPress={() => {
+                                setCountry(country.code);
+                                setSelectedCountry(country.name);
+                                setCountryName('');
+                              }}
+                            >
+                              <Text>{country.emoji} {country.name}</Text>
+                            </TouchableOpacity>
+                          ))
+                        }
+                      </View>
+                    )}
                   </View>
-                  <TextInput
-                    style={[styles.input, { paddingLeft: 40 }]}
-                    placeholder="Company Name (Optional)"
-                    value={formData.companyName}
-                    onChangeText={(text) => handleInputChange('companyName', text)}
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-              </View>
-            </View>
 
-            {/* Address Section */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <MapPinIcon size={24} color="#12344D" style={{marginRight: 8}} />
-                <Text style={styles.sectionTitle}>Address Details</Text>
-              </View>
-              <View style={styles.divider} />
-              
-              {/* Country */}
-              <View style={styles.countryInputContainer}>
-                <Text style={styles.label}>Country/Region *</Text>
-                <View style={[styles.inputWrapper, errors.country && styles.inputError]}>
-                  <View style={styles.inputIcon}>
-                    <GlobeAltIcon size={20} color="#6B7280" />
+                  {/* Street Address */}
+                  <View style={styles.countryInputContainer}>
+                    <Text style={styles.label}>Street Address *</Text>
+                    <View style={[styles.inputWrapper, errors.address && styles.inputError]}>
+                      <View style={styles.inputIcon}>
+                        <MapPinIcon size={20} color="#6B7280" />
+                      </View>
+                      <TextInput
+                        style={[styles.input, { paddingLeft: 40 }]}
+                        placeholder="Address"
+                        value={formData.address}
+                        onChangeText={(text) => handleInputChange('address', text)}
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                    {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
                   </View>
-                  <TextInput
-                    style={[styles.input, { paddingLeft: 40 }]}
-                    placeholder="Enter country name"
-                    value={selectedCountry || countryName}
-                    onChangeText={(text) => {
-                      setCountryName(text);
-                      // Find matching country
-                      const matchedCountry = countryList.find(c => 
-                        c.name.toLowerCase().includes(text.toLowerCase())
-                      );
-                      setCountry(matchedCountry?.code || '');
-                    }}
-                    placeholderTextColor="#9CA3AF"
-                  />
+
+                  {/* City */}
+                  <View style={styles.countryInputContainer}>
+                    <Text style={styles.label}>Town/City *</Text>
+                    <View style={[styles.inputWrapper, errors.city && styles.inputError]}>
+                      <View style={styles.inputIcon}>
+                        <UserIcon size={20} color="#6B7280" />
+                      </View>
+                      <TextInput
+                        style={[styles.input, { paddingLeft: 40 }]}
+                        placeholder="City"
+                        value={formData.city}
+                        onChangeText={(text) => handleInputChange('city', text)}
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                    {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
+                  </View>
                 </View>
-                {countryName && (
-                  <View style={styles.suggestionsContainer}>
-                    {countryList
-                      .filter(country => 
-                        country.name.toLowerCase().includes(countryName.toLowerCase())
-                      )
-                      .slice(0, 5) // Show max 5 suggestions
-                      .map(country => (
+
+                {/* Contact Information Section */}
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <PhoneIcon size={24} color="#12344D" style={{ marginRight: 8 }} />
+                    <Text style={styles.sectionTitle}>Contact Information</Text>
+                  </View>
+                  <View style={styles.divider} />
+
+                  {/* Phone */}
+                  <View style={styles.countryInputContainer}>
+                    <Text style={styles.label}>Phone Number *</Text>
+                    <View style={[styles.inputWrapper, errors.phone && styles.inputError]}>
+                      <View style={styles.inputIcon}>
+                        <PhoneIcon size={20} color="#6B7280" />
+                      </View>
+                      <TextInput
+                        style={[styles.input, { paddingLeft: 40 }]}
+                        placeholder="Phone"
+                        value={formData.phone}
+                        onChangeText={(text) => handleInputChange('phone', text)}
+                        keyboardType="phone-pad"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                    {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+                  </View>
+
+                  {/* Email */}
+                  <View style={styles.countryInputContainer}>
+                    <Text style={styles.label}>Email Address *</Text>
+                    <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
+                      <View style={styles.inputIcon}>
+                        <EnvelopeIcon size={20} color="#6B7280" />
+                      </View>
+                      <TextInput
+                        style={[styles.input, { paddingLeft: 40 }]}
+                        placeholder="Email"
+                        value={formData.email}
+                        onChangeText={(text) => handleInputChange('email', text)}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+                    {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+                  </View>
+                </View>
+
+                {/* Documents Section */}
+                <View style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <DocumentIcon size={24} color="#12344D" style={{ marginRight: 8 }} />
+                    <Text style={styles.sectionTitle}>Required Documents</Text>
+                  </View>
+                  <View style={styles.divider} />
+
+                  {/* KBIS Document */}
+                  <View style={styles.countryInputContainer}>
+                    <Text style={styles.label}>KBIS Document *</Text>
+                    <TouchableOpacity
+                      style={[styles.uploadButton, errors.kbis && styles.uploadButtonError]}
+                      onPress={() => pickDocument('kbis')}
+                    >
+                      <DocumentIcon size={24} color="#6B7280" />
+                      <Text style={styles.uploadButtonText}>
+                        {kbisDoc ? 'KBIS Document Selected' : 'Upload KBIS Document'}
+                      </Text>
+                      <ArrowUpTrayIcon size={20} color="#6B7280" style={{ marginLeft: 8 }} />
+                    </TouchableOpacity>
+                    {errors.kbis && <Text style={styles.errorText}>{errors.kbis}</Text>}
+                    <Text style={styles.helperText}>
+                      Please upload a clear photo of your KBIS document
+                    </Text>
+                  </View>
+
+                  {/* Identity Document */}
+                  <View style={styles.countryInputContainer}>
+                    <Text style={styles.label}>Identity Document *</Text>
+                    <TouchableOpacity
+                      style={[styles.uploadButton, errors.identity && styles.uploadButtonError]}
+                      onPress={() => pickDocument('identity')}
+                    >
+                      <DocumentIcon size={24} color="#6B7280" />
+                      <Text style={styles.uploadButtonText}>
+                        {identityDoc ? 'Identity Document Selected' : 'Upload Identity Document'}
+                      </Text>
+                      <ArrowUpTrayIcon size={20} color="#6B7280" style={{ marginLeft: 8 }} />
+                      {formData.identity && (
                         <TouchableOpacity
-                          key={country.code}
-                          style={styles.suggestionItem}
+                          style={styles.viewButton}
                           onPress={() => {
-                            setCountry(country.code);
-                            setSelectedCountry(country.name);
-                            setCountryName('');
+                            // Navigate to document preview
+                            navigation.navigate('DocumentViewer', { uri: formData.identity });
                           }}
                         >
-                          <Text>{country.emoji} {country.name}</Text>
+                          <Text style={styles.viewButtonText}>View</Text>
                         </TouchableOpacity>
-                      ))
-                    }
-                  </View>
-                )}
-              </View>
-
-              {/* Street Address */}
-              <View style={styles.countryInputContainer}>
-                <Text style={styles.label}>Street Address *</Text>
-                <View style={[styles.inputWrapper, errors.address && styles.inputError]}>
-                  <View style={styles.inputIcon}>
-                    <MapPinIcon size={20} color="#6B7280" />
-                  </View>
-                  <TextInput
-                    style={[styles.input, { paddingLeft: 40 }]}
-                    placeholder="Address"
-                    value={formData.address}
-                    onChangeText={(text) => handleInputChange('address', text)}
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-                {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
-              </View>
-
-              {/* City */}
-              <View style={styles.countryInputContainer}>
-                <Text style={styles.label}>Town/City *</Text>
-                <View style={[styles.inputWrapper, errors.city && styles.inputError]}>
-                  <View style={styles.inputIcon}>
-                    <UserIcon size={20} color="#6B7280" />
-                  </View>
-                  <TextInput
-                    style={[styles.input, { paddingLeft: 40 }]}
-                    placeholder="City"
-                    value={formData.city}
-                    onChangeText={(text) => handleInputChange('city', text)}
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-                {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
-              </View>
-            </View>
-
-            {/* Contact Information Section */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <PhoneIcon size={24} color="#12344D" style={{marginRight: 8}} />
-                <Text style={styles.sectionTitle}>Contact Information</Text>
-              </View>
-              <View style={styles.divider} />
-              
-              {/* Phone */}
-              <View style={styles.countryInputContainer}>
-                <Text style={styles.label}>Phone Number *</Text>
-                <View style={[styles.inputWrapper, errors.phone && styles.inputError]}>
-                  <View style={styles.inputIcon}>
-                    <PhoneIcon size={20} color="#6B7280" />
-                  </View>
-                  <TextInput
-                    style={[styles.input, { paddingLeft: 40 }]}
-                    placeholder="Phone"
-                    value={formData.phone}
-                    onChangeText={(text) => handleInputChange('phone', text)}
-                    keyboardType="phone-pad"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-                {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
-              </View>
-
-              {/* Email */}
-              <View style={styles.countryInputContainer}>
-                <Text style={styles.label}>Email Address *</Text>
-                <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
-                  <View style={styles.inputIcon}>
-                    <EnvelopeIcon size={20} color="#6B7280" />
-                  </View>
-                  <TextInput
-                    style={[styles.input, { paddingLeft: 40 }]}
-                    placeholder="Email"
-                    value={formData.email}
-                    onChangeText={(text) => handleInputChange('email', text)}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-              </View>
-            </View>
-
-            {/* Documents Section */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <DocumentIcon size={24} color="#12344D" style={{marginRight: 8}} />
-                <Text style={styles.sectionTitle}>Required Documents</Text>
-              </View>
-              <View style={styles.divider} />
-              
-              {/* KBIS Document */}
-              <View style={styles.countryInputContainer}>
-                <Text style={styles.label}>KBIS Document *</Text>
-                <TouchableOpacity 
-                  style={[styles.uploadButton, errors.kbis && styles.uploadButtonError]}
-                  onPress={() => pickDocument('kbis')}
-                >
-                  <DocumentIcon size={24} color="#6B7280" />
-                  <Text style={styles.uploadButtonText}>
-                    {kbisDoc ? 'KBIS Document Selected' : 'Upload KBIS Document'}
-                  </Text>
-                  <ArrowUpTrayIcon size={20} color="#6B7280" style={{ marginLeft: 8 }} />
-                </TouchableOpacity>
-                {errors.kbis && <Text style={styles.errorText}>{errors.kbis}</Text>}
-                <Text style={styles.helperText}>
-                  Please upload a clear photo of your KBIS document
-                </Text>
-              </View>
-
-              {/* Identity Document */}
-              <View style={styles.countryInputContainer}>
-                <Text style={styles.label}>Identity Document *</Text>
-                <TouchableOpacity 
-                  style={[styles.uploadButton, errors.identity && styles.uploadButtonError]}
-                  onPress={() => pickDocument('identity')}
-                >
-                  <DocumentIcon size={24} color="#6B7280" />
-                  <Text style={styles.uploadButtonText}>
-                    {identityDoc ? 'Identity Document Selected' : 'Upload Identity Document'}
-                  </Text>
-                  <ArrowUpTrayIcon size={20} color="#6B7280" style={{ marginLeft: 8 }} />
-                  {formData.identity && (
-                    <TouchableOpacity 
-                      style={styles.viewButton}
-                      onPress={() => {
-                        // Navigate to document preview
-                        navigation.navigate('DocumentViewer', { uri: formData.identity });
-                      }}
-                    >
-                      <Text style={styles.viewButtonText}>View</Text>
+                      )}
                     </TouchableOpacity>
+                    {errors.identity && <Text style={styles.errorText}>{errors.identity}</Text>}
+                    <Text style={styles.helperText}>
+                      Please upload a clear photo of your ID or passport
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Submit Button */}
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={handleSubmit}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.submitButtonText}>Create Store</Text>
                   )}
                 </TouchableOpacity>
-                {errors.identity && <Text style={styles.errorText}>{errors.identity}</Text>}
-                <Text style={styles.helperText}>
-                  Please upload a clear photo of your ID or passport
-                </Text>
-              </View>
+
+                <View style={{ height: 40 }} />
+              </ScrollView>
             </View>
-
-            {/* Submit Button */}
-            <TouchableOpacity 
-              style={styles.submitButton}
-              onPress={handleSubmit}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.submitButtonText}>Create Store</Text>
-              )}
-            </TouchableOpacity>
-
-            <View style={{ height: 40 }} />
-          </ScrollView>
-              </SafeAreaView>
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 

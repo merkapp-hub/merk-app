@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  FlatList, 
-  Image, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  FlatList,
+  Image,
+  TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Dimensions,
   ActivityIndicator
 } from 'react-native';
@@ -15,12 +14,14 @@ import { ArrowLeftIcon } from 'react-native-heroicons/outline';
 import { useTranslation } from 'react-i18next';
 import { GetApi } from '../../Helper/Service';
 
+
+
 const { width } = Dimensions.get('window');
 
 const BestSellingProducts = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
-  
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -37,51 +38,51 @@ const BestSellingProducts = () => {
         setLoading(true);
       } else {
         setLoadingMore(true);
+      }
+
+      console.log('Fetching products, page:', pageNum);
+      const response = await GetApi(`getProduct?page=${pageNum}`, {});
+      console.log('Full API Response:', response);
+
+      if (!response) {
+        console.error('No response from API');
+        return;
+      }
+
+      // Extract products from response
+      const newProducts = response.data || [];
+      console.log('Extracted products count:', newProducts.length);
+      console.log('First product sample:', newProducts[0]); // Add this line
+
+      // Update products state
+      setProducts(prevProducts => {
+        const updatedProducts = isRefreshing || pageNum === 1 ?
+          [...newProducts] :
+          [...prevProducts, ...newProducts.filter(p => !prevProducts.some(prev => prev._id === p._id))];
+
+        console.log('Updated products state count:', updatedProducts.length); // Add this line
+        console.log('Products state sample:', updatedProducts[0]); // Add this line
+
+        return updatedProducts;
+      });
+
+      // Update pagination state
+      if (response.pagination) {
+        const { currentPage, totalPages } = response.pagination;
+        console.log('Pagination:', { currentPage, totalPages, hasMore: currentPage < totalPages });
+        setHasMore(currentPage < totalPages);
+      } else {
+        setHasMore(newProducts.length > 0);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
+      setInitialLoad(false);
     }
-    
-    console.log('Fetching products, page:', pageNum);
-    const response = await GetApi(`getProduct?page=${pageNum}`, {});
-    console.log('Full API Response:', response);
-    
-    if (!response) {
-      console.error('No response from API');
-      return;
-    }
-    
-    // Extract products from response
-    const newProducts = response.data || [];
-    console.log('Extracted products count:', newProducts.length);
-    console.log('First product sample:', newProducts[0]); // Add this line
-    
-    // Update products state
-    setProducts(prevProducts => {
-      const updatedProducts = isRefreshing || pageNum === 1 ? 
-        [...newProducts] : 
-        [...prevProducts, ...newProducts.filter(p => !prevProducts.some(prev => prev._id === p._id))];
-      
-      console.log('Updated products state count:', updatedProducts.length); // Add this line
-      console.log('Products state sample:', updatedProducts[0]); // Add this line
-      
-      return updatedProducts;
-    });
-    
-    // Update pagination state
-    if (response.pagination) {
-      const { currentPage, totalPages } = response.pagination;
-      console.log('Pagination:', { currentPage, totalPages, hasMore: currentPage < totalPages });
-      setHasMore(currentPage < totalPages);
-    } else {
-      setHasMore(newProducts.length > 0);
-    }
-  } catch (error) {
-    console.error('Error fetching products:', error);
-  } finally {
-    setLoading(false);
-    setRefreshing(false);
-    setLoadingMore(false);
-    setInitialLoad(false);
-  }
-}, []);
+  }, []);
 
   useEffect(() => {
     fetchProducts(1);
@@ -105,79 +106,79 @@ const BestSellingProducts = () => {
     return null; // Simple return null
   };
 
-const renderProductItem = ({ item }) => {
-  console.log('=== Debug Product Item ===');
-  console.log('Item name:', item.name);
-  
-  // Get the first price slot or default to 0
-  const priceSlot = item.price_slot?.[0];
-  console.log('Price slot:', priceSlot);
-  
-  const price = priceSlot?.price || 0;
-  const offerPrice = priceSlot?.Offerprice || null;
-  console.log('Price:', price, 'Offer Price:', offerPrice);
-  
-  // Get the first variant's first image or empty string
-  const imageData = item.varients?.[0]?.image?.[0] || '';
-  console.log('Image data exists:', !!imageData);
-  
-  const discountPercentage = (offerPrice && offerPrice < price) ? 
-    Math.round(((price - offerPrice) / price) * 100) : 0;
-  console.log('Discount percentage:', discountPercentage);
-  console.log('Sold pieces:', item.sold_pieces);
-  console.log('========================');
-  
-  return (
-    <TouchableOpacity 
-      style={styles.productCard}
-      onPress={() => navigation.navigate('ProductDetail', { 
-        productId: item.slug || item._id,
-        productName: item.name
-      })}
-    >
-      {/* Discount badge - Show if there's an offer price */}
-      {offerPrice && offerPrice < price && (
-        <View style={styles.discountBadge}>
-          <Text style={styles.discountText}>
-            {discountPercentage}% OFF
-          </Text>
-        </View>
-      )}
+  const renderProductItem = ({ item }) => {
+    console.log('=== Debug Product Item ===');
+    console.log('Item name:', item.name);
 
-      <Image
-      source={imageData ? { uri: imageData } : { uri: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop' }}
-        style={styles.productImage}
-        resizeMode="contain"
-        onError={(error) => console.log('Image error:', error)}
-        onLoad={() => console.log('Image loaded successfully')}
-      />
+    // Get the first price slot or default to 0
+    const priceSlot = item.price_slot?.[0];
+    console.log('Price slot:', priceSlot);
 
-      <View style={styles.productInfo}>
-        <Text style={styles.productName} numberOfLines={2}>
-          {item.name || 'No name'}
-        </Text>
-        
-        <View style={styles.priceContainer}>
-          {offerPrice && offerPrice < price ? (
-            <>
-              <Text style={styles.price}>${Number(offerPrice).toFixed(2)}</Text>
-              <Text style={styles.originalPrice}>${Number(price).toFixed(2)}</Text>
-            </>
-          ) : (
-            <Text style={styles.price}>${Number(price).toFixed(2)}</Text>
-          )}
-        </View>
-        
-        <View style={styles.ratingContainer}>
-          <View style={styles.starsContainer}>
-            {renderStars(4.0)}
+    const price = priceSlot?.price || 0;
+    const offerPrice = priceSlot?.Offerprice || null;
+    console.log('Price:', price, 'Offer Price:', offerPrice);
+
+    // Get the first variant's first image or empty string
+    const imageData = item.varients?.[0]?.image?.[0] || '';
+    console.log('Image data exists:', !!imageData);
+
+    const discountPercentage = (offerPrice && offerPrice < price) ?
+      Math.round(((price - offerPrice) / price) * 100) : 0;
+    console.log('Discount percentage:', discountPercentage);
+    console.log('Sold pieces:', item.sold_pieces);
+    console.log('========================');
+
+    return (
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={() => navigation.navigate('ProductDetail', {
+          productId: item.slug || item._id,
+          productName: item.name
+        })}
+      >
+        {/* Discount badge - Show if there's an offer price */}
+        {offerPrice && offerPrice < price && (
+          <View style={styles.discountBadge}>
+            <Text style={styles.discountText}>
+              {discountPercentage}% OFF
+            </Text>
           </View>
-          <Text style={styles.soldText}>({item.sold_pieces || 0} sold)</Text>
+        )}
+
+        <Image
+          source={imageData ? { uri: imageData } : { uri: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop' }}
+          style={styles.productImage}
+          resizeMode="contain"
+          onError={(error) => console.log('Image error:', error)}
+          onLoad={() => console.log('Image loaded successfully')}
+        />
+
+        <View style={styles.productInfo}>
+          <Text style={styles.productName} numberOfLines={2}>
+            {item.name || 'No name'}
+          </Text>
+
+          <View style={styles.priceContainer}>
+            {offerPrice && offerPrice < price ? (
+              <>
+                <Text style={styles.price}>${Number(offerPrice).toFixed(2)}</Text>
+                <Text style={styles.originalPrice}>${Number(price).toFixed(2)}</Text>
+              </>
+            ) : (
+              <Text style={styles.price}>${Number(price).toFixed(2)}</Text>
+            )}
+          </View>
+
+          <View style={styles.ratingContainer}>
+            <View style={styles.starsContainer}>
+              {renderStars(4.0)}
+            </View>
+            <Text style={styles.soldText}>({item.sold_pieces || 0} sold)</Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
-  );
-};
+      </TouchableOpacity>
+    );
+  };
 
   const renderStars = (rating) => {
     const stars = [];
@@ -210,10 +211,10 @@ const renderProductItem = ({ item }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
@@ -225,11 +226,11 @@ const renderProductItem = ({ item }) => {
 
       {/* Products List */}
       <FlatList
-  data={products}
-  renderItem={renderProductItem}
-  keyExtractor={(item, index) => `${item.id || index}-${item.updated_at || ''}`}
-  numColumns={2}
-  contentContainerStyle={[styles.productList, { paddingBottom: 80 }]}
+        data={products}
+        renderItem={renderProductItem}
+        keyExtractor={(item, index) => `${item.id || index}-${item.updated_at || ''}`}
+        numColumns={2}
+        contentContainerStyle={[styles.productList, { paddingBottom: 80 }]}
         columnWrapperStyle={styles.columnWrapper}
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
@@ -251,11 +252,11 @@ const renderProductItem = ({ item }) => {
         showsVerticalScrollIndicator={false}
       />
       {loadingMore && (
-      <View style={styles.loadingOverlay}>
-        <ActivityIndicator size="large" color="#fff" />
-      </View>
-    )}
-    </SafeAreaView>
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      )}
+    </View>
   );
 };
 

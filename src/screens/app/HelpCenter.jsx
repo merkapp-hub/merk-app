@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, BackHandler, Modal, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeftIcon, PhoneIcon, EnvelopeIcon } from 'react-native-heroicons/outline';
+
+import { ArrowLeftIcon, PhoneIcon, EnvelopeIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { useNavigation } from '@react-navigation/native';
 import { Post } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,7 @@ const HelpCenter = ({ navigation, onBack }) => {
     }
     return () => clearTimeout(timer);
   }, [showSuccessPopup]);
-  
+
   // Safely handle navigation with multiple fallbacks
   const handleGoBack = () => {
     if (onBack) {
@@ -68,7 +68,7 @@ const HelpCenter = ({ navigation, onBack }) => {
       };
 
       const response = await Post('contact', data);
-      
+
       if (response) {
         setShowSuccessPopup(true);
         setFormData({
@@ -87,25 +87,26 @@ const HelpCenter = ({ navigation, onBack }) => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       {/* Header with better spacing */}
-      <View className="bg-white px-6 py-5 border-b border-gray-200 flex-row items-center shadow-sm">
-        <TouchableOpacity 
-          onPress={handleGoBack}
-          className="p-3 -ml-3 mr-3"
-          activeOpacity={0.7}
-        >
-          <ArrowLeftIcon size={24} color="#12344D" />
-        </TouchableOpacity>
-        <Text className="text-xl font-semibold text-gray-900">{t('help_center')}</Text>
+      <View className="bg-slate-800 px-4 py-3">
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="mr-4"
+          >
+            <ChevronLeftIcon size={24} color="white" />
+          </TouchableOpacity>
+          <Text className="text-white text-xl font-semibold">{t('help_center')}</Text>
+        </View>
       </View>
 
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         className="flex-1"
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
-        <ScrollView 
+        <ScrollView
           className="flex-1 px-6"
           contentContainerStyle={{ paddingVertical: 24 }}
           showsVerticalScrollIndicator={false}
@@ -121,11 +122,11 @@ const HelpCenter = ({ navigation, onBack }) => {
                   </View>
                   <Text className="text-lg font-semibold text-gray-900">{t('contact_call_to_us')}</Text>
                 </View>
-                
+
                 <Text className="text-sm text-gray-600 mb-3">
                   {t('contact_available_24_7')}
                 </Text>
-                
+
                 <Text className="text-sm">
                   <Text className="font-medium">{t('contact_phone')}: </Text>
                   <Text className="text-[#12344D] font-semibold">+8801611112222</Text>
@@ -140,11 +141,11 @@ const HelpCenter = ({ navigation, onBack }) => {
                   </View>
                   <Text className="text-lg font-semibold text-gray-900">{t('contact_write_to_us')}</Text>
                 </View>
-                
+
                 <Text className="text-sm text-gray-600 mb-3">
                   {t('contact_fill_form_contact_within_24_hours')}
                 </Text>
-                
+
                 <Text className="text-sm">
                   <Text className="font-medium">{t('contact_emails')}: </Text>
                   <Text className="text-[#12344D] font-semibold">merkapp25@gmail.com</Text>
@@ -161,7 +162,7 @@ const HelpCenter = ({ navigation, onBack }) => {
                 className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
                 style={{ fontSize: 16 }}
               />
-              
+
               <TextInput
                 placeholder={t('contact_your_email_placeholder')}
                 value={formData.email}
@@ -171,7 +172,7 @@ const HelpCenter = ({ navigation, onBack }) => {
                 className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
                 style={{ fontSize: 16 }}
               />
-              
+
               <TextInput
                 placeholder={t('contact_your_phone_placeholder')}
                 value={formData.phone}
@@ -180,7 +181,7 @@ const HelpCenter = ({ navigation, onBack }) => {
                 className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
                 style={{ fontSize: 16 }}
               />
-              
+
               <TextInput
                 placeholder={t('contact_your_message_placeholder')}
                 value={formData.message}
@@ -222,7 +223,7 @@ const HelpCenter = ({ navigation, onBack }) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

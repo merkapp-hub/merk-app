@@ -9,12 +9,12 @@ import {
   ActivityIndicator,
   FlatList
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Api, Post, GetApi } from '../../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
-import { PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { ChevronLeftIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
 import { COLORS, SIZES, FONTS } from '../../constants/theme';
 import ProductList from '../../components/ProductList';
 
@@ -402,18 +402,30 @@ export default function SellerOrdersScreen() {
 
   if (loading && !refreshing && orders.length === 0) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
+      <View className="flex-1 bg-gray-50 justify-center items-center">
         <ActivityIndicator size="large" color="#4F46F5" />
         <Text className="text-gray-600 text-lg mt-4 font-medium">{t('loading')}</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50 ">
       {/* Orders List with Infinite Scroll */}
+      <View className="bg-slate-800 px-4 py-3">
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="mr-4"
+          >
+            <ChevronLeftIcon size={24} color="white" />
+          </TouchableOpacity>
+          <Text className="text-white text-xl font-semibold">{t('my_orders')}</Text>
+        </View>
+      </View>
       <FlatList
         data={orders}
+        className='mb-24'
         renderItem={renderOrderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}
@@ -439,6 +451,6 @@ export default function SellerOrdersScreen() {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }

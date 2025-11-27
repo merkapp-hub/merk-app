@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useIsFocused, useNavigation, CommonActions } from '@react-navigation/native';
 import { ArrowRightOnRectangleIcon, ExclamationTriangleIcon, UserGroupIcon } from 'react-native-heroicons/outline';
 import { Api } from '../../Helper/Service';
@@ -237,15 +237,15 @@ const SellerDashboardScreen = () => {
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
+      <View className="flex-1 bg-gray-50 justify-center items-center">
         <ActivityIndicator size="large" color="#4F46F5" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 p-4 items-center justify-center">
+      <View className="flex-1 bg-gray-50 p-4 items-center justify-center">
         <View className="bg-white p-6 rounded-lg shadow-sm items-center w-full max-w-md">
           <View className="bg-red-100 p-3 rounded-full mb-4">
             <ExclamationTriangleIcon size={32} color="#EF4444" />
@@ -263,12 +263,12 @@ const SellerDashboardScreen = () => {
             <Text className="text-white font-medium">Back to Login</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100">
+    <View className="flex-1 bg-gray-100">
       <ScrollView
         className="flex-1"
         refreshControl={
@@ -310,7 +310,7 @@ const SellerDashboardScreen = () => {
 
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
