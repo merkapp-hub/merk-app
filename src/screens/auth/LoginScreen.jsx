@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   ScrollView,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { EyeIcon, EyeSlashIcon, ChevronDownIcon } from 'react-native-heroicons/outline';
@@ -17,6 +18,7 @@ import { API_BASE_URL } from '../../config';
 import LanguageModal from '../../components/LanguageModal';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
+
 
 const LoginScreen = () => {
   const navigation = useNavigation();

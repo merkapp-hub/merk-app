@@ -8,7 +8,8 @@ import {
   StatusBar,
   Image,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  KeyboardAvoidingView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { EyeIcon, EyeSlashIcon } from 'react-native-heroicons/outline';

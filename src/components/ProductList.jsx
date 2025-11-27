@@ -16,6 +16,8 @@ import { GetApi } from '../Helper/Service';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
+
+
 const { width } = Dimensions.get('window');
 
 const BestSellingProducts = () => {
@@ -236,7 +238,7 @@ const BestSellingProducts = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -292,7 +294,7 @@ const BestSellingProducts = () => {
         windowSize={11}
         showsVerticalScrollIndicator={false}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

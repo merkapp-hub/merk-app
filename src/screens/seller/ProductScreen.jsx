@@ -22,6 +22,7 @@ import ConnectionCheck from '../../Helper/ConnectionCheck';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { Edit, Trash2 } from 'react-native-feather';
+import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 
 export default function ProductScreen() {
   const { t } = useTranslation();

@@ -17,8 +17,12 @@ GEM
       httpclient (~> 2.8, >= 2.8.3)
       json (>= 1.5.1)
     atomos (0.1.3)
+<<<<<<< HEAD
     base64 (0.3.0)
     benchmark (0.4.1)
+=======
+    benchmark (0.5.0)
+>>>>>>> origin/latest-app
     bigdecimal (3.3.1)
     claide (1.1.0)
     cocoapods (1.15.2)
@@ -79,7 +83,10 @@ GEM
     nanaimo (0.3.0)
     nap (1.1.0)
     netrc (0.11.0)
+<<<<<<< HEAD
     nkf (0.2.0)
+=======
+>>>>>>> origin/latest-app
     public_suffix (4.0.7)
     rexml (3.4.4)
     ruby-macho (2.5.1)

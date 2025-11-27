@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useNavigation } from '@react-navigation/native';
-import { ArrowLeftIcon, ArrowPathIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ArrowPathIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { Api, GetApi } from '../../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { COLORS } from '../../config';
 
 export default function WithdrawalRequestScreen() {
   const [loading, setLoading] = useState(true);
@@ -73,20 +74,20 @@ export default function WithdrawalRequestScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
         >
-          <ArrowLeftIcon size={24} color="#1F2937" />
+          <ChevronLeftIcon size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('withdrawal_requests')}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={onRefresh}
           style={styles.refreshButton}
         >
-          <ArrowPathIcon size={24} color="#4F46E5" />
+          <ArrowPathIcon size={24} color="white" />
         </TouchableOpacity>
       </View>
 
@@ -107,9 +108,9 @@ export default function WithdrawalRequestScreen() {
             <View key={item._id || index} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.amount}>${parseFloat(item.amount || 0).toFixed(2)}</Text>
-                <View 
+                <View
                   style={[
-                    styles.statusBadge, 
+                    styles.statusBadge,
                     { backgroundColor: getStatusColor(item.settle || item.status) + '1A' }
                   ]}
                 >
@@ -118,19 +119,19 @@ export default function WithdrawalRequestScreen() {
                   </Text>
                 </View>
               </View>
-              
+
               <View style={styles.detailsRow}>
                 <Text style={styles.detailLabel}>{t('date')}:</Text>
                 <Text style={styles.detailValue}>{formatDate(item.createdAt || item.date)}</Text>
               </View>
-              
+
               {item.paymentMethod && (
                 <View style={styles.detailsRow}>
                   <Text style={styles.detailLabel}>{t('method')}:</Text>
                   <Text style={styles.detailValue}>{item.paymentMethod}</Text>
                 </View>
               )}
-              
+
               <View style={styles.notesContainer}>
                 <Text style={styles.notesLabel}>{t('notes')}:</Text>
                 <Text style={styles.notesText}>
@@ -141,7 +142,7 @@ export default function WithdrawalRequestScreen() {
           ))
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -161,18 +162,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.mainColor,
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
   backButton: {
     padding: 8,
     marginRight: 8,
+    color: 'white'
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: 'white',
     flex: 1,
     textAlign: 'center',
   },

@@ -18,6 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
+
+
 const { width } = Dimensions.get('window');
 
 const Categories = () => {
@@ -83,7 +85,7 @@ const Categories = () => {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <View className="flex-1 bg-white">
       <Header title={t('all_categories')} showBack={true} />
 
       {loading ? (
@@ -112,7 +114,7 @@ const Categories = () => {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -21,6 +21,8 @@ import i18n from '../../i18n';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
+
+
 const AccountScreen = () => {
   const navigation = useNavigation();
   const { logout, userInfo } = useAuth();
@@ -120,7 +122,7 @@ const AccountScreen = () => {
   const userData = userInfo?.data || userInfo; // Handle both nested and flat structures
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       <StatusBar barStyle="light-content" backgroundColor="#1e293b" />
 
       {/* Header */}
@@ -237,7 +239,7 @@ const AccountScreen = () => {
         onCancel={() => setShowFinalConfirm(false)}
         type="danger"
       />
-    </SafeAreaView>
+    </View>
   );
 
 };

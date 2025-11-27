@@ -15,6 +15,7 @@ import { GetApi } from '../Helper/Service';
 import Header from '../components/Header';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+
 const SearchResultScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
@@ -148,7 +149,7 @@ const SearchResultScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Header />
 
       {/* Search Results */}
@@ -173,7 +174,7 @@ const SearchResultScreen = () => {
           </Text>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

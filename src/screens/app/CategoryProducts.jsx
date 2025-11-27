@@ -16,6 +16,8 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
+
+
 const { width } = Dimensions.get('window');
 
 const CategoryProducts = () => {
@@ -76,6 +78,7 @@ const CategoryProducts = () => {
         }
 
         // Format the products - server should already filter by category
+<<<<<<< HEAD
         const formattedProducts = productsData.map((product) => {
           // Get image - check variants first, then images array, then direct image
           const getImage = () => {
@@ -127,6 +130,24 @@ const CategoryProducts = () => {
             _raw: product
           };
         });
+=======
+        const formattedProducts = productsData.map((product) => ({
+          id: product._id,
+          slug: product.slug || product._id,
+          name: product.name || 'Unnamed Product',
+          price: product.price_slot?.[0]?.Offerprice || 0,
+          originalPrice: product.price_slot?.[0]?.price || 0,
+          discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
+            ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
+              product.price_slot[0].price * 100))
+            : 0,
+          rating: 4.0,
+          image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
+          category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
+          soldPieces: product.sold_pieces || 0,
+          _raw: product
+        }));
+>>>>>>> origin/latest-app
 
 
 
@@ -185,6 +206,7 @@ const CategoryProducts = () => {
             try {
               const response = await GetApi(`getProducts?category=${categoryId}&page=${page}&limit=${limit}`);
               if (response && response.data) {
+<<<<<<< HEAD
                 const formattedProducts = response.data.map((product) => {
                   // Get image - check variants first, then images array, then direct image
                   const getImage = () => {
@@ -236,6 +258,24 @@ const CategoryProducts = () => {
                     _raw: product
                   };
                 });
+=======
+                const formattedProducts = response.data.map((product) => ({
+                  id: product._id,
+                  slug: product.slug || product._id,
+                  name: product.name || 'Unnamed Product',
+                  price: product.price_slot?.[0]?.Offerprice || 0,
+                  originalPrice: product.price_slot?.[0]?.price || 0,
+                  discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
+                    ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
+                      product.price_slot[0].price * 100))
+                    : 0,
+                  rating: 4.0,
+                  image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
+                  category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
+                  soldPieces: product.sold_pieces || 0,
+                  _raw: product
+                }));
+>>>>>>> origin/latest-app
                 setProducts(formattedProducts);
                 setHasMore(response.pagination?.currentPage < response.pagination?.totalPages);
               }
@@ -319,15 +359,15 @@ const CategoryProducts = () => {
 
   if (loading && products.length === 0) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0000ff" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.errorContainer}>
+      <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity
           style={styles.retryButton}
@@ -335,12 +375,12 @@ const CategoryProducts = () => {
         >
           <Text style={styles.retryButtonText}>{t('retry')}</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -386,7 +426,7 @@ const CategoryProducts = () => {
           ) : null
         }
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

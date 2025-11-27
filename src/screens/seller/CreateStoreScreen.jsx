@@ -17,7 +17,7 @@ import {
   Dimensions,
   Modal,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { launchImageLibrary } from 'react-native-image-picker';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { ArrowLeftIcon, ArrowUpTrayIcon, BuildingOfficeIcon, DocumentIcon, EnvelopeIcon, GlobeAltIcon, MapPinIcon, PhoneIcon, PhotoIcon, UserIcon } from 'react-native-heroicons/outline';
@@ -817,7 +817,8 @@ export default function CreateStoreScreen() {
           </View>
         </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
+    
   );
 };
 

@@ -2,7 +2,7 @@ import "./global.css";
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, Platform, StyleSheet, StatusBar } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import './src/i18n';
 // import SplashScreen from './src/components/SplashScreen';
 
@@ -20,12 +20,13 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigationContainerRef } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
-import BootSplash from "react-native-bootsplash";
+import { COLORS } from "./src/config";
+import HelpCenter from "./src/screens/app/HelpCenter";
+// import BootSplash from "react-native-bootsplash";
 // import SplashScreen from 'react-native-splash-screen';
 
 Sentry.init({
   dsn: 'https://c20ad320af1fbfdfaac5f0090a939e0f@o4510084981391360.ingest.us.sentry.io/4510084987813888',
-
   // Adds more context data to events (IP address, cookies, user, etc.)
   // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
   sendDefaultPii: true,
@@ -99,6 +100,7 @@ const AppStack = async () => {
       <Stack.Screen name="SellerProductDetail" component={SellerProductDetailScreen} />
       <Stack.Screen name="SearchResults" component={SearchResultScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
+      <Stack.Screen name="HelpCenter" component={HelpCenter} />
     </Stack.Navigator>
   );
 };
@@ -108,16 +110,16 @@ const RootNavigator = () => {
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const navigationRef = useNavigationContainerRef();
-  useEffect(() => {
-    const init = async () => {
-      // …do multiple sync or async tasks
-    };
+  // useEffect(() => {
+  //   const init = async () => {
+  //     // …do multiple sync or async tasks
+  //   };
 
-    init().finally(async () => {
-      await BootSplash.hide({ fade: true });
-      console.log("BootSplash has been hidden successfully");
-    });
-  }, []);
+  //   init().finally(async () => {
+  //     // await BootSplash.hide({ fade: true });
+  //     console.log("BootSplash has been hidden successfully");
+  //   });
+  // }, []);
   // useEffect(() => {
   //   const timer = setTimeout(() => {
   //     setIsSplashVisible(false);
@@ -170,7 +172,7 @@ const RootNavigator = () => {
 
 export default Sentry.wrap(function App() {
   return (
-    <AuthProvider>
+    <SafeAreaProvider>
       <StatusBar barStyle="light-content" />
       <SafeAreaView
         style={styles.container}
@@ -179,15 +181,17 @@ export default Sentry.wrap(function App() {
           : ['bottom', 'left', 'right', 'top']
         }
       >
-        <RootNavigator />
+        <AuthProvider>
+          <RootNavigator />
+        </AuthProvider>
       </SafeAreaView>
-    </AuthProvider>
+    </SafeAreaProvider>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B293D'
+    backgroundColor: COLORS.mainColor
   }
 });

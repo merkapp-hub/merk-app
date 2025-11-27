@@ -18,7 +18,11 @@ import { useAuth } from '../../context/AuthContext';
 import { GetApi, Post } from '../../Helper/Service';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
+<<<<<<< HEAD
 import { SafeAreaView } from 'react-native-safe-area-context';
+=======
+
+>>>>>>> origin/latest-app
 
 
 const OrdersScreen = ({ navigation }) => {
@@ -478,8 +482,8 @@ const OrdersScreen = ({ navigation }) => {
 
   if (loading && orders.length === 0) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+      <View style={styles.container}>
+        <StatusBar barStyle="light-content" backgroundColor="#f9fafb" />
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <TouchableOpacity
@@ -494,26 +498,35 @@ const OrdersScreen = ({ navigation }) => {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#12344D" />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
+<<<<<<< HEAD
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
 
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
+=======
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#f9fafb" />
+      <View className="bg-slate-800 px-4 py-3">
+        <View className="flex-row items-center">
+>>>>>>> origin/latest-app
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={styles.backButton}
+            className="mr-4"
           >
-            <ChevronLeftIcon size={24} color="#1f2937" />
+            <ChevronLeftIcon size={24} color="white" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('my_orders')}</Text>
+          <Text className="text-white text-xl font-semibold">{t('my_orders')}</Text>
         </View>
       </View>
+      {/* Header */}
+
 
       {orders.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -688,7 +701,7 @@ const OrdersScreen = ({ navigation }) => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -14,7 +14,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Api, Post, GetApi } from '../../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
-import { PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { ChevronLeftIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
 import { COLORS, SIZES, FONTS } from '../../constants/theme';
 import ProductList from '../../components/ProductList';
 
@@ -436,8 +436,20 @@ export default function SellerOrdersScreen() {
       </View>
 
       {/* Orders List with Infinite Scroll */}
+      <View className="bg-slate-800 px-4 py-3">
+        <View className="flex-row items-center">
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            className="mr-4"
+          >
+            <ChevronLeftIcon size={24} color="white" />
+          </TouchableOpacity>
+          <Text className="text-white text-xl font-semibold">{t('my_orders')}</Text>
+        </View>
+      </View>
       <FlatList
         data={orders}
+        className='mb-24'
         renderItem={renderOrderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}

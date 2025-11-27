@@ -16,6 +16,8 @@ import { GetApi } from '../../Helper/Service';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
+
+
 const { width } = Dimensions.get('window');
 
 const BestSellingProducts = () => {
@@ -107,6 +109,7 @@ const BestSellingProducts = () => {
   };
 
   const renderProductItem = ({ item }) => {
+<<<<<<< HEAD
     // Get image - check variants first, then images array, then direct image property
     const getProductImage = () => {
       if (item.varients && item.varients.length > 0 && item.varients[0].image && item.varients[0].image.length > 0) {
@@ -144,6 +147,28 @@ const BestSellingProducts = () => {
 
     const discountPercentage = (offerPrice && offerPrice < price) ?
       Math.round(((price - offerPrice) / price) * 100) : 0;
+=======
+    console.log('=== Debug Product Item ===');
+    console.log('Item name:', item.name);
+
+    // Get the first price slot or default to 0
+    const priceSlot = item.price_slot?.[0];
+    console.log('Price slot:', priceSlot);
+
+    const price = priceSlot?.price || 0;
+    const offerPrice = priceSlot?.Offerprice || null;
+    console.log('Price:', price, 'Offer Price:', offerPrice);
+
+    // Get the first variant's first image or empty string
+    const imageData = item.varients?.[0]?.image?.[0] || '';
+    console.log('Image data exists:', !!imageData);
+
+    const discountPercentage = (offerPrice && offerPrice < price) ?
+      Math.round(((price - offerPrice) / price) * 100) : 0;
+    console.log('Discount percentage:', discountPercentage);
+    console.log('Sold pieces:', item.sold_pieces);
+    console.log('========================');
+>>>>>>> origin/latest-app
 
     return (
       <TouchableOpacity
@@ -163,9 +188,17 @@ const BestSellingProducts = () => {
         )}
 
         <Image
+<<<<<<< HEAD
           source={{ uri: imageData }}
           style={styles.productImage}
           resizeMode="contain"
+=======
+          source={imageData ? { uri: imageData } : { uri: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop' }}
+          style={styles.productImage}
+          resizeMode="contain"
+          onError={(error) => console.log('Image error:', error)}
+          onLoad={() => console.log('Image loaded successfully')}
+>>>>>>> origin/latest-app
         />
 
         <View style={styles.productInfo}>
@@ -226,7 +259,7 @@ const BestSellingProducts = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -271,7 +304,11 @@ const BestSellingProducts = () => {
           <ActivityIndicator size="large" color="#fff" />
         </View>
       )}
+<<<<<<< HEAD
     </SafeAreaView>
+=======
+    </View>
+>>>>>>> origin/latest-app
   );
 };
 

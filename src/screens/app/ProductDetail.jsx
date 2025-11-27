@@ -11,7 +11,7 @@ import {
   FlatList,
   StyleSheet
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { GetApi, Post, Api } from '../../Helper/Service';
 import { useAuth } from '../../context/AuthContext';
@@ -27,7 +27,7 @@ const ProductDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { userInfo: user, addToCart, updateCartCount, updateFavoritesCount } = useAuth();
-  
+
   // Remove item from cart
   const removeFromCart = async (itemId) => {
     try {
@@ -70,18 +70,91 @@ const ProductDetailScreen = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedPrice, setSelectedPrice] = useState({});
 
+<<<<<<< HEAD
 const fetchProductDetails = useCallback(async () => {
   try {
     setLoading(true);
     setError(null);
     
+=======
+  const fetchProductDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+>>>>>>> origin/latest-app
       // Check if we have product data from navigation (e.g., from flash sale)
-    if (route.params?.productData) {
-      setProduct(route.params.productData);
-      setCurrentProduct(route.params.productData);
+      if (route.params?.productData) {
+        setProduct(route.params.productData);
+        setCurrentProduct(route.params.productData);
+        setLoading(false);
+        return;
+      }
+
+      if (!productId) {
+        throw new Error(t('product_id_required'));
+      }
+
+      console.log('Fetching product details for ID:', productId);
+
+
+      const isFlashSale = !!route.params?.isFlashSale;
+      const userParam = user?._id ? `?user=${user._id}` : '';
+
+      // Try to fetch product data
+      const response = await GetApi(`getProductByslug/${productId}${userParam}`).catch(err => {
+        console.error('API Error:', err);
+        throw new Error(t('failed_fetch_product_details'));
+      });
+
+      console.log('Product details response:', response);
+
+      if (!response) {
+        throw new Error(t('no_response_from_server'));
+      }
+
+      // Handle different response formats
+      let productData = response.data || response.product || response;
+
+      if (!productData) {
+        throw new Error(t('invalid_product_data'));
+      }
+
+      // If coming from flash sale, override the price
+      if (isFlashSale && route.params?.flashSalePrice) {
+        productData = {
+          ...productData,
+          price_slot: [{
+            ...(productData.price_slot?.[0] || {}),
+            Offerprice: route.params.flashSalePrice
+          }]
+        };
+      }
+
+      setProduct(productData);
+      setCurrentProduct(productData);
+
+      // Handle reviews
+      if (productData.reviews && Array.isArray(productData.reviews)) {
+        setReviews(productData.reviews);
+      }
+
+      // Handle favorites
+      if (productData.isFavorite !== undefined) {
+        setIsFavorite(productData.isFavorite);
+      }
+
+      // Fetch related products if category is available
+      if (productData.category?._id) {
+        fetchRelatedProducts(productData.category._id, productData._id);
+      }
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      setError(error.message || t('failed_load_product_details'));
+    } finally {
       setLoading(false);
-      return;
     }
+<<<<<<< HEAD
     
     if (!productId) {
       throw new Error(t('product_id_required'));
@@ -180,13 +253,16 @@ const fetchProductDetails = useCallback(async () => {
     setLoading(false);
   }
 }, [productId, route.params, t]);
+=======
+  };
+>>>>>>> origin/latest-app
 
   // Fetch related products by category
   const fetchRelatedProducts = useCallback(async (categoryId) => {
     try {
       setLoadingRelated(true);
       const response = await GetApi(`getProductbycategory/${categoryId}`);
-      
+
       if (response && Array.isArray(response)) {
         // Filter out current product and limit to 5 items
         const filtered = response
@@ -200,7 +276,7 @@ const fetchProductDetails = useCallback(async () => {
             image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
             rating: 4.0
           }));
-        
+
         setRelatedProducts(filtered);
       }
     } catch (error) {
@@ -214,21 +290,21 @@ const fetchProductDetails = useCallback(async () => {
     try {
       setFavoriteLoading(true);
       const newFavoriteState = !isFavorite;
-      
+
       // Update local storage for both logged in and guest users
       const updated = await updateLocalFavorites(product._id, newFavoriteState);
-      
+
       if (updated) {
         // Only update the UI if the favorites were actually changed
         setIsFavorite(newFavoriteState);
-        
+
         // Toggle the favoriteUpdated state to trigger the useEffect hook
         // This will update the favorites count in the tab bar
         setFavoriteUpdated(prev => !prev);
-        
+
         console.log('Favorite toggled successfully:', newFavoriteState);
       }
-      
+
     } catch (error) {
       console.error('Error toggling favorite:', error);
       Alert.alert(t('error'), t('failed_update_favorites'));
@@ -242,15 +318,22 @@ const fetchProductDetails = useCallback(async () => {
     try {
       const favorites = await AsyncStorage.getItem('favorites');
       let favArray = [];
-      
+
       if (favorites) {
         favArray = JSON.parse(favorites);
       }
+<<<<<<< HEAD
   
      
   
+=======
+
+      console.log('Current favorites before update:', favArray);
+      console.log('Adding/Removing product:', productId, 'isFav:', isFav);
+
+>>>>>>> origin/latest-app
       let updated = false;
-      
+
       if (isFav) {
         if (!favArray.includes(productId)) {
           favArray.push(productId);
@@ -261,13 +344,13 @@ const fetchProductDetails = useCallback(async () => {
         favArray = favArray.filter(id => id !== productId);
         updated = favArray.length !== initialLength;
       }
-  
+
       if (updated) {
         await AsyncStorage.setItem('favorites', JSON.stringify(favArray));
         console.log('Updated favorites:', favArray);
         return true; // Return true if favorites were updated
       }
-      
+
       return false; // Return false if no changes were made
     } catch (error) {
       console.error('Error updating local favorites:', error);
@@ -296,9 +379,9 @@ const fetchProductDetails = useCallback(async () => {
 
     try {
       setAddingToCart(true);
-      
+
       const response = await addToCart(product, selectedVariant, cartQuantity);
-      
+
       if (response.success) {
         Alert.alert(t('success'), t('product_added_to_cart'));
         // Set quantity to 1 after adding to cart to show quantity controls
@@ -318,7 +401,7 @@ const fetchProductDetails = useCallback(async () => {
   const handleToggleFavorite = async () => {
     await toggleFavorite();
   };
-  
+
 
   // Render stars for rating
   const renderStars = (rating) => {
@@ -348,7 +431,7 @@ const fetchProductDetails = useCallback(async () => {
     const newQuantity = quantity + change;
     if (newQuantity >= 0 && newQuantity <= 10) {
       setQuantity(newQuantity);
-      
+
       // If quantity is being increased from 0, add to cart
       if (newQuantity > 0 && quantity === 0) {
         try {
@@ -380,7 +463,7 @@ const fetchProductDetails = useCallback(async () => {
           if (cartData) {
             let cart = JSON.parse(cartData);
             const itemIndex = cart.findIndex(item => item._id === product._id + '_' + selectedVariant);
-            
+
             if (itemIndex >= 0) {
               cart[itemIndex].qty = newQuantity;
               cart[itemIndex].total = cart[itemIndex].price * newQuantity;
@@ -405,7 +488,7 @@ const fetchProductDetails = useCallback(async () => {
 
   // Render related product item
   const renderRelatedProduct = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       onPress={() => handleRelatedProductPress(item)}
       className="w-32 mr-4"
     >
@@ -427,21 +510,21 @@ const fetchProductDetails = useCallback(async () => {
   const fetchProductReviews = async () => {
     // Use product._id if available, otherwise fall back to productId
     const reviewProductId = product?._id || productId;
-    
+
     if (!reviewProductId) {
       console.log('No product ID available for fetching reviews');
       return;
     }
-    
+
     console.log('Fetching reviews for product ID:', reviewProductId);
     setLoadingReviews(true);
-    
+
     try {
       // Get user token from AsyncStorage
       const user = await AsyncStorage.getItem('userInfo');
       const userData = user ? JSON.parse(user) : null;
       const token = userData?.token;
-      
+
       if (!token) {
         console.warn('No authentication token found');
         // Continue without token as some APIs might not require it for public reviews
@@ -449,32 +532,32 @@ const fetchProductDetails = useCallback(async () => {
 
       const url = `https://api.merkapp.net/api/getProductReviews/${reviewProductId}`;
       console.log('Fetching reviews from URL:', url);
-      
+
       const headers = {
         'Content-Type': 'application/json'
       };
-      
+
       // Only add Authorization header if token exists
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
       const response = await fetch(url, { headers });
-      
+
       console.log('Reviews API Response status:', response.status);
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Failed to fetch reviews. Status:', response.status, 'Response:', errorText);
         throw new Error(`Failed to fetch reviews: ${response.status} ${response.statusText}`);
       }
-      
+
       const result = await response.json();
       console.log('Fetched reviews response:', JSON.stringify(result, null, 2));
-      
+
       // Handle different response formats
       let reviewsData = [];
-      
+
       if (result?.data?.reviews) {
         reviewsData = result.data.reviews;
       } else if (result?.data) {
@@ -482,10 +565,10 @@ const fetchProductDetails = useCallback(async () => {
       } else if (Array.isArray(result)) {
         reviewsData = result;
       }
-      
+
       console.log(`Setting ${reviewsData.length} reviews`);
       setReviews(reviewsData);
-      
+
     } catch (error) {
       console.error('Error in fetchProductReviews:', {
         message: error.message,
@@ -503,12 +586,12 @@ const fetchProductDetails = useCallback(async () => {
   const renderStarRating = (rating) => {
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
-    
+
     return (
       <View className="flex-row items-center">
         {[...Array(5)].map((_, i) => (
-          <Text 
-            key={i} 
+          <Text
+            key={i}
             className={`text-lg ${i < fullStars || (i === fullStars && hasHalfStar) ? 'text-yellow-400' : 'text-gray-300'}`}
           >
             ★
@@ -554,35 +637,42 @@ const fetchProductDetails = useCallback(async () => {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
+      <View className="flex-1 bg-white">
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#f97316" />
           <Text className="text-gray-400 mt-4">{t('loading_product_details')}</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error || !product) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
+      <View className="flex-1 bg-white">
         <View className="flex-1 justify-center items-center px-4">
           <Text className="text-red-500 text-center mb-4">{error || t('product_not_found')}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => navigation.goBack()}
             className="bg-orange-500 px-6 py-3 rounded-lg"
           >
             <Text className="text-white font-medium">{t('go_back')}</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   const currentVariant = product.varients?.[selectedVariant];
+<<<<<<< HEAD
   const productImage = selectedImageList[currentImageIndex] || product.image || 'https://via.placeholder.com/400';
   
   // Price calculation - use selectedPrice from state
+=======
+  const productImage = currentVariant?.image?.[0] || product.image || 'https://via.placeholder.com/400';
+
+  // Price calculation
+  const regularPrice = product.price_slot?.[0]?.price || 0;
+>>>>>>> origin/latest-app
   const isFlashSaleActive = !!flashSaleId && flashSalePrice;
   const currentPrice = isFlashSaleActive 
     ? flashSalePrice 
@@ -595,7 +685,7 @@ const fetchProductDetails = useCallback(async () => {
     : 0;
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <View className="flex-1 bg-white">
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-200">
         <View className="flex-row items-center">
@@ -613,7 +703,7 @@ const fetchProductDetails = useCallback(async () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
         style={{ flex: 1 }}
@@ -783,7 +873,7 @@ const fetchProductDetails = useCallback(async () => {
                 )}
               </View>
             </View>
-            
+
             {quantity === 0 ? (
               <TouchableOpacity
                 onPress={handleAddToCart}
@@ -835,11 +925,82 @@ const fetchProductDetails = useCallback(async () => {
             </View>
           )}
 
+<<<<<<< HEAD
         
+=======
+          {/* Variants Selection */}
+          {product.varients && product.varients.length > 0 && (
+            <View className="mb-6">
+              <Text className="text-lg font-semibold text-black mb-3">
+                {product.varients.length > 1 ? t('select_variant') : t('variant')}
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                  paddingBottom: 8,
+                  paddingRight: 12
+                }}
+              >
+                {product.varients.map((variant, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => setSelectedVariant(index)}
+                    className="mr-3"
+                    style={{
+                      minWidth: 60,
+                      alignItems: 'center'
+                    }}
+                  >
+                    {variant.color && (
+                      <View
+                        className="w-8 h-8 rounded-full mb-2"
+                        style={{
+                          backgroundColor: variant.color || '#CCCCCC'
+                        }}
+                      />
+                    )}
+                    <Text
+                      className={`text-sm text-center font-medium ${selectedVariant === index ? 'text-orange-500' : 'text-gray-700'
+                        }`}
+                      numberOfLines={1}
+                    >
+                      {variant.name || ' '}
+                    </Text>
+                    {variant.price && (
+                      <Text className="text-xs text-gray-500 mt-1">
+                        ${variant.price.toFixed(2)}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {/* Display selected variant details */}
+              {/* {currentVariant && (
+                <View className="mt-4 bg-gray-50 p-3 rounded-lg">
+                  <Text className="font-medium text-black mb-1">Selected Variant:</Text>
+                  <View className="flex-row items-center">
+                    {currentVariant.color && (
+                      <View 
+                        className="w-4 h-4 rounded-full mr-2"
+                        style={{ backgroundColor: currentVariant.color }}
+                      />
+                    )}
+                    <Text className="text-gray-700">
+                      {currentVariant.name || 'Default'} • 
+                      {currentVariant.price ? `$${currentVariant.price.toFixed(2)}` : 'Price not available'}
+                    </Text>
+                  </View>
+                </View>
+              )} */}
+            </View>
+          )}
+>>>>>>> origin/latest-app
 
           {/* Favorite Button */}
           <View className="mb-6">
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={toggleFavorite}
               disabled={favoriteLoading}
               className="flex-row items-center justify-center py-2 rounded-lg border border-gray-300 w-32"
@@ -908,51 +1069,51 @@ const fetchProductDetails = useCallback(async () => {
               <ActivityIndicator size="small" color="#0000ff" />
             ) : reviews.length > 0 ? (
               <View>
-             {(showAllReviews ? reviews : reviews.slice(0, 2)).map((review, index) => {
-  console.log(`Rendering review ${index} posted_by:`, review.posted_by); // Debug line
-  
-  return (
-    <View key={index} style={styles.reviewItem}>
-      <View style={styles.reviewHeader}>
-        <View style={styles.reviewerInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {review.posted_by?.firstName?.charAt(0).toUpperCase() ||
-               review.posted_by?.name?.charAt(0).toUpperCase() || 'U'}
-            </Text>
-          </View>
-          <View>
-            <Text style={styles.reviewerName}>
-              {(() => {
-                const pb = review.posted_by;
-                console.log('Processing posted_by:', pb); // Debug line
-                
-                if (pb?.firstName && pb?.lastName) {
-                  return `${pb.firstName} ${pb.lastName}`;
-                } else if (pb?.firstName) {
-                  return pb.firstName;
-                } else if (pb?.name) {
-                  return pb.name;
-                } else {
-                  return t('anonymous_user');
-                }
-              })()}
-            </Text>
-            <View style={styles.ratingContainer}>
-              {renderStarRating(review.rating)}
-              <Text style={styles.reviewDate}>
-                {formatDate(review.createdAt || new Date())}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
-      {review.description && (
-        <Text style={styles.reviewText}>{review.description}</Text>
-      )}
-    </View>
-  );
-})}
+                {(showAllReviews ? reviews : reviews.slice(0, 2)).map((review, index) => {
+                  console.log(`Rendering review ${index} posted_by:`, review.posted_by); // Debug line
+
+                  return (
+                    <View key={index} style={styles.reviewItem}>
+                      <View style={styles.reviewHeader}>
+                        <View style={styles.reviewerInfo}>
+                          <View style={styles.avatar}>
+                            <Text style={styles.avatarText}>
+                              {review.posted_by?.firstName?.charAt(0).toUpperCase() ||
+                                review.posted_by?.name?.charAt(0).toUpperCase() || 'U'}
+                            </Text>
+                          </View>
+                          <View>
+                            <Text style={styles.reviewerName}>
+                              {(() => {
+                                const pb = review.posted_by;
+                                console.log('Processing posted_by:', pb); // Debug line
+
+                                if (pb?.firstName && pb?.lastName) {
+                                  return `${pb.firstName} ${pb.lastName}`;
+                                } else if (pb?.firstName) {
+                                  return pb.firstName;
+                                } else if (pb?.name) {
+                                  return pb.name;
+                                } else {
+                                  return t('anonymous_user');
+                                }
+                              })()}
+                            </Text>
+                            <View style={styles.ratingContainer}>
+                              {renderStarRating(review.rating)}
+                              <Text style={styles.reviewDate}>
+                                {formatDate(review.createdAt || new Date())}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      </View>
+                      {review.description && (
+                        <Text style={styles.reviewText}>{review.description}</Text>
+                      )}
+                    </View>
+                  );
+                })}
               </View>
             ) : (
               <Text style={styles.noReviewsText}>{t('no_reviews_yet')}</Text>
@@ -964,7 +1125,7 @@ const fetchProductDetails = useCallback(async () => {
             <View className="mt-8 px-4">
               <View className="flex-row items-center justify-between mb-4">
                 <Text className="text-xl font-bold text-gray-900">{t('you_may_also_like')}</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => {
                     if (currentProduct?.category?._id) {
                       navigation.navigate('CategoryProducts', {
@@ -977,7 +1138,7 @@ const fetchProductDetails = useCallback(async () => {
                   <Text className="text-orange-500 font-medium">{t('see_all')}</Text>
                 </TouchableOpacity>
               </View>
-              
+
               {loadingRelated ? (
                 <ActivityIndicator size="large" color="#0000ff" />
               ) : (
@@ -1001,8 +1162,8 @@ const fetchProductDetails = useCallback(async () => {
         </View>
       </ScrollView>
 
-     
-    </SafeAreaView>
+
+    </View>
   );
 };
 

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator, Dimensions, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeftIcon, StarIcon, PencilIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, StarIcon, PencilIcon, TrashIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { StarIcon as StarIconSolid } from 'react-native-heroicons/solid';
 import { Api, GetApi } from '../../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -27,10 +27,10 @@ export default function SellerProductDetailScreen() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await GetApi(`getProductById/${productId}`);
       console.log('Productttttttt API Response:', response);
-      
+
       if (response && response.status) {
         setProduct(response.data);
         // If reviews are included in product response
@@ -51,7 +51,7 @@ export default function SellerProductDetailScreen() {
   // Fetch product reviews
   const fetchReviews = async () => {
     if (!productId) return;
-    
+
     setLoadingReviews(true);
     try {
       const user = await AsyncStorage.getItem('userInfo');
@@ -64,16 +64,16 @@ export default function SellerProductDetailScreen() {
           'Content-Type': 'application/json'
         }
       });
-      
+
       console.log('Reviews API Response:', response);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch reviews');
       }
-      
+
       const result = await response.json();
       console.log('Fetched reviews:', result);
-      
+
       // Handle different response formats
       if (result?.data?.reviews) {
         setReviews(result.data.reviews);
@@ -84,7 +84,7 @@ export default function SellerProductDetailScreen() {
       } else {
         setReviews([]);
       }
-      
+
     } catch (error) {
       console.error('Error fetching reviews:', error);
       setReviews([]);
@@ -117,8 +117,8 @@ export default function SellerProductDetailScreen() {
       return (
         <View style={styles.imageSection}>
           <View style={styles.mainImageContainer}>
-            <Image 
-              source={{ uri: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80' }} 
+            <Image
+              source={{ uri: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80' }}
               style={styles.mainImage}
               resizeMode="contain"
             />
@@ -134,17 +134,17 @@ export default function SellerProductDetailScreen() {
     // Function to handle image source (supports both URL and base64)
     const getImageSource = (img) => {
       if (!img) return { uri: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80' };
-      
+
       // Check if it's a base64 image
       if (img.startsWith('data:image/')) {
         return { uri: img };
       }
-      
+
       // Check if it's a URL
       if (img.startsWith('http')) {
         return { uri: img };
       }
-      
+
       // Default to Unsplash placeholder
       return { uri: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80' };
     };
@@ -152,23 +152,23 @@ export default function SellerProductDetailScreen() {
     return (
       <View style={styles.imageSection}>
         <View style={styles.mainImageContainer}>
-          <Image 
+          <Image
             source={getImageSource(mainImage)}
             style={styles.mainImage}
             resizeMode="contain"
             onError={(e) => console.log('Failed to load image:', e.nativeEvent.error)}
           />
         </View>
-        
+
         {otherImages.length > 0 && (
-          <ScrollView 
-            horizontal 
+          <ScrollView
+            horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.thumbnailContainer}
           >
             {otherImages.map((img, index) => (
               <View key={index} style={styles.thumbnailWrapper}>
-                <Image 
+                <Image
                   source={getImageSource(img)}
                   style={styles.thumbnail}
                   resizeMode="cover"
@@ -210,7 +210,7 @@ export default function SellerProductDetailScreen() {
     if (!priceSlot) return null;
     
     const hasDiscount = priceSlot.Offerprice && priceSlot.Offerprice < priceSlot.price;
-    
+
     return (
       <View style={styles.priceContainer}>
         <Text style={styles.currentPrice}>
@@ -227,12 +227,12 @@ export default function SellerProductDetailScreen() {
 
   const renderRating = () => {
     if (!product?.rating) return null;
-    
+
     return (
       <View style={styles.ratingContainer}>
         <View style={styles.ratingStars}>
           {[1, 2, 3, 4, 5].map((star) => (
-            <StarIcon 
+            <StarIcon
               key={star}
               size={20}
               color={star <= Math.round(product.rating) ? '#F59E0B' : '#D1D5DB'}
@@ -275,13 +275,13 @@ export default function SellerProductDetailScreen() {
           <View key={review._id || index} style={styles.reviewCard}>
             <View style={styles.reviewHeader}>
               <Text style={styles.reviewerName}>
-                {review.posted_by?.firstName && review.posted_by?.lastName 
+                {review.posted_by?.firstName && review.posted_by?.lastName
                   ? `${review.posted_by.firstName} ${review.posted_by.lastName}`
                   : 'Anonymous'}
               </Text>
               <View style={styles.ratingStars}>
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <StarIcon 
+                  <StarIcon
                     key={star}
                     size={16}
                     color={star <= (review.rating || 0) ? '#F59E0B' : '#D1D5DB'}
@@ -304,31 +304,31 @@ export default function SellerProductDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4F46E5" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.errorContainer}>
+      <View style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.retryButton}
           onPress={fetchProductDetails}
         >
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!product) {
     return (
-      <SafeAreaView style={styles.errorContainer}>
+      <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Product not found</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -356,7 +356,7 @@ export default function SellerProductDetailScreen() {
           <Text style={styles.productName}>{product.name}</Text>
           {renderRating()}
           {renderPrice()}
-          
+
           {/* Description */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Description</Text>
@@ -416,9 +416,9 @@ export default function SellerProductDetailScreen() {
               </View>
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>Status</Text>
-                <Text 
+                <Text
                   style={[
-                    styles.detailValue, 
+                    styles.detailValue,
                     styles[`status${product.status?.charAt(0).toUpperCase() + product.status?.slice(1)}`]
                   ]}
                 >

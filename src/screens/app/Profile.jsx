@@ -22,6 +22,8 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
+
+
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const { userToken, userInfo } = useAuth();
@@ -274,7 +276,7 @@ const ProfileScreen = () => {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-gray-50">
       <StatusBar barStyle="light-content" backgroundColor="#1e293b" />
 
       {/* Header */}
@@ -470,7 +472,7 @@ const ProfileScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 };
 
