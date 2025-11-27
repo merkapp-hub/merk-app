@@ -55,6 +55,7 @@ const CartScreen = () => {
               category: 'Uncategorized'
             },
             variant: item.selectedVariant,
+            selectedVariantName: item.selectedVariantName || '',
             selectedColor: item.selectedColor,
             selectedSize: item.selectedSize,
             quantity: item.qty,
@@ -173,6 +174,13 @@ const CartScreen = () => {
             <Text className="text-black font-semibold text-base mb-1" numberOfLines={2}>
               {item.product.name}
             </Text>
+            
+            {/* Show variant name if available */}
+            {item.selectedVariantName && (
+              <Text className="text-gray-600 text-sm mb-1">
+                {t('variant')}: {item.selectedVariantName}
+              </Text>
+            )}
             
             {/* Show color or size if available */}
             {item.selectedColor && (

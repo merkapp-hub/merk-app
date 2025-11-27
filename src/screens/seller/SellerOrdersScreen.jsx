@@ -7,9 +7,9 @@ import {
   RefreshControl,
   Alert,
   ActivityIndicator,
-  FlatList
+  FlatList,
+  StyleSheet
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Api, Post, GetApi } from '../../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -402,15 +402,39 @@ export default function SellerOrdersScreen() {
 
   if (loading && !refreshing && orders.length === 0) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
-        <ActivityIndicator size="large" color="#4F46F5" />
-        <Text className="text-gray-600 text-lg mt-4 font-medium">{t('loading')}</Text>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backIcon}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Orders</Text>
+          <View style={styles.headerRight} />
+        </View>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#E58F14" />
+          <Text className="text-gray-600 text-lg mt-4 font-medium">{t('loading')}</Text>
+        </View>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Orders</Text>
+        <View style={styles.headerRight} />
+      </View>
+
       {/* Orders List with Infinite Scroll */}
       <FlatList
         data={orders}
@@ -439,6 +463,46 @@ export default function SellerOrdersScreen() {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f9fafb' 
+  },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    backgroundColor: '#1F2937', 
+    paddingHorizontal: 16, 
+    paddingVertical: 14,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  backButton: { 
+    padding: 8,
+    marginLeft: -8,
+  },
+  backIcon: { 
+    fontSize: 32, 
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  headerTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
+  },
+  headerRight: { 
+    width: 40,
+  },
+});

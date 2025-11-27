@@ -294,16 +294,22 @@ export const AuthProvider = ({ children }) => {
       const cartData = await AsyncStorage.getItem('cartData');
       let cart = cartData ? JSON.parse(cartData) : [];
       
+      // Get price from selected variant if available, otherwise use price_slot
+      const variant = product.varients?.[selectedVariant];
+      const variantPrice = variant?.Offerprice || variant?.price || product.price_slot?.[0]?.Offerprice || 0;
+      const variantOriginalPrice = variant?.price || product.price_slot?.[0]?.price || 0;
+      
       const cartItem = {
         _id: product._id + '_' + selectedVariant,
         product_id: product._id,
         name: product.name,
-        price: product.price_slot?.[0]?.Offerprice || 0,
-        originalPrice: product.price_slot?.[0]?.price || 0,
+        price: variantPrice,
+        originalPrice: variantOriginalPrice,
         qty: quantity,
-        total: (product.price_slot?.[0]?.Offerprice || 0) * quantity,
+        total: variantPrice * quantity,
         image: product.varients?.[selectedVariant]?.image?.[0] || product.image,
         selectedVariant: selectedVariant,
+        selectedVariantName: variant?.name || '',
         selectedColor: product.varients?.[selectedVariant]?.color,
         selectedSize: product.varients?.[selectedVariant]?.size,
         userid: userInfo?._id || 'guest'

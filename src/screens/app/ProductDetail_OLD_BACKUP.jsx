@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -70,7 +70,7 @@ const ProductDetailScreen = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedPrice, setSelectedPrice] = useState({});
 
-const fetchProductDetails = useCallback(async () => {
+const fetchProductDetails = async () => {
   try {
     setLoading(true);
     setError(null);
@@ -179,10 +179,10 @@ const fetchProductDetails = useCallback(async () => {
   } finally {
     setLoading(false);
   }
-}, [productId, route.params, t]);
+};
 
   // Fetch related products by category
-  const fetchRelatedProducts = useCallback(async (categoryId) => {
+  const fetchRelatedProducts = async (categoryId) => {
     try {
       setLoadingRelated(true);
       const response = await GetApi(`getProductbycategory/${categoryId}`);
@@ -208,7 +208,7 @@ const fetchProductDetails = useCallback(async () => {
     } finally {
       setLoadingRelated(false);
     }
-  }, [productId]);
+  };
 
   const toggleFavorite = async () => {
     try {
@@ -527,30 +527,27 @@ const fetchProductDetails = useCallback(async () => {
 
   useEffect(() => {
     fetchProductDetails();
-  }, [fetchProductDetails]);
+  }, [productId]);
 
   useEffect(() => {
     // Fetch reviews when product data is available
     if (product?._id) {
       fetchProductReviews();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?._id]);
 
   useEffect(() => {
     if (product) {
       checkIfFavorite();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product?._id]);
+  }, [product]);
 
   // Update favorites count when favorite status changes
   useEffect(() => {
-    if (updateFavoritesCount && favoriteUpdated !== false) {
+    if (updateFavoritesCount) {
       updateFavoritesCount();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [favoriteUpdated]);
+  }, [favoriteUpdated, updateFavoritesCount]);
 
   if (loading) {
     return (
@@ -697,70 +694,13 @@ const fetchProductDetails = useCallback(async () => {
             {product.name}
           </Text>
 
-         
+          {/* Rating */}
           <View className="flex-row items-center mb-4">
             <View className="flex-row mr-2">
               {renderStars(4.0)}
             </View>
             <Text className="text-gray-500 text-sm">(4.0) • {product.sold_pieces || 0} {t('sold')}</Text>
           </View>
-
-          {/* Colors Selection */}
-          {product.varients && product.varients.length > 0 && (
-            <View className="mb-4">
-              <Text className="text-base font-semibold text-black mb-3">
-                Colors:
-              </Text>
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  paddingBottom: 8,
-                  paddingRight: 12
-                }}
-              >
-                {product.varients.map((variant, index) => {
-                  const isSelected = selectedVariant === index;
-                  return (
-                    <TouchableOpacity
-                      key={index}
-                      onPress={() => {
-                        setSelectedVariant(index);
-                        // Update images when variant changes
-                        setSelectedImageList(variant.image || []);
-                        setCurrentImageIndex(0);
-                        // Update price when variant changes
-                        const variantPrice = variant?.Offerprice || variant?.price || 0;
-                        setSelectedPrice({
-                          value: variant?.selected?.[0]?.value || '',
-                          Offerprice: variantPrice,
-                          price: variant?.price || 0
-                        });
-                      }}
-                      className="mr-3"
-                      style={{
-                        width: 36,
-                        height: 36,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        borderRadius: 18,
-                        borderWidth: 2,
-                        borderColor: isSelected ? '#f97316' : '#000000',
-                        padding: 2
-                      }}
-                    >
-                      <View 
-                        className="w-full h-full rounded-full"
-                        style={{ 
-                          backgroundColor: variant.color || '#CCCCCC'
-                        }}
-                      />
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          )}
 
           {/* Price and Add to Cart */}
           <View className="flex-row items-center justify-between mb-6">
@@ -835,7 +775,75 @@ const fetchProductDetails = useCallback(async () => {
             </View>
           )}
 
-        
+          {/* Variants Selection */}
+          {product.varients && product.varients.length > 0 && (
+            <View className="mb-6">
+              <Text className="text-lg font-semibold text-black mb-3">
+                {product.varients.length > 1 ? t('select_variant') : t('variant')}
+              </Text>
+             <ScrollView 
+  horizontal 
+  showsHorizontalScrollIndicator={false}
+  contentContainerStyle={{
+    paddingBottom: 8,
+    paddingRight: 12
+  }}
+>
+  {product.varients.map((variant, index) => (
+    <TouchableOpacity
+      key={index}
+      onPress={() => setSelectedVariant(index)}
+      className="mr-3"  
+      style={{
+        minWidth: 60,  
+        alignItems: 'center'
+      }}
+    >
+      {variant.color && (
+      <View 
+      className="w-8 h-8 rounded-full mb-2"
+      style={{ 
+        backgroundColor: variant.color || '#CCCCCC'
+      }}
+    />
+      )}
+      <Text 
+        className={`text-sm text-center font-medium ${
+          selectedVariant === index ? 'text-orange-500' : 'text-gray-700'
+        }`}
+        numberOfLines={1}
+      >
+        {variant.name || ' '}
+      </Text>
+      {variant.price && (
+        <Text className="text-xs text-gray-500 mt-1">
+          ${variant.price.toFixed(2)}
+        </Text>
+      )}
+    </TouchableOpacity>
+  ))}
+</ScrollView>
+              
+              {/* Display selected variant details */}
+              {/* {currentVariant && (
+                <View className="mt-4 bg-gray-50 p-3 rounded-lg">
+                  <Text className="font-medium text-black mb-1">Selected Variant:</Text>
+                  <View className="flex-row items-center">
+                    {currentVariant.color && (
+                      <View 
+                        className="w-4 h-4 rounded-full mr-2"
+                        style={{ backgroundColor: currentVariant.color }}
+                      />
+                    )}
+                    <Text className="text-gray-700">
+                      {currentVariant.name || 'Default'} • 
+                      {currentVariant.price ? `$${currentVariant.price.toFixed(2)}` : 'Price not available'}
+                    </Text>
+                  </View>
+                </View>
+              )} */}
+            </View>
+          )}
 
           {/* Favorite Button */}
           <View className="mb-6">

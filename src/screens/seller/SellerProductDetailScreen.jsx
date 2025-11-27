@@ -102,9 +102,15 @@ export default function SellerProductDetailScreen() {
   }, [productId]);
 
   const renderImages = () => {
-    // Fix: Use 'varients' instead of 'variants' to match API response
-    const hasImages = product?.varients?.[0]?.image?.length > 0;
-    const images = hasImages ? product.varients[0].image : [];
+    // Get images from variants first, then from images array
+    let images = [];
+    if (product?.varients && product.varients.length > 0 && product.varients[0]?.image?.length > 0) {
+      images = product.varients[0].image;
+    } else if (product?.images && product.images.length > 0) {
+      images = product.images;
+    }
+    
+    const hasImages = images.length > 0;
 
     // If no images, show placeholder
     if (!hasImages) {
@@ -177,19 +183,42 @@ export default function SellerProductDetailScreen() {
   };
 
   const renderPrice = () => {
-    if (!product?.price_slot?.[0]) return null;
+    const priceSlot = product?.price_slot?.[0];
+    const variants = product?.varients || [];
     
-    const priceSlot = product.price_slot[0];
+    // Check if price_slot has valid price
+    const hasPriceSlot = priceSlot && (priceSlot.price > 0 || priceSlot.Offerprice > 0);
+    
+    // If price_slot is empty/invalid and variants exist, show variant price range
+    if (!hasPriceSlot && variants.length > 0) {
+      const prices = variants.map(v => v?.Offerprice > 0 ? v.Offerprice : v?.price).filter(p => p > 0);
+      if (prices.length > 0) {
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        
+        return (
+          <View style={styles.priceContainer}>
+            <Text style={styles.currentPrice}>
+              ${minPrice.toFixed(2)}{minPrice !== maxPrice && ` - $${maxPrice.toFixed(2)}`}
+            </Text>
+          </View>
+        );
+      }
+    }
+    
+    // Use price_slot
+    if (!priceSlot) return null;
+    
     const hasDiscount = priceSlot.Offerprice && priceSlot.Offerprice < priceSlot.price;
     
     return (
       <View style={styles.priceContainer}>
         <Text style={styles.currentPrice}>
-          ${priceSlot.Offerprice || priceSlot.price}
+          ${(priceSlot.Offerprice || priceSlot.price).toFixed(2)}
         </Text>
         {hasDiscount && (
           <Text style={styles.originalPrice}>
-            ${priceSlot.price}
+            ${priceSlot.price.toFixed(2)}
           </Text>
         )}
       </View>
@@ -304,19 +333,20 @@ export default function SellerProductDetailScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <ArrowLeftIcon size={24} color="#1F2937" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{t('product_details')}</Text>
-          <View style={{ width: 24 }} />
-        </View>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('product_details')}</Text>
+        <View style={styles.headerRight} />
+      </View>
+
+      <ScrollView style={styles.scrollView}>
 
         {/* Product Images */}
         {renderImages()}
@@ -335,6 +365,27 @@ export default function SellerProductDetailScreen() {
             </Text>
           </View>
 
+          {/* Stock Information */}
+          <View style={styles.stockSection}>
+            <Text style={styles.stockLabel}>Stock:</Text>
+            <Text style={styles.stockValue}>
+              {(() => {
+                // If product has variants, calculate total stock from all variants
+                if (product?.varients && product.varients.length > 0) {
+                  const totalStock = product.varients.reduce((sum, variant) => {
+                    const variantStock = variant?.selected?.reduce((vSum, sel) => {
+                      return vSum + (parseInt(sel?.total) || 0);
+                    }, 0) || 0;
+                    return sum + variantStock;
+                  }, 0);
+                  return `${totalStock} pcs`;
+                }
+                // Otherwise use direct stock field
+                return `${product?.stock || 0} pcs`;
+              })()}
+            </Text>
+          </View>
+
           {/* Product Details */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Product Details</Text>
@@ -343,6 +394,24 @@ export default function SellerProductDetailScreen() {
                 <Text style={styles.detailLabel}>Category</Text>
                 <Text style={styles.detailValue}>
                   {product.category?.name || 'N/A'}
+                </Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>SKU</Text>
+                <Text style={styles.detailValue}>
+                  {product.sku || 'N/A'}
+                </Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Model</Text>
+                <Text style={styles.detailValue}>
+                  {product.model || 'N/A'}
+                </Text>
+              </View>
+              <View style={styles.detailItem}>
+                <Text style={styles.detailLabel}>Origin</Text>
+                <Text style={styles.detailValue}>
+                  {product.origin || 'N/A'}
                 </Text>
               </View>
               <View style={styles.detailItem}>
@@ -366,31 +435,136 @@ export default function SellerProductDetailScreen() {
             </View>
           </View>
 
+          {/* Variants Section */}
+          {product?.varients && product.varients.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Product Variants ({product.varients.length})</Text>
+              {product.varients.map((variant, index) => (
+                <View key={index} style={styles.variantCard}>
+                  {/* Variant Images */}
+                  {variant?.image && variant.image.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.variantImages}>
+                      {variant.image.slice(0, 3).map((img, imgIndex) => (
+                        <Image
+                          key={imgIndex}
+                          source={{ uri: img }}
+                          style={styles.variantImage}
+                          resizeMode="cover"
+                        />
+                      ))}
+                      {variant.image.length > 3 && (
+                        <View style={styles.moreImagesIndicator}>
+                          <Text style={styles.moreImagesText}>+{variant.image.length - 3}</Text>
+                        </View>
+                      )}
+                    </ScrollView>
+                  )}
+                  
+                  {/* Variant Details */}
+                  <View style={styles.variantDetails}>
+                    <View style={styles.variantRow}>
+                      <Text style={styles.variantLabel}>Color:</Text>
+                      <View style={styles.colorDisplay}>
+                        <View style={[styles.colorBox, { backgroundColor: variant.color }]} />
+                        <Text style={styles.variantValue}>{variant.color}</Text>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.variantRow}>
+                      <Text style={styles.variantLabel}>Price:</Text>
+                      <View style={styles.priceDisplay}>
+                        <Text style={styles.variantPrice}>
+                          ${(variant.Offerprice || variant.price || 0).toFixed(2)}
+                        </Text>
+                        {variant.Offerprice > 0 && variant.price > variant.Offerprice && (
+                          <Text style={styles.variantOriginalPrice}>
+                            ${variant.price.toFixed(2)}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                    
+                    {/* Sizes & Stock */}
+                    {variant?.selected && variant.selected.length > 0 && (
+                      <View style={styles.sizesSection}>
+                        <Text style={styles.variantLabel}>Available Sizes & Stock:</Text>
+                        <View style={styles.sizesGrid}>
+                          {variant.selected.map((sel, selIndex) => (
+                            <View key={selIndex} style={styles.sizeChip}>
+                              <Text style={styles.sizeText}>{sel.value}</Text>
+                              <Text style={styles.sizeStock}>({sel.total || 0} pcs)</Text>
+                            </View>
+                          ))}
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
           {/* Customer Reviews */}
           {renderReviews()}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#f9fafb',
+  },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    backgroundColor: '#1F2937', 
+    paddingHorizontal: 16, 
+    paddingVertical: 14,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  backButton: { 
+    padding: 8,
+    marginLeft: -8,
+  },
+  backIcon: { 
+    fontSize: 32, 
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  headerTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
+  },
+  headerRight: { 
+    width: 40,
+  },
+  scrollView: { 
+    flex: 1 
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#f9fafb',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#f9fafb',
   },
   errorText: {
     fontSize: 16,
@@ -399,7 +573,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#1F2937',
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 8,
@@ -408,24 +582,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  backButton: {
-    padding: 8,
-    marginRight: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
   },
   imageSection: {
     backgroundColor: '#F9FAFB',
@@ -594,5 +750,131 @@ const styles = StyleSheet.create({
   },
   loading: {
     marginVertical: 16,
+  },
+  stockSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  stockLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginRight: 8,
+  },
+  stockValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#10B981',
+  },
+  variantCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  variantImages: {
+    marginBottom: 12,
+  },
+  variantImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  moreImagesIndicator: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreImagesText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  variantDetails: {
+    gap: 8,
+  },
+  variantRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  variantLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    width: 80,
+  },
+  variantValue: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  colorDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  colorBox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  priceDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  variantPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  variantOriginalPrice: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textDecorationLine: 'line-through',
+  },
+  sizesSection: {
+    marginTop: 8,
+  },
+  sizesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  sizeChip: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  sizeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  sizeStock: {
+    fontSize: 11,
+    color: '#6B7280',
   },
 });

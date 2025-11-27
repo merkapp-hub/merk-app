@@ -10,11 +10,77 @@ const ProductCard = ({ product, onPress, style }) => {
       onPress();
     } else {
       navigation.navigate('ProductDetail', { 
-        productId: product.slug || product.id,
+        productId: product.slug || product.id || product._id,
         productName: product.name
       });
     }
   };
+
+  // Get image - check variants first, then images array, then direct image property
+  const getProductImage = () => {
+    if (product.varients && product.varients.length > 0 && product.varients[0].image && product.varients[0].image.length > 0) {
+      return product.varients[0].image[0];
+    }
+    if (product.images && product.images.length > 0) {
+      return product.images[0];
+    }
+    if (product.image) {
+      return product.image;
+    }
+    return 'https://via.placeholder.com/300';
+  };
+
+  // Get price - check variants first, then price_slot, then direct price property
+  const getProductPrice = () => {
+    // First check if product has variants with price
+    if (product.varients && product.varients.length > 0) {
+      const variant = product.varients[0];
+      const offerPrice = variant.Offerprice && variant.Offerprice > 0 ? variant.Offerprice : variant.price;
+      const originalPrice = variant.price || 0;
+      
+      if (offerPrice > 0) {
+        return {
+          price: `$${Math.round(offerPrice)}`,
+          originalPrice: offerPrice < originalPrice ? `$${Math.round(originalPrice)}` : null,
+          discount: offerPrice < originalPrice ? `${Math.round(((originalPrice - offerPrice) / originalPrice) * 100)}% OFF` : null
+        };
+      }
+    }
+    
+    // Then check price_slot
+    if (product.price_slot && product.price_slot.length > 0) {
+      const priceSlot = product.price_slot[0];
+      // Use Offerprice only if it's greater than 0, otherwise use price
+      const offerPrice = priceSlot.Offerprice && priceSlot.Offerprice > 0 ? priceSlot.Offerprice : priceSlot.price;
+      const originalPrice = priceSlot.price || 0;
+      
+      if (offerPrice > 0) {
+        return {
+          price: `$${Math.round(offerPrice)}`,
+          originalPrice: offerPrice < originalPrice ? `$${Math.round(originalPrice)}` : null,
+          discount: offerPrice < originalPrice ? `${Math.round(((originalPrice - offerPrice) / originalPrice) * 100)}% OFF` : null
+        };
+      }
+    }
+    
+    // Finally check direct price property
+    if (product.price) {
+      return {
+        price: typeof product.price === 'string' ? product.price : `$${Math.round(product.price)}`,
+        originalPrice: product.originalPrice,
+        discount: product.discount
+      };
+    }
+    
+    return {
+      price: '$0',
+      originalPrice: null,
+      discount: null
+    };
+  };
+
+  const imageUri = getProductImage();
+  const priceInfo = getProductPrice();
 
   return (
     <TouchableOpacity 
@@ -24,13 +90,13 @@ const ProductCard = ({ product, onPress, style }) => {
     >
       <View style={styles.imageContainer}>
         <Image 
-          source={{ uri: product.image }} 
+          source={{ uri: imageUri }} 
           style={styles.image} 
           resizeMode="contain"
         />
-        {product.discount && product.discount !== '0% OFF' && (
+        {priceInfo.discount && priceInfo.discount !== '0% OFF' && (
           <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{product.discount}</Text>
+            <Text style={styles.discountText}>{priceInfo.discount}</Text>
           </View>
         )}
       </View>
@@ -41,9 +107,9 @@ const ProductCard = ({ product, onPress, style }) => {
         </Text>
         
         <View style={styles.priceContainer}>
-          <Text style={styles.price}>{product.price}</Text>
-          {product.originalPrice && product.originalPrice !== product.price && (
-            <Text style={styles.originalPrice}>{product.originalPrice}</Text>
+          <Text style={styles.price}>{priceInfo.price}</Text>
+          {priceInfo.originalPrice && priceInfo.originalPrice !== priceInfo.price && (
+            <Text style={styles.originalPrice}>{priceInfo.originalPrice}</Text>
           )}
         </View>
         

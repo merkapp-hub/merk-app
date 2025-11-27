@@ -73,8 +73,15 @@ const FlashSale = () => {
     const product = item.products?.[0];
     if (!product) return null;
 
-    const imageUrl = product.varients?.[0]?.image?.[0] || 
-                    (product.image ? product.image : 'https://via.placeholder.com/150');
+    // Get image from variants first, then from images array, then fallback
+    let imageUrl = 'https://via.placeholder.com/150';
+    if (product.varients && product.varients.length > 0 && product.varients[0]?.image?.[0]) {
+      imageUrl = product.varients[0].image[0];
+    } else if (product.images && product.images.length > 0) {
+      imageUrl = product.images[0];
+    } else if (product.image) {
+      imageUrl = product.image;
+    }
     
     const originalPrice = product.price_slot?.[0]?.price || 0;
     const salePrice = item.price || originalPrice;

@@ -7,8 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Dimensions,
-  ScrollView
+  Dimensions
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArrowLeftIcon } from 'react-native-heroicons/outline';
@@ -77,22 +76,57 @@ const CategoryProducts = () => {
         }
 
         // Format the products - server should already filter by category
-        const formattedProducts = productsData.map((product) => ({
-          id: product._id,
-          slug: product.slug || product._id,
-          name: product.name || 'Unnamed Product',
-          price: product.price_slot?.[0]?.Offerprice || 0,
-          originalPrice: product.price_slot?.[0]?.price || 0,
-          discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
-            ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
-              product.price_slot[0].price * 100))
-            : 0,
-          rating: 4.0,
-          image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
-          category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
-          soldPieces: product.sold_pieces || 0,
-          _raw: product
-        }));
+        const formattedProducts = productsData.map((product) => {
+          // Get image - check variants first, then images array, then direct image
+          const getImage = () => {
+            if (product.varients && product.varients.length > 0 && product.varients[0].image && product.varients[0].image.length > 0) {
+              return product.varients[0].image[0];
+            }
+            if (product.images && product.images.length > 0) {
+              return product.images[0];
+            }
+            if (product.image) {
+              return product.image;
+            }
+            return 'https://via.placeholder.com/300';
+          };
+
+          // Get price - check variants first, then price_slot
+          let price = 0;
+          let originalPrice = 0;
+          
+          if (product.varients && product.varients.length > 0) {
+            const variant = product.varients[0];
+            originalPrice = variant.price || 0;
+            price = variant.Offerprice && variant.Offerprice > 0 ? variant.Offerprice : variant.price || 0;
+          }
+          
+          if (price === 0 && product.price_slot && product.price_slot.length > 0) {
+            originalPrice = product.price_slot[0].price || 0;
+            // Use Offerprice only if it's greater than 0, otherwise use price
+            price = product.price_slot[0].Offerprice && product.price_slot[0].Offerprice > 0 
+              ? product.price_slot[0].Offerprice 
+              : product.price_slot[0].price || 0;
+          }
+
+          const discount = originalPrice > 0 && price < originalPrice
+            ? Math.round(((originalPrice - price) / originalPrice * 100))
+            : 0;
+
+          return {
+            id: product._id,
+            slug: product.slug || product._id,
+            name: product.name || 'Unnamed Product',
+            price: price,
+            originalPrice: originalPrice,
+            discount: discount,
+            rating: 4.0,
+            image: getImage(),
+            category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
+            soldPieces: product.sold_pieces || 0,
+            _raw: product
+          };
+        });
 
 
 
@@ -151,22 +185,57 @@ const CategoryProducts = () => {
             try {
               const response = await GetApi(`getProducts?category=${categoryId}&page=${page}&limit=${limit}`);
               if (response && response.data) {
-                const formattedProducts = response.data.map((product) => ({
-                  id: product._id,
-                  slug: product.slug || product._id,
-                  name: product.name || 'Unnamed Product',
-                  price: product.price_slot?.[0]?.Offerprice || 0,
-                  originalPrice: product.price_slot?.[0]?.price || 0,
-                  discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
-                    ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
-                      product.price_slot[0].price * 100))
-                    : 0,
-                  rating: 4.0,
-                  image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
-                  category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
-                  soldPieces: product.sold_pieces || 0,
-                  _raw: product
-                }));
+                const formattedProducts = response.data.map((product) => {
+                  // Get image - check variants first, then images array, then direct image
+                  const getImage = () => {
+                    if (product.varients && product.varients.length > 0 && product.varients[0].image && product.varients[0].image.length > 0) {
+                      return product.varients[0].image[0];
+                    }
+                    if (product.images && product.images.length > 0) {
+                      return product.images[0];
+                    }
+                    if (product.image) {
+                      return product.image;
+                    }
+                    return 'https://via.placeholder.com/300';
+                  };
+
+                  // Get price - check variants first, then price_slot
+                  let price = 0;
+                  let originalPrice = 0;
+                  
+                  if (product.varients && product.varients.length > 0) {
+                    const variant = product.varients[0];
+                    originalPrice = variant.price || 0;
+                    price = variant.Offerprice && variant.Offerprice > 0 ? variant.Offerprice : variant.price || 0;
+                  }
+                  
+                  if (price === 0 && product.price_slot && product.price_slot.length > 0) {
+                    originalPrice = product.price_slot[0].price || 0;
+                    // Use Offerprice only if it's greater than 0, otherwise use price
+                    price = product.price_slot[0].Offerprice && product.price_slot[0].Offerprice > 0 
+                      ? product.price_slot[0].Offerprice 
+                      : product.price_slot[0].price || 0;
+                  }
+
+                  const discount = originalPrice > 0 && price < originalPrice
+                    ? Math.round(((originalPrice - price) / originalPrice * 100))
+                    : 0;
+
+                  return {
+                    id: product._id,
+                    slug: product.slug || product._id,
+                    name: product.name || 'Unnamed Product',
+                    price: price,
+                    originalPrice: originalPrice,
+                    discount: discount,
+                    rating: 4.0,
+                    image: getImage(),
+                    category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
+                    soldPieces: product.sold_pieces || 0,
+                    _raw: product
+                  };
+                });
                 setProducts(formattedProducts);
                 setHasMore(response.pagination?.currentPage < response.pagination?.totalPages);
               }

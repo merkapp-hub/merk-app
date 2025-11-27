@@ -37,16 +37,14 @@ const BestSellingProducts = () => {
         setLoading(true);
       }
 
-
+      const response = await GetApi(`getProduct?page=${pageNum}`, {});
 
       if (!response) {
         console.error('❌ No response from API');
         return;
       }
 
-
       const newProducts = response.data || [];
-
 
       // Update products state
       setProducts(prevProducts => {
@@ -54,15 +52,12 @@ const BestSellingProducts = () => {
           [...newProducts] :
           [...prevProducts, ...newProducts.filter(p => !prevProducts.some(prev => prev._id === p._id))];
 
-
-
         return updatedProducts;
       });
 
       // Update pagination state
       if (response.pagination) {
         const { currentPage, totalPages } = response.pagination;
-        // console.log('📄 Pagination:', { currentPage, totalPages, hasMore: currentPage < totalPages });
         setHasMore(currentPage < totalPages);
       } else {
         setHasMore(newProducts.length > 0);
@@ -73,7 +68,6 @@ const BestSellingProducts = () => {
       setLoading(false);
       setRefreshing(false);
       setInitialLoad(false);
-
     }
   }, []);
 
@@ -140,18 +134,40 @@ const BestSellingProducts = () => {
   };
 
   const renderProductItem = ({ item }) => {
+    // Get image - check variants first, then images array, then direct image property
+    const getProductImage = () => {
+      if (item.varients && item.varients.length > 0 && item.varients[0].image && item.varients[0].image.length > 0) {
+        return item.varients[0].image[0];
+      }
+      if (item.images && item.images.length > 0) {
+        return item.images[0];
+      }
+      if (item.image) {
+        return item.image;
+      }
+      return 'https://via.placeholder.com/300';
+    };
 
-    // Get the first price slot or default to 0
-    const priceSlot = item.price_slot?.[0];
-
-
-    const price = priceSlot?.price || 0;
-    const offerPrice = priceSlot?.Offerprice || null;
-
-
-    // Get the first variant's first image or empty string
-    const imageData = item.varients?.[0]?.image?.[0] || '';
-
+    // Get price - check variants first, then price_slot
+    let price = 0;
+    let offerPrice = null;
+    
+    // First check variants
+    if (item.varients && item.varients.length > 0) {
+      const variant = item.varients[0];
+      price = variant.price || 0;
+      offerPrice = variant.Offerprice && variant.Offerprice > 0 ? variant.Offerprice : variant.price;
+    }
+    
+    // If no price from variants, check price_slot
+    if (!offerPrice && item.price_slot && item.price_slot.length > 0) {
+      const priceSlot = item.price_slot[0];
+      price = priceSlot.price || 0;
+      // Use Offerprice only if it's greater than 0, otherwise use price
+      offerPrice = priceSlot.Offerprice && priceSlot.Offerprice > 0 ? priceSlot.Offerprice : priceSlot.price;
+    }
+    
+    const imageData = getProductImage();
 
     const discountPercentage = (offerPrice && offerPrice < price) ?
       Math.round(((price - offerPrice) / price) * 100) : 0;
@@ -175,11 +191,9 @@ const BestSellingProducts = () => {
         )}
 
         <Image
-          source={imageData ? { uri: imageData } : { uri: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop' }}
+          source={{ uri: imageData }}
           style={styles.productImage}
           resizeMode="contain"
-          onError={(error) => console.log('❌ Image error:', error)}
-          onLoad={() => console.log('✅ Image loaded successfully')}
         />
 
         <View style={styles.productInfo}>

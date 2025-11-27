@@ -13,7 +13,6 @@ import {
   StyleSheet,
   StatusBar
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import axios from 'axios';
 import { API_BASE_URL, COLORS } from '../../config';
@@ -232,13 +231,38 @@ export default function ProductScreen() {
     );
   };
 
-  const getStockStatus = (stock) => {
-    if (!stock || stock === 0) {
-      return { text: 'Out of Stock', color: 'text-red-600', bgColor: 'bg-red-100' };
-    } else if (stock <= 10) {
-      return { text: `Low Stock (${stock})`, color: 'text-orange-600', bgColor: 'bg-orange-100' };
+  const getStockStatus = (item) => {
+    let totalStock = 0;
+    
+    // Check if product has variants
+    const variants = item.varients || item.variants || [];
+    
+    if (variants.length > 0) {
+      // Calculate total stock from all variants
+      variants.forEach(variant => {
+        if (variant.selected && Array.isArray(variant.selected)) {
+          variant.selected.forEach(size => {
+            totalStock += parseInt(size.total || 0);
+          });
+        }
+      });
     } else {
-      return { text: `In Stock (${stock})`, color: 'text-green-600', bgColor: 'bg-green-100' };
+      // For normal products - check if stock field exists
+      if (item.stock !== undefined && item.stock !== null) {
+        totalStock = parseInt(item.stock || 0);
+      } else {
+        // Stock field not available in API response - show N/A
+        return { text: 'Stock: N/A', color: 'text-gray-600', bgColor: 'bg-gray-100' };
+      }
+    }
+    
+    // Return stock status
+    if (!totalStock || totalStock === 0) {
+      return { text: 'Out of Stock', color: 'text-red-600', bgColor: 'bg-red-100' };
+    } else if (totalStock <= 10) {
+      return { text: `Low Stock (${totalStock})`, color: 'text-orange-600', bgColor: 'bg-orange-100' };
+    } else {
+      return { text: `In Stock (${totalStock})`, color: 'text-green-600', bgColor: 'bg-green-100' };
     }
   };
 
@@ -270,13 +294,45 @@ export default function ProductScreen() {
 
     const imageSource = getImageSource();
 
-    // Handle price from price_slot if available, otherwise use main price
-    const price = item.price_slot?.[0]?.Offerprice || item.price || 0;
-    const originalPrice = item.price_slot?.[0]?.price;
-    const discount = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+    // Handle price - check price_slot first, then variants, then main price
+    const priceSlot = item.price_slot?.[0];
+    const variants = item.varients || item.variants || [];
+    
+    let price, originalPrice, discount;
+    
+    // If price_slot is empty and variants exist, use variant price
+    if (!priceSlot && variants.length > 0) {
+      const firstVariant = variants[0];
+      price = firstVariant?.Offerprice > 0 ? firstVariant.Offerprice : (firstVariant?.price || 0);
+      originalPrice = firstVariant?.Offerprice > 0 ? firstVariant.price : null;
+      discount = originalPrice && price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+    } else {
+      // Use price_slot as before
+      price = priceSlot?.Offerprice || priceSlot?.price || item.price || 0;
+      originalPrice = priceSlot?.Offerprice > 0 ? priceSlot.price : null;
+      discount = originalPrice && price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+    }
 
-    const stockStatus = getStockStatus(item.stock || item.quantity || 0);
-    const isActive = item.status === 'verified';
+    const stockStatus = getStockStatus(item);
+    
+    // Get product status with proper display
+    const getProductStatus = (status) => {
+      const statusLower = (status || 'pending').toLowerCase();
+      switch (statusLower) {
+        case 'verified':
+          return { text: 'Verified', color: 'text-green-600', bgColor: 'bg-green-100' };
+        case 'pending':
+          return { text: 'Pending', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+        case 'suspended':
+          return { text: 'Suspended', color: 'text-red-600', bgColor: 'bg-red-100' };
+        case 'rejected':
+          return { text: 'Rejected', color: 'text-gray-600', bgColor: 'bg-gray-100' };
+        default:
+          return { text: 'Pending', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
+      }
+    };
+    
+    const productStatus = getProductStatus(item.status);
 
 
 
@@ -294,9 +350,9 @@ export default function ProductScreen() {
                 {stockStatus.text}
               </Text>
             </View>
-            <View className={`px-2 py-1 rounded-full ${isActive ? 'bg-green-100' : 'bg-gray-100'}`}>
-              <Text className={`text-xs font-medium ${isActive ? 'text-green-600' : 'text-gray-600'}`}>
-                {isActive ? 'Active' : 'Inactive'}
+            <View className={`px-2 py-1 rounded-full ${productStatus.bgColor}`}>
+              <Text className={`text-xs font-medium ${productStatus.color}`}>
+                {productStatus.text}
               </Text>
             </View>
           </View>
@@ -512,8 +568,18 @@ export default function ProductScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50">
-      {/* <StatusBar barStyle="dark-content" backgroundColor="#fff" /> */}
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.backIcon}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Products</Text>
+        <View style={styles.headerRight} />
+      </View>
 
       {/* Success Message Modal */}
       <SuccessMessage
@@ -564,11 +630,48 @@ export default function ProductScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    backgroundColor: '#f9fafb' 
+  },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    backgroundColor: '#1F2937', 
+    paddingHorizontal: 16, 
+    paddingVertical: 14,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  backButton: { 
+    padding: 8,
+    marginLeft: -8,
+  },
+  backIcon: { 
+    fontSize: 32, 
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  headerTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
+  },
+  headerRight: { 
+    width: 40,
+  },
   // Modal Styles
   modalOverlay: {
     flex: 1,

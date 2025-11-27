@@ -15,6 +15,95 @@ import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
+// Helper function to get color name from hex code
+const getColorName = (hexColor) => {
+  if (!hexColor) return 'Unknown';
+  
+  const colorMap = {
+    '#000000': 'Black',
+    '#FFFFFF': 'White',
+    '#FF0000': 'Red',
+    '#00FF00': 'Green',
+    '#0000FF': 'Blue',
+    '#FFFF00': 'Yellow',
+    '#FF00FF': 'Magenta',
+    '#00FFFF': 'Cyan',
+    '#FFA500': 'Orange',
+    '#800080': 'Purple',
+    '#FFC0CB': 'Pink',
+    '#A52A2A': 'Brown',
+    '#808080': 'Gray',
+    '#C0C0C0': 'Silver',
+    '#FFD700': 'Gold',
+    '#000080': 'Navy',
+    '#008080': 'Teal',
+    '#800000': 'Maroon',
+    '#808000': 'Olive',
+    '#00FF7F': 'Spring Green',
+    '#4B0082': 'Indigo',
+    '#EE82EE': 'Violet',
+    '#F0E68C': 'Khaki',
+    '#E6E6FA': 'Lavender',
+    '#FFDAB9': 'Peach',
+    '#40E0D0': 'Turquoise',
+    '#FF6347': 'Tomato',
+    '#4682B4': 'Steel Blue',
+    '#D2691E': 'Chocolate',
+    '#FF1493': 'Deep Pink',
+    '#1E90FF': 'Dodger Blue',
+    '#32CD32': 'Lime Green',
+    '#FFE4B5': 'Moccasin',
+    '#FFDEAD': 'Navajo White',
+    '#FFA07A': 'Light Salmon',
+    '#20B2AA': 'Light Sea Green',
+    '#87CEEB': 'Sky Blue',
+    '#778899': 'Light Slate Gray',
+    '#B0C4DE': 'Light Steel Blue',
+    '#FFFFE0': 'Light Yellow',
+    '#00CED1': 'Dark Turquoise',
+    '#9400D3': 'Dark Violet',
+    '#FF8C00': 'Dark Orange',
+    '#8B0000': 'Dark Red',
+    '#006400': 'Dark Green',
+    '#00008B': 'Dark Blue',
+    '#8B008B': 'Dark Magenta',
+    '#556B2F': 'Dark Olive Green',
+    '#FF4500': 'Orange Red',
+    '#DA70D6': 'Orchid',
+    '#DB7093': 'Pale Violet Red',
+    '#FFEFD5': 'Papaya Whip',
+    '#98FB98': 'Pale Green',
+    '#AFEEEE': 'Pale Turquoise',
+    '#DDA0DD': 'Plum',
+    '#B0E0E6': 'Powder Blue',
+    '#BC8F8F': 'Rosy Brown',
+    '#4169E1': 'Royal Blue',
+    '#8B4513': 'Saddle Brown',
+    '#FA8072': 'Salmon',
+    '#F4A460': 'Sandy Brown',
+    '#2E8B57': 'Sea Green',
+    '#FFF5EE': 'Seashell',
+    '#A0522D': 'Sienna',
+    '#87CEEB': 'Sky Blue',
+    '#6A5ACD': 'Slate Blue',
+    '#708090': 'Slate Gray',
+    '#FFFAFA': 'Snow',
+    '#00FF7F': 'Spring Green',
+    '#4682B4': 'Steel Blue',
+    '#D2B48C': 'Tan',
+    '#D8BFD8': 'Thistle',
+    '#FF6347': 'Tomato',
+    '#40E0D0': 'Turquoise',
+    '#EE82EE': 'Violet',
+    '#F5DEB3': 'Wheat',
+    '#F5F5F5': 'White Smoke',
+    '#9ACD32': 'Yellow Green',
+  };
+
+  const upperHex = hexColor.toUpperCase();
+  return colorMap[upperHex] || hexColor;
+};
+
 const FlashSaleDetail = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -27,16 +116,24 @@ const FlashSaleDetail = () => {
       headerShown: true,
       headerTitle: t('flash_sale'),
       headerTitleAlign: 'center',
+      headerStyle: {
+        backgroundColor: '#1F2937',
+      },
+      headerTintColor: '#fff',
+      headerTitleStyle: {
+        fontWeight: 'bold',
+        fontSize: 20,
+      },
       headerLeft: () => (
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
-          style={{ marginLeft: 10 }}
+          style={{ marginLeft: 10, padding: 8 }}
         >
-          <Text style={{ fontSize: 24 }}>←</Text>
+          <Text style={{ fontSize: 32, color: '#fff', fontWeight: 'bold' }}>←</Text>
         </TouchableOpacity>
       ),
     });
-  }, [navigation]);
+  }, [navigation, t]);
   
   const [saleData, setSaleData] = useState(null);
   const [timeLeft, setTimeLeft] = useState({
@@ -50,11 +147,11 @@ const FlashSaleDetail = () => {
   const fetchSaleDetails = useCallback(async () => {
     try {
       setIsLoading(true);
-      // First fetch all flash sales
-      const response = await GetApi("getOneFlashSalePerSeller");
       
+      const response = await GetApi("getOneFlashSalePerSeller");
+      console.log('logs',response)
       if (response && response.data) {
-        // Find the specific sale by ID
+       
         const sale = response.data.find(sale => sale._id === saleId);
         
         if (sale) {
@@ -142,9 +239,15 @@ const FlashSaleDetail = () => {
   const renderProduct = (product) => {
     if (!product) return null;
 
-    const imageUrl = product.varients?.[0]?.image?.[0] || 
-                    product.image || 
-                    'https://via.placeholder.com/300';
+    // Get image from variants first, then from images array, then fallback
+    let imageUrl = 'https://via.placeholder.com/300';
+    if (product.varients && product.varients.length > 0 && product.varients[0]?.image?.[0]) {
+      imageUrl = product.varients[0].image[0];
+    } else if (product.images && product.images.length > 0) {
+      imageUrl = product.images[0];
+    } else if (product.image) {
+      imageUrl = product.image;
+    }
     
     const originalPrice = product.price_slot?.[0]?.price || 0;
     const salePrice = saleData?.price || originalPrice;
@@ -190,8 +293,38 @@ const FlashSaleDetail = () => {
           </TouchableOpacity>
           
           <Text style={styles.description}>
-            {product.description || t('no_description_available')}
+            {product.long_description || product.short_description || product.description || t('no_description_available')}
           </Text>
+
+          {/* Available Colors Section */}
+          {product.varients && product.varients.length > 0 && (
+            <View style={styles.variantsSection}>
+              <Text style={styles.sectionTitle}>{t('available_colors')} ({product.varients.length})</Text>
+              {product.varients.map((variant, index) => (
+                <View key={index} style={styles.variantCard}>
+                  <View style={styles.variantHeader}>
+                    <View style={[styles.colorBox, { backgroundColor: variant.color }]} />
+                    <Text style={styles.variantPrice}>
+                      ${(variant.Offerprice || variant.price || 0).toFixed(2)}
+                    </Text>
+                  </View>
+                  {variant.selected && variant.selected.length > 0 && (
+                    <View style={styles.sizesContainer}>
+                      <Text style={styles.sizesLabel}>{t('available_sizes')}:</Text>
+                      <View style={styles.sizesGrid}>
+                        {variant.selected.map((size, sizeIndex) => (
+                          <View key={sizeIndex} style={styles.sizeChip}>
+                            <Text style={styles.sizeText}>{size.value}</Text>
+                            <Text style={styles.sizeStock}>({size.total || 0})</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
         </View>
       </View>
     );
@@ -228,7 +361,11 @@ const FlashSaleDetail = () => {
         <Text style={styles.offerText}>{t('limited_time_offer')}</Text>
       </View>
       
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
         {saleData?.products?.map((product, index) => (
           <View key={index}>
             {renderProduct(product)}
@@ -276,6 +413,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  scrollViewContent: {
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -361,6 +501,79 @@ const styles = StyleSheet.create({
     color: '#555',
     lineHeight: 24,
     marginTop: 10,
+    marginBottom: 20,
+  },
+  variantsSection: {
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  variantCard: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  variantHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  colorBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+  },
+  variantPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FF6B6B',
+  },
+  sizesContainer: {
+    marginTop: 8,
+  },
+  sizesLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 6,
+  },
+  sizesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  sizeChip: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  sizeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  sizeStock: {
+    fontSize: 11,
+    color: '#6B7280',
   },
 });
 
