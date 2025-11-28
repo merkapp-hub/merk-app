@@ -3,18 +3,15 @@ import {
   View,
   Text,
   FlatList,
-  Image,
-  TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
-
   Dimensions
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { GetApi } from '../Helper/Service';
 import Header from '../components/Header';
+import ProductGridCard from '../components/ProductGridCard';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 
 const SearchResultScreen = () => {
   const route = useRoute();
@@ -50,7 +47,7 @@ const SearchResultScreen = () => {
 
     setLoading(true);
 
-    GetApi(`productsearch?key=${encodeURIComponent(query)}`, null).then(
+    GetApi(`productsearch?key=${encodeURIComponent(query)}&is_verified=true`, null).then(
       (res) => {
         setLoading(false);
         console.log('Search results:', res);
@@ -70,82 +67,7 @@ const SearchResultScreen = () => {
   };
 
   const renderProductItem = ({ item }) => {
-    // Get the first price slot or use default values
-    const priceSlot = item.price_slot?.[0] || {};
-    const price = parseFloat(priceSlot.Offerprice || priceSlot.price || 0);
-    const originalPrice = priceSlot.price ? parseFloat(priceSlot.price) : null;
-    const discount = originalPrice && originalPrice > price
-      ? `${Math.round(((originalPrice - price) / originalPrice) * 100)}% OFF`
-      : null;
-
-    return (
-      <TouchableOpacity
-        style={styles.productCard}
-        onPress={() => navigation.navigate('ProductDetails', {
-          productId: item.slug || item._id,
-          productName: item.name
-        })}
-        activeOpacity={0.9}
-      >
-       
-        {discount && (
-          <View style={styles.discountBadge}>
-            <Text style={styles.discountText}>{discount}</Text>
-          </View>
-        )}
-
-        <Image
-          source={{ uri: item.varients?.[0]?.image?.[0] || 'https://via.placeholder.com/150' }}
-          style={styles.productImage}
-          resizeMode="contain"
-          onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
-        />
-
-        <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-
-          <View style={styles.priceContainer}>
-            <Text style={styles.price}>${price.toFixed(2)}</Text>
-            {originalPrice && originalPrice > price && (
-              <Text style={styles.originalPrice}>
-                ${originalPrice.toFixed(2)}
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.ratingContainer}>
-            <View style={styles.starsContainer}>
-              {renderStars(item.rating || 4.0)}
-            </View>
-            {item.soldPieces !== undefined && (
-              <Text style={styles.soldText}>({item.sold_pieces || 0} sold)</Text>
-            )}
-          </View>
-        </View>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderStars = (rating) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push('★');
-    }
-    if (hasHalfStar) {
-      stars.push('☆');
-    }
-    for (let i = stars.length; i < 5; i++) {
-      stars.push('☆');
-    }
-
-    return stars.map((star, index) => (
-      <Text key={index} style={styles.star}>
-        {star}
-      </Text>
-    ));
+    return <ProductGridCard item={item} />;
   };
 
   return (

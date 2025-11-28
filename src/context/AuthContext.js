@@ -289,29 +289,44 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Add item to cart (localStorage)
-  const addToCart = async (product, selectedVariant = 0, quantity = 1) => {
+  const addToCart = async (product, selectedVariant = 0, quantity = 1, selectedSize = null, selectedPrice = null) => {
     try {
       const cartData = await AsyncStorage.getItem('cartData');
       let cart = cartData ? JSON.parse(cartData) : [];
       
       // Get price from selected variant if available, otherwise use price_slot
       const variant = product.varients?.[selectedVariant];
-      const variantPrice = variant?.Offerprice || variant?.price || product.price_slot?.[0]?.Offerprice || 0;
-      const variantOriginalPrice = variant?.price || product.price_slot?.[0]?.price || 0;
+      
+      // Use provided price if available (from size selection), otherwise use variant price
+      // Check Offerprice first, but if it's 0 or undefined, use regular price
+      const offerPrice = selectedPrice?.Offerprice || variant?.Offerprice || product.price_slot?.[0]?.Offerprice;
+      const regularPrice = selectedPrice?.price || variant?.price || product.price_slot?.[0]?.price || 0;
+      
+      // Use offer price if it exists and is greater than 0, otherwise use regular price
+      const variantPrice = (offerPrice && offerPrice > 0) ? offerPrice : regularPrice;
+      const variantOriginalPrice = regularPrice;
+      
+      // Use provided size or get from variant's selected array
+      const variantSize = selectedSize || variant?.selected?.[0]?.value || variant?.size || null;
+      
+      // Create unique ID including size if available
+      const cartItemId = selectedSize 
+        ? `${product._id}_${selectedVariant}_${selectedSize}`
+        : `${product._id}_${selectedVariant}`;
       
       const cartItem = {
-        _id: product._id + '_' + selectedVariant,
+        _id: cartItemId,
         product_id: product._id,
         name: product.name,
         price: variantPrice,
         originalPrice: variantOriginalPrice,
         qty: quantity,
         total: variantPrice * quantity,
-        image: product.varients?.[selectedVariant]?.image?.[0] || product.image,
+        image: variant?.image?.[0] || product.varients?.[selectedVariant]?.image?.[0] || product.images?.[0] || product.image || 'https://via.placeholder.com/300',
         selectedVariant: selectedVariant,
         selectedVariantName: variant?.name || '',
-        selectedColor: product.varients?.[selectedVariant]?.color,
-        selectedSize: product.varients?.[selectedVariant]?.size,
+        selectedColor: variant?.color || null,
+        selectedSize: variantSize,
         userid: userInfo?._id || 'guest'
       };
 

@@ -54,11 +54,15 @@ const FlashSale = () => {
       const response = await GetApi("getOneFlashSalePerSeller");
       
       if (response && response.data) {
-        // Filter out sales that have ended
+        // Filter out sales that have ended and only show verified products
         const now = new Date();
-        const activeSales = response.data.filter(sale => 
-          new Date(sale.endDateTime) > now
-        );
+        const activeSales = response.data
+          .filter(sale => new Date(sale.endDateTime) > now)
+          .map(sale => ({
+            ...sale,
+            products: sale.products?.filter(product => product.is_verified === true) || []
+          }))
+          .filter(sale => sale.products.length > 0); // Remove sales with no verified products
         
         setSaleData(activeSales);
       }

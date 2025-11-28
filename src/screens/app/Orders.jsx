@@ -18,11 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { GetApi, Post } from '../../Helper/Service';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
-<<<<<<< HEAD
 import { SafeAreaView } from 'react-native-safe-area-context';
-=======
-
->>>>>>> origin/latest-app
 
 
 const OrdersScreen = ({ navigation }) => {
@@ -482,8 +478,8 @@ const OrdersScreen = ({ navigation }) => {
 
   if (loading && orders.length === 0) {
     return (
-      <View style={styles.container}>
-        <StatusBar barStyle="light-content" backgroundColor="#f9fafb" />
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <TouchableOpacity
@@ -498,35 +494,26 @@ const OrdersScreen = ({ navigation }) => {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#12344D" />
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-<<<<<<< HEAD
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
 
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-=======
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#f9fafb" />
-      <View className="bg-slate-800 px-4 py-3">
-        <View className="flex-row items-center">
->>>>>>> origin/latest-app
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            className="mr-4"
+            style={styles.backButton}
           >
-            <ChevronLeftIcon size={24} color="white" />
+            <ChevronLeftIcon size={24} color="#ffffff" />
           </TouchableOpacity>
-          <Text className="text-white text-xl font-semibold">{t('my_orders')}</Text>
+          <Text style={styles.headerTitle}>{t('my_orders')}</Text>
         </View>
       </View>
-      {/* Header */}
-
 
       {orders.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -712,14 +699,9 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   header: {
-    backgroundColor: 'white',
+    backgroundColor: '#1e293b',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
   },
   headerContent: {
     flexDirection: 'row',
@@ -731,7 +713,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#111827',
+    color: '#ffffff',
   },
   loadingContainer: {
     flex: 1,

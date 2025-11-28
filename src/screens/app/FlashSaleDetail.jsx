@@ -12,6 +12,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { GetApi } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
+import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 
 const { width } = Dimensions.get('window');
 
@@ -127,9 +128,9 @@ const FlashSaleDetail = () => {
       headerLeft: () => (
         <TouchableOpacity 
           onPress={() => navigation.goBack()}
-          style={{ marginLeft: 10, padding: 8 }}
+          style={{ marginLeft: 0, padding: 0 }}
         >
-          <Text style={{ fontSize: 32, color: '#fff', fontWeight: 'bold' }}>←</Text>
+           <ChevronLeftIcon size={24} color="white" />
         </TouchableOpacity>
       ),
     });
@@ -351,14 +352,20 @@ const FlashSaleDetail = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.sellerName}>{t('seller_flash_sale')}</Text>
+        <Text style={styles.sellerName}>
+          {saleData?.seller?.firstName && saleData?.seller?.lastName 
+            ? `${saleData.seller.firstName} ${saleData.seller.lastName}'s Flash Sale`
+            : saleData?.seller?.name || t('seller_flash_sale')}
+        </Text>
         <Text style={styles.timeLeft}>
           {timeLeft.hours}h {timeLeft.minutes}m {timeLeft.seconds}s {t('left')}
         </Text>
       </View>
       
       <View style={styles.offerBanner}>
-        <Text style={styles.offerText}>{t('limited_time_offer')}</Text>
+        <Text style={styles.offerText}>
+          {saleData?.title || saleData?.name || t('limited_time_offer')}
+        </Text>
       </View>
       
       <ScrollView 

@@ -10,12 +10,10 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ArrowLeftIcon } from 'react-native-heroicons/outline';
+import { ArrowLeftIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { useTranslation } from 'react-i18next';
 import { GetApi } from '../../Helper/Service';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-
 
 
 const { width } = Dimensions.get('window');
@@ -43,7 +41,7 @@ const BestSellingProducts = () => {
       }
 
       console.log('Fetching products, page:', pageNum);
-      const response = await GetApi(`getProduct?page=${pageNum}`, {});
+      const response = await GetApi(`getProduct?page=${pageNum}&is_verified=true`, {});
       console.log('Full API Response:', response);
 
       if (!response) {
@@ -109,7 +107,6 @@ const BestSellingProducts = () => {
   };
 
   const renderProductItem = ({ item }) => {
-<<<<<<< HEAD
     // Get image - check variants first, then images array, then direct image property
     const getProductImage = () => {
       if (item.varients && item.varients.length > 0 && item.varients[0].image && item.varients[0].image.length > 0) {
@@ -124,51 +121,44 @@ const BestSellingProducts = () => {
       return 'https://via.placeholder.com/300';
     };
 
-    // Get price - check variants first, then price_slot
+    // Get price - comprehensive check for all possible locations
     let price = 0;
-    let offerPrice = null;
+    let offerPrice = 0;
     
-    // First check variants
+    // First check variants for price
     if (item.varients && item.varients.length > 0) {
       const variant = item.varients[0];
-      price = variant.price || 0;
-      offerPrice = variant.Offerprice && variant.Offerprice > 0 ? variant.Offerprice : variant.price;
+      
+      // Variant has direct price properties
+      if (variant.price) {
+        price = parseFloat(variant.price) || 0;
+        offerPrice = variant.Offerprice && parseFloat(variant.Offerprice) > 0 
+          ? parseFloat(variant.Offerprice) 
+          : price;
+      }
     }
     
     // If no price from variants, check price_slot
-    if (!offerPrice && item.price_slot && item.price_slot.length > 0) {
+    if (price === 0 && item.price_slot && item.price_slot.length > 0) {
       const priceSlot = item.price_slot[0];
-      price = priceSlot.price || 0;
-      // Use Offerprice only if it's greater than 0, otherwise use price
-      offerPrice = priceSlot.Offerprice && priceSlot.Offerprice > 0 ? priceSlot.Offerprice : priceSlot.price;
+      price = parseFloat(priceSlot.price) || 0;
+      offerPrice = priceSlot.Offerprice && parseFloat(priceSlot.Offerprice) > 0 
+        ? parseFloat(priceSlot.Offerprice) 
+        : price;
+    }
+    
+    // If still no price, check direct price property
+    if (price === 0 && item.price) {
+      price = parseFloat(item.price) || 0;
+      offerPrice = price;
     }
     
     const imageData = getProductImage();
 
-    const discountPercentage = (offerPrice && offerPrice < price) ?
+    // Calculate discount - use offer price if it's lower than regular price
+    const finalPrice = offerPrice > 0 && offerPrice < price ? offerPrice : price;
+    const discountPercentage = (offerPrice > 0 && price > 0 && offerPrice < price) ?
       Math.round(((price - offerPrice) / price) * 100) : 0;
-=======
-    console.log('=== Debug Product Item ===');
-    console.log('Item name:', item.name);
-
-    // Get the first price slot or default to 0
-    const priceSlot = item.price_slot?.[0];
-    console.log('Price slot:', priceSlot);
-
-    const price = priceSlot?.price || 0;
-    const offerPrice = priceSlot?.Offerprice || null;
-    console.log('Price:', price, 'Offer Price:', offerPrice);
-
-    // Get the first variant's first image or empty string
-    const imageData = item.varients?.[0]?.image?.[0] || '';
-    console.log('Image data exists:', !!imageData);
-
-    const discountPercentage = (offerPrice && offerPrice < price) ?
-      Math.round(((price - offerPrice) / price) * 100) : 0;
-    console.log('Discount percentage:', discountPercentage);
-    console.log('Sold pieces:', item.sold_pieces);
-    console.log('========================');
->>>>>>> origin/latest-app
 
     return (
       <TouchableOpacity
@@ -179,7 +169,7 @@ const BestSellingProducts = () => {
         })}
       >
         {/* Discount badge - Show if there's an offer price */}
-        {offerPrice && offerPrice < price && (
+        {discountPercentage > 0 && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>
               {discountPercentage}% OFF
@@ -188,17 +178,9 @@ const BestSellingProducts = () => {
         )}
 
         <Image
-<<<<<<< HEAD
           source={{ uri: imageData }}
           style={styles.productImage}
           resizeMode="contain"
-=======
-          source={imageData ? { uri: imageData } : { uri: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=300&h=300&fit=crop' }}
-          style={styles.productImage}
-          resizeMode="contain"
-          onError={(error) => console.log('Image error:', error)}
-          onLoad={() => console.log('Image loaded successfully')}
->>>>>>> origin/latest-app
         />
 
         <View style={styles.productInfo}>
@@ -207,13 +189,13 @@ const BestSellingProducts = () => {
           </Text>
 
           <View style={styles.priceContainer}>
-            {offerPrice && offerPrice < price ? (
+            {discountPercentage > 0 ? (
               <>
-                <Text style={styles.price}>${Number(offerPrice).toFixed(2)}</Text>
-                <Text style={styles.originalPrice}>${Number(price).toFixed(2)}</Text>
+                <Text style={styles.price}>${finalPrice.toFixed(2)}</Text>
+                <Text style={styles.originalPrice}>${price.toFixed(2)}</Text>
               </>
             ) : (
-              <Text style={styles.price}>${Number(price).toFixed(2)}</Text>
+              <Text style={styles.price}>${(price || 0).toFixed(2)}</Text>
             )}
           </View>
 
@@ -261,16 +243,18 @@ const BestSellingProducts = () => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <ArrowLeftIcon size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('best_selling_products')}</Text>
-        <View style={{ width: 24 }} /> {/* For alignment */}
-      </View>
+     <View className="bg-slate-800 px-4 py-3">
+            <View className="flex-row items-center">
+              <TouchableOpacity 
+                onPress={() => navigation.goBack()}
+                className="mr-4"
+              >
+                <ChevronLeftIcon size={24} color="white" />
+              </TouchableOpacity>
+            <Text style={styles.headerTitle}>{t('best_selling_products')}</Text>
+            </View>
+          </View>
+        
 
       {/* Products List */}
       <FlatList
@@ -304,11 +288,7 @@ const BestSellingProducts = () => {
           <ActivityIndicator size="large" color="#fff" />
         </View>
       )}
-<<<<<<< HEAD
-    </SafeAreaView>
-=======
     </View>
->>>>>>> origin/latest-app
   );
 };
 
@@ -350,7 +330,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1f2937',
+    color: 'white',
   },
   columnWrapper: {
     justifyContent: 'space-between',

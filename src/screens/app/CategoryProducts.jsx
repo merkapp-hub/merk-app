@@ -10,12 +10,10 @@ import {
   Dimensions
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ArrowLeftIcon } from 'react-native-heroicons/outline';
+import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { GetApi } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-
 
 
 const { width } = Dimensions.get('window');
@@ -50,7 +48,7 @@ const CategoryProducts = () => {
       console.log('Fetching products for category ID:', categoryId, 'Page:', page);
 
       // Use the correct endpoint that filters by category on the server side
-      const response = await GetApi(`getProductByCategory/${categoryId}?page=${page}&limit=${limit}`);
+      const response = await GetApi(`getProductByCategory/${categoryId}?page=${page}&limit=${limit}&is_verified=true`);
 
       console.log('API Response:', {
         status: response?.status,
@@ -78,7 +76,6 @@ const CategoryProducts = () => {
         }
 
         // Format the products - server should already filter by category
-<<<<<<< HEAD
         const formattedProducts = productsData.map((product) => {
           // Get image - check variants first, then images array, then direct image
           const getImage = () => {
@@ -130,24 +127,6 @@ const CategoryProducts = () => {
             _raw: product
           };
         });
-=======
-        const formattedProducts = productsData.map((product) => ({
-          id: product._id,
-          slug: product.slug || product._id,
-          name: product.name || 'Unnamed Product',
-          price: product.price_slot?.[0]?.Offerprice || 0,
-          originalPrice: product.price_slot?.[0]?.price || 0,
-          discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
-            ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
-              product.price_slot[0].price * 100))
-            : 0,
-          rating: 4.0,
-          image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
-          category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
-          soldPieces: product.sold_pieces || 0,
-          _raw: product
-        }));
->>>>>>> origin/latest-app
 
 
 
@@ -204,9 +183,8 @@ const CategoryProducts = () => {
           if (page === 1) {
 
             try {
-              const response = await GetApi(`getProducts?category=${categoryId}&page=${page}&limit=${limit}`);
+              const response = await GetApi(`getProducts?category=${categoryId}&page=${page}&limit=${limit}&is_verified=true`);
               if (response && response.data) {
-<<<<<<< HEAD
                 const formattedProducts = response.data.map((product) => {
                   // Get image - check variants first, then images array, then direct image
                   const getImage = () => {
@@ -258,24 +236,6 @@ const CategoryProducts = () => {
                     _raw: product
                   };
                 });
-=======
-                const formattedProducts = response.data.map((product) => ({
-                  id: product._id,
-                  slug: product.slug || product._id,
-                  name: product.name || 'Unnamed Product',
-                  price: product.price_slot?.[0]?.Offerprice || 0,
-                  originalPrice: product.price_slot?.[0]?.price || 0,
-                  discount: product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice
-                    ? Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
-                      product.price_slot[0].price * 100))
-                    : 0,
-                  rating: 4.0,
-                  image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
-                  category: typeof product.category === 'object' ? product.category.name : 'Uncategorized',
-                  soldPieces: product.sold_pieces || 0,
-                  _raw: product
-                }));
->>>>>>> origin/latest-app
                 setProducts(formattedProducts);
                 setHasMore(response.pagination?.currentPage < response.pagination?.totalPages);
               }
@@ -359,15 +319,15 @@ const CategoryProducts = () => {
 
   if (loading && products.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
+      <SafeAreaView style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity
           style={styles.retryButton}
@@ -375,7 +335,7 @@ const CategoryProducts = () => {
         >
           <Text style={styles.retryButtonText}>{t('retry')}</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -383,16 +343,17 @@ const CategoryProducts = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <ArrowLeftIcon size={24} color="#000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {categoryName || t('category_products')}
-        </Text>
-        <View style={{ width: 24 }} />
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <ChevronLeftIcon size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {categoryName || t('category_products')}
+          </Text>
+        </View>
       </View>
 
       {/* Product List */}
@@ -436,23 +397,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
+    backgroundColor: '#1F2937',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
   },
   backButton: {
-    padding: 8,
+    marginRight: 16,
   },
   headerTitle: {
-    flex: 1,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#1f2937',
-    textAlign: 'center',
-    marginHorizontal: 8,
+    color: '#ffffff',
   },
   loadingContainer: {
     flex: 1,

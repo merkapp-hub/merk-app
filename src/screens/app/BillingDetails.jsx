@@ -15,23 +15,24 @@ import {
   FlatList,
   StyleSheet
 } from 'react-native';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GetApi, Post } from '../../Helper/Service';
 import { useAuth } from '../../context/AuthContext';
 import { Country, State, City } from 'country-state-city';
 import { useTranslation } from 'react-i18next';
+import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 
 const BillingDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { userInfo: user, updateCartCount } = useAuth();
   const { t } = useTranslation();
-
+  
   // Get cart data from route params
   const { cartItems, subtotal, serviceFee, shipping, total, paymentMethod } = route.params;
-
+  
   // Form state
   const [formData, setFormData] = useState({
     firstName: user?.first_name || '',
@@ -47,10 +48,10 @@ const BillingDetails = () => {
     companyName: '',
     notes: '',
   });
-
+  
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
-
+  
   // Country State City Selector
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
@@ -67,7 +68,7 @@ const BillingDetails = () => {
       phonecode: country.phonecode,
     }));
     setCountries(allCountries);
-
+    
     // Set default country (United States)
     const usCountry = allCountries.find(c => c.name === 'United States');
     if (usCountry) {
@@ -75,7 +76,7 @@ const BillingDetails = () => {
       setStates(usStates);
     }
   }, []);
-
+  
   // Load states when country changes
   useEffect(() => {
     if (formData.country) {
@@ -92,7 +93,7 @@ const BillingDetails = () => {
       }
     }
   }, [formData.country]);
-
+  
   // Load cities when state changes
   useEffect(() => {
     if (formData.state && formData.country) {
@@ -112,10 +113,10 @@ const BillingDetails = () => {
     }
   }, [formData.state]);
 
-  // Check authentication and cart items on component mount
+
   useEffect(() => {
     console.log('BillingDetails mounted with cartItems:', cartItems);
-
+    
     // Log detailed product info for debugging
     if (cartItems && cartItems.length > 0) {
       console.log('Cart items details:');
@@ -129,7 +130,7 @@ const BillingDetails = () => {
         });
       });
     }
-
+    
     const checkAuth = async () => {
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
@@ -145,7 +146,7 @@ const BillingDetails = () => {
         );
       }
     };
-
+    
     // Cart items validation
     if (!cartItems || cartItems.length === 0) {
       Alert.alert(t('empty_cart'), t('no_items_cart'), [
@@ -153,25 +154,25 @@ const BillingDetails = () => {
       ]);
       return;
     }
+    
 
-    // Check if all cart items have valid product data
-    const invalidItems = cartItems.filter(item =>
+    const invalidItems = cartItems.filter(item => 
       !item || !item.product || !item.product._id
     );
-
+    
     if (invalidItems.length > 0) {
       Alert.alert(t('invalid_cart_items'), t('some_items_invalid'), [
         { text: t('ok'), onPress: () => navigation.goBack() }
       ]);
     }
-
+    
     checkAuth();
   }, [cartItems]);
 
   // Validate form
   const validateForm = () => {
     const newErrors = {};
-
+    
     if (!formData.firstName.trim()) newErrors.firstName = t('first_name_required');
     if (!formData.lastName.trim()) newErrors.lastName = t('last_name_required');
     if (!formData.email.trim()) newErrors.email = t('email_required');
@@ -179,7 +180,7 @@ const BillingDetails = () => {
     if (!formData.address.trim()) newErrors.address = t('address_required');
     if (!formData.city.trim()) newErrors.city = t('city_required');
     if (!formData.postalCode.trim()) newErrors.postalCode = t('postal_code_required');
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -190,7 +191,7 @@ const BillingDetails = () => {
       ...prev,
       [field]: value
     }));
-
+    
     // Clear error when user types
     if (errors[field]) {
       setErrors(prev => ({
@@ -199,7 +200,7 @@ const BillingDetails = () => {
       }));
     }
   };
-
+  
   // Render dropdown item
   const renderDropdownItem = (item, onSelect, field) => (
     <TouchableOpacity
@@ -223,21 +224,21 @@ const BillingDetails = () => {
       <Text style={styles.dropdownItemText}>{item.name || item}</Text>
     </TouchableOpacity>
   );
-
+  
   // Render dropdown
   const renderDropdown = (visible, setVisible, data, value, field, placeholder) => (
     <View style={styles.dropdownContainer}>
       <TouchableOpacity
         style={[
-          styles.input,
+          styles.input, 
           errors[field] && styles.inputError,
           { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }
         ]}
         onPress={() => setVisible(!visible)}
       >
-        <Text
+        <Text 
           style={[
-            styles.dropdownText,
+            styles.dropdownText, 
             !value && styles.placeholderText,
             { flex: 1, marginRight: 8 }
           ]}
@@ -247,7 +248,7 @@ const BillingDetails = () => {
         </Text>
         <Text style={styles.dropdownIcon}>▼</Text>
       </TouchableOpacity>
-
+      
       <Modal
         transparent={true}
         visible={visible}
@@ -257,7 +258,7 @@ const BillingDetails = () => {
         <TouchableWithoutFeedback onPress={() => setVisible(false)}>
           <View style={styles.modalOverlay} />
         </TouchableWithoutFeedback>
-
+        
         <View style={styles.dropdownList}>
           <FlatList
             data={data}
@@ -276,28 +277,28 @@ const BillingDetails = () => {
   // Place order
   const placeOrder = async () => {
     if (!validateForm()) return;
-
+    
     setLoading(true);
-
+    
     try {
-      // Token check करें पहले
+    
       const token = await AsyncStorage.getItem('userToken');
       console.log('Token check before order:', token ? 'Found' : 'Not found');
-
+      
       if (!token) {
         Alert.alert(t('authentication_required'), t('please_login_place_order'));
         navigation.navigate('Login');
         return;
       }
-
-      // Products array को properly format करें backend के according
+      
+     
       const productDetail = cartItems.map(item => {
-        // Null/undefined checks add करें
+        
         if (!item || !item.product || !item.product._id) {
           console.error('Invalid cart item:', item);
           throw new Error('Invalid product in cart');
         }
-
+        
         return {
           product: item.product._id,
           qty: item.quantity || 1,
@@ -308,10 +309,10 @@ const BillingDetails = () => {
           image: item.product.image || null,
         };
       });
-
+      
       console.log('Formatted productDetail:', productDetail);
-
-      // Backend के format के according order data बनाएं
+      
+     
       const orderData = {
         productDetail,
         shipping_address: {
@@ -330,21 +331,21 @@ const BillingDetails = () => {
         deliveryTip: 0,
         timeslot: null, // Add if needed
       };
-
+      
       console.log('Final order data:', orderData);
-
+      
       const response = await Post('createProductRequest', orderData);
-
+      
       if (response.success || response.status) {
         // Clear cart on successful order
         await AsyncStorage.removeItem('cartData');
-
+        
         // Update cart count in tab bar
         if (updateCartCount) {
           await updateCartCount();
         }
-
-        // Navigate to order confirmation
+        
+     
         navigation.replace('OrderConfirmation', {
           orderId: response.data?.orders?.[0]?._id || 'N/A',
           orderNumber: response.data?.orders?.[0]?._id || 'N/A',
@@ -355,11 +356,11 @@ const BillingDetails = () => {
       }
     } catch (error) {
       console.error('Order error:', error);
-
-      // Handle specific authentication errors
+      
+    
       if (error.message && error.message.includes('authentication')) {
         Alert.alert(
-          t('authentication_required'),
+          t('authentication_required'), 
           t('session_expired'),
           [
             {
@@ -376,7 +377,7 @@ const BillingDetails = () => {
     }
   };
 
-  // Render form field
+ 
   const renderField = (label, field, placeholder, keyboardType = 'default', required = true) => (
     <View className="mb-4">
       <Text className="text-gray-700 mb-1">
@@ -398,10 +399,21 @@ const BillingDetails = () => {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <View className="flex-1">
-        <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
-          <Text className="text-xl font-bold mb-4">{t('billing_details')}</Text>
-
+      {/* Header */}
+       <View className="bg-slate-800 px-4 py-3">
+            <View className="flex-row items-center">
+              <TouchableOpacity 
+                onPress={() => navigation.goBack()}
+                className="mr-4"
+              >
+                <ChevronLeftIcon size={24} color="white" />
+              </TouchableOpacity>
+            <Text className="text-white text-xl font-semibold">{t('billing_details')}</Text>
+            </View>
+          </View>
+   
+      <ScrollView className="flex-1 px-4 py-4" showsVerticalScrollIndicator={false}>
+          
           {/* Contact Information */}
           <View className="bg-white rounded-lg p-4 mb-4">
             <Text className="font-bold text-lg mb-3">{t('contact_information')}</Text>
@@ -416,13 +428,13 @@ const BillingDetails = () => {
             {renderField(t('email'), 'email', 'your@email.com', 'email-address')}
             {renderField(t('phone'), 'phone', '+1 (___) ___-____', 'phone-pad')}
           </View>
-
+          
           {/* Shipping Address */}
           <View className="bg-white rounded-lg p-4 mb-4">
             <Text className="font-bold text-lg mb-3">{t('shipping_address')}</Text>
             {renderField(t('address'), 'address', '123 Main St', 'default')}
             {renderField(t('apartment_optional'), 'apartment', 'Apt 4B', 'default', false)}
-
+            
             {/* Country Dropdown */}
             <View className="mb-4">
               <Text className="text-gray-700 mb-1">
@@ -438,7 +450,7 @@ const BillingDetails = () => {
               )}
               {errors.country && <Text className="text-red-500 text-xs mt-1">{errors.country}</Text>}
             </View>
-
+            
             {/* State Dropdown */}
             <View className="mb-4">
               <Text className="text-gray-700 mb-1">
@@ -460,7 +472,7 @@ const BillingDetails = () => {
                 <Text className="text-gray-500 text-sm">{t('select_country_first')}</Text>
               )}
             </View>
-
+            
             {/* City Dropdown */}
             <View className="mb-4">
               <Text className="text-gray-700 mb-1">
@@ -482,25 +494,25 @@ const BillingDetails = () => {
                 <Text className="text-gray-500 text-sm">{t('select_state_first')}</Text>
               )}
             </View>
-
+            
             {/* ZIP/Postal Code */}
             <View className="mb-4">
               {renderField(t('zip_postal_code'), 'postalCode', '10001', 'number-pad')}
             </View>
-
+            
             {renderField(t('company_optional'), 'companyName', t('company_name'), 'default', false)}
           </View>
-
+          
           {/* Order Summary */}
           <View className="bg-white rounded-lg p-4 mb-4">
             <Text className="font-bold text-lg mb-3">{t('order_summary')}</Text>
-
+            
             {cartItems.map((item, index) => (
               <View key={index} className="flex-row items-center mb-3">
                 <View className="w-16 h-16 bg-gray-200 rounded-lg mr-3 overflow-hidden">
                   {item.product?.image ? (
-                    <Image
-                      source={{ uri: item.product.image }}
+                    <Image 
+                      source={{ uri: item.product.image }} 
                       style={{ width: '100%', height: '100%' }}
                       resizeMode="cover"
                     />
@@ -516,7 +528,7 @@ const BillingDetails = () => {
                   {item.selectedColor && (
                     <View className="flex-row items-center mt-1">
                       <Text className="text-gray-500 text-xs mr-1">{t('color')}:</Text>
-                      <View
+                      <View 
                         className="w-3 h-3 rounded-full border border-gray-300"
                         style={{ backgroundColor: item.selectedColor }}
                       />
@@ -529,9 +541,9 @@ const BillingDetails = () => {
                 <Text className="font-bold">${(item.product.price * item.quantity).toFixed(2)}</Text>
               </View>
             ))}
-
+            
             <View className="border-t border-gray-200 my-3" />
-
+            
             <View className="mb-2">
               <View className="flex-row justify-between mb-1">
                 <Text>{t('subtotal')}</Text>
@@ -540,6 +552,14 @@ const BillingDetails = () => {
               <View className="flex-row justify-between mb-1">
                 <Text>{t('service_fee')}</Text>
                 <Text>${serviceFee.toFixed(2)}</Text>
+              </View>
+              <View className="flex-row justify-between mb-1">
+                <Text>Tax ({route.params?.taxRate || 0}%)</Text>
+                <Text>${((subtotal * (route.params?.taxRate || 0)) / 100).toFixed(2)}</Text>
+              </View>
+              <View className="flex-row justify-between mb-1">
+                <Text>Delivery Charge</Text>
+                <Text>${(route.params?.deliveryCharge || 0).toFixed(2)}</Text>
               </View>
               <View className="flex-row justify-between mb-1">
                 <Text>{t('shipping')}</Text>
@@ -554,7 +574,7 @@ const BillingDetails = () => {
               </View>
             </View>
           </View>
-
+          
           {/* Payment Method */}
           <View className="bg-white rounded-lg p-4 mb-4">
             <Text className="font-bold text-lg mb-3">{t('payment_method')}</Text>
@@ -567,7 +587,7 @@ const BillingDetails = () => {
               </Text>
             </View>
           </View>
-
+          
           {/* Place Order Button */}
           <View className="bg-white border-t border-gray-200 p-4 mb-20">
             <TouchableOpacity
@@ -585,7 +605,6 @@ const BillingDetails = () => {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </View>
     </View>
   );
 };
@@ -605,7 +624,7 @@ const styles = StyleSheet.create({
   inputError: {
     borderColor: '#ef4444',
   },
-
+  
   // Dropdown styles
   dropdownContainer: {
     position: 'relative',

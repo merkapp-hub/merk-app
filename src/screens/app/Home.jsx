@@ -10,10 +10,11 @@ import {
   FlatList,
   ActivityIndicator
 } from 'react-native';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../../components/Header';
 import FlashSale from '../../components/FlashSale';
+import ProductGridCard from '../../components/ProductGridCard';
 import { GetApi } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
 import SwiperFlatList from 'react-native-swiper-flatlist';
@@ -38,6 +39,8 @@ const HomeScreen = () => {
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [exploreProducts, setExploreProducts] = useState([]);
   const [loadingExplore, setLoadingExplore] = useState(true);
+  const [galleryData, setGalleryData] = useState([]);
+  const [newArrivals, setNewArrivals] = useState([]);
 
   const handleProductPress = (product) => {
     console.log('Navigating to product:', product.id || product._id, product.name);
@@ -88,40 +91,18 @@ const HomeScreen = () => {
       if (response && response.data) {
         productsData = response.data;
       }
+      console.log('Best selling products response:', response);
 
       if (Array.isArray(productsData)) {
-        const products = productsData.map((product, index) => {
-          // Image handling - check if it's base64 or URL
-          let imageUrl = 'https://via.placeholder.com/300';
-
-          if (product.varients?.[0]?.image?.[0]) {
-            const imageData = product.varients[0].image[0];
-
-            if (imageData.startsWith('data:image/')) {
-              imageUrl = imageData;
-            } else {
-              imageUrl = imageData;
-            }
-          } else if (product.image) {
-            imageUrl = product.image;
-          }
-
-          return {
-            id: product._id || `product-${index}`,
-            slug: product.slug || product._id,
-            name: product.name || 'Unnamed Product',
-            price: `$${Math.round(product.price_slot?.[0]?.Offerprice || 0)}`,
-            originalPrice: `$${Math.round(product.price_slot?.[0]?.price || 0)}`,
-            discount: (product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice)
-              ? `${Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
-                product.price_slot[0].price * 100))}% OFF`
-              : '0% OFF',
-            rating: 4.0,
-            image: imageUrl,
-            category: product.category?.name || 'Uncategorized',
-            soldPieces: product.sold_pieces || 0
-          };
-        });
+        // Filter only verified products
+        const verifiedProducts = productsData.filter(product => product.is_verified === true);
+        
+        // Pass original product data with minimal processing - ProductGridCard will handle the rest
+        const products = verifiedProducts.map((product, index) => ({
+          ...product,
+          id: product._id || `product-${index}`,
+          slug: product.slug || product._id,
+        }));
 
 
         setBestSellingProducts(products);
@@ -175,22 +156,7 @@ const HomeScreen = () => {
   }, []);
 
 
-  const newArrivals = [
-    {
-      id: 1,
-      title: 'PlayStation 5',
-      subtitle: 'Stock may Vary in Console of the PS5 Game or Add-on Sales.',
-      image: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=400',
-      category: 'gaming',
-    },
-    {
-      id: 2,
-      title: "Women's Collections",
-      subtitle: 'Featured women collections that give you another vibe.',
-      image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400',
-      category: 'fashion',
-    },
-  ];
+
 
 
   useEffect(() => {
@@ -285,13 +251,9 @@ const HomeScreen = () => {
       setError(null);
       const response = await GetApi("getsetting");
 
-
       if (response && response.success !== false && response.setting && response.setting[0]?.carousel) {
         const carouselItems = response.setting[0].carousel;
         const images = carouselItems.map((item, index) => item.image);
-
-
-
         setCarouselImages(images);
       } else {
         console.warn('No carousel data found in response:', response);
@@ -307,8 +269,39 @@ const HomeScreen = () => {
     }
   };
 
+  const fetchGalleryImages = async () => {
+    try {
+      const response = await GetApi("gallery");
+      console.log('Gallery API response:', response);
+      
+      if (response && response.status && response.data) {
+        const newArrivalItems = response.data
+          .filter(item => item.type === 'new_arrival' && item.isActive)
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+        
+        const arrivals = newArrivalItems.map((item, index) => ({
+          id: item._id || index + 1,
+          title: item.title || `Featured Product ${index + 1}`,
+          subtitle: item.subtitle || item.description || 'Discover amazing products',
+          image: item.image,
+          link: item.link || null,
+        }));
+        
+        setNewArrivals(arrivals);
+        console.log('New arrivals set:', arrivals);
+      } else {
+        console.warn('No gallery data found');
+        setNewArrivals([]);
+      }
+    } catch (error) {
+      console.error('Error fetching gallery images:', error);
+      setNewArrivals([]);
+    }
+  };
+
   useEffect(() => {
     fetchCarouselImages();
+    fetchGalleryImages();
   }, []);
 
   const fetchExploreProducts = useCallback(async (retryCount = 0) => {
@@ -347,8 +340,8 @@ const HomeScreen = () => {
             id: product._id || `product-${index}`,
             slug: product.slug || product._id,
             name: product.name || 'Unnamed Product',
-            price: `$${Math.round(product.price_slot?.[0]?.Offerprice || 0)}`,
-            originalPrice: `$${Math.round(product.price_slot?.[0]?.price || 0)}`,
+            price: `$${(product.price_slot?.[0]?.Offerprice || product.price_slot?.[0]?.price || 0).toFixed(2)}`,
+            originalPrice: `$${(product.price_slot?.[0]?.price || 0).toFixed(2)}`,
             discount: (product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice)
               ? `${Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
                 product.price_slot[0].price * 100))}% OFF`
@@ -489,52 +482,7 @@ const HomeScreen = () => {
   );
 
   const renderBestSellingProduct = ({ item }) => (
-    <TouchableOpacity
-      key={`best-selling-${item.id}`}
-      onPress={() => handleProductPress(item)}
-      className="bg-gray-100 rounded-lg mr-4 p-4 w-48"
-    >
-      {/* Discount badge */}
-      {item.discount !== '0% OFF' && (
-        <View key={`discount-badge-${item.id}`} className="bg-slate-800 px-2 py-1 rounded absolute top-4 left-4 z-10">
-          <Text key={`discount-text-${item.id}`} className="text-white text-xs font-medium">{item.discount}</Text>
-        </View>
-      )}
-
-      <Image
-        key={`product-img-${item.id}`}
-        source={{
-          uri: item.image,
-        }}
-        className="w-full h-32 rounded-lg mb-3"
-        resizeMode="contain"
-        onError={(error) => {
-          console.log('Image load error for product:', item.name, error.nativeEvent.error);
-        }}
-      />
-
-      <Text key={`product-name-${item.id}`} className="text-black font-medium text-sm mb-2" numberOfLines={2}>
-        {item.name}
-      </Text>
-
-      <View key={`price-container-${item.id}`} className="flex-row items-center mb-2">
-        <Text key={`price-text-${item.id}`} className="text-black font-bold text-lg mr-2">{item.price}</Text>
-        {item.originalPrice !== item.price && (
-          <Text key={`original-price-text-${item.id}`} className="text-gray-400 line-through text-sm">{item.originalPrice}</Text>
-        )}
-      </View>
-
-      <View key={`rating-container-${item.id}`} className="flex-row items-center mb-2">
-        <View className="flex-row">{renderStars(item.rating).map((star, i) => (
-          <Text key={`star-${item.id}-${i}`} className="text-orange-400 text-sm">
-            {star}
-          </Text>
-        ))}</View>
-        <Text key={`rating-text-${item.id}`} className="text-gray-400 text-xs ml-1">({item.rating})</Text>
-      </View>
-
-      <Text key={`sold-text-${item.id}`} className="text-gray-500 text-xs">{t('sold')}: {item.soldPieces}</Text>
-    </TouchableOpacity>
+    <ProductGridCard item={item} />
   );
 
   const renderProductItem = ({ item }) => (
@@ -784,30 +732,40 @@ const HomeScreen = () => {
           </View>
           <Text className="text-2xl font-bold text-black mb-4">{t('new_arrival')}</Text>
 
-          {newArrivals.map((item) => (
-            <View key={item.id} className="mb-4">
-              <View className="relative">
+          {newArrivals.length > 0 ? (
+            newArrivals.map((item) => (
+              <View key={item.id} className="mb-4">
                 <View className="relative">
-                  <Image
-                    source={{ uri: item.image }}
-                    className="w-full h-48 rounded-lg"
-                    resizeMode="cover"
-                  />
-                  <View className="absolute inset-0 bg-black opacity-40 rounded-lg" />
-                </View>
-                <View className="absolute bottom-4 left-4">
-                  <Text className="text-white text-xl font-bold mb-1">{item.title}</Text>
-                  <Text className="text-white text-sm mb-3 opacity-80">{item.subtitle}</Text>
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('BestSellingProducts')}
-                    activeOpacity={0.8}
-                  >
-                    <Text className="text-white text-sm underline">{t('shop_now')}</Text>
-                  </TouchableOpacity>
+                  <View className="relative">
+                    <Image
+                      source={{ uri: item.image }}
+                      className="w-full h-48 rounded-lg"
+                      resizeMode="cover"
+                    />
+                    <View className="absolute inset-0 bg-black opacity-40 rounded-lg" />
+                  </View>
+                  <View className="absolute bottom-4 left-4 right-4">
+                    <Text className="text-white text-xl font-bold mb-1" numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text className="text-white text-sm mb-3 opacity-80" numberOfLines={2}>
+                      {item.subtitle}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => navigation.navigate('BestSellingProducts')}
+                      activeOpacity={0.8}
+                    >
+                      <Text className="text-white text-sm underline">{t('shop_now')}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
+            ))
+          ) : (
+            <View className="items-center py-8">
+              <Text className="text-gray-400">{t('no_featured_products')}</Text>
             </View>
-          ))}
+          )}
         </View>
 
         {/* Services */}

@@ -7,7 +7,7 @@ import {
   Linking,
   Alert
 } from 'react-native';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { CheckCircleIcon } from 'react-native-heroicons/outline';
 import { useTranslation } from 'react-i18next';
@@ -21,10 +21,10 @@ const OrderConfirmation = () => {
   const handleContinueShopping = () => {
     // Navigate to the Home tab in the bottom tab navigator
     navigation.navigate('HomeTab');
-
+    
     // Then navigate to the Home screen within the Home stack
     navigation.navigate('HomeScreen');
-
+    
     // Reset the navigation stack to prevent going back to order confirmation
     navigation.dispatch(
       CommonActions.reset({
@@ -45,9 +45,9 @@ const OrderConfirmation = () => {
   };
 
   return (
-    <View className="flex-1 bg-white">
-      <ScrollView
-        className="flex-1"
+    <SafeAreaView className="flex-1 bg-white">
+      <ScrollView 
+        className="flex-1" 
         contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
       >
@@ -77,7 +77,7 @@ const OrderConfirmation = () => {
                 {orderId || 'N/A'}
               </Text>
             </View>
-
+            
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-gray-600 font-medium">{t('date')}</Text>
               <Text className="font-semibold text-gray-900">
@@ -88,14 +88,14 @@ const OrderConfirmation = () => {
                 })}
               </Text>
             </View>
-
+            
             <View className="flex-row justify-between items-center mb-4">
               <Text className="text-gray-600 font-medium">{t('total')}</Text>
               <Text className="font-bold text-gray-900 text-lg">
                 ${total?.toFixed(2) || '0.00'}
               </Text>
             </View>
-
+            
             <View className="flex-row justify-between items-center">
               <Text className="text-gray-600 font-medium">{t('payment_method')}</Text>
               <Text className="font-semibold text-gray-900">{t('cash_on_delivery')}</Text>
@@ -156,7 +156,7 @@ const OrderConfirmation = () => {
             >
               <Text className="font-semibold text-gray-700 text-base">{t('track_order')}</Text>
             </TouchableOpacity>
-
+            
             <TouchableOpacity
               onPress={handleContinueShopping}
               className="bg-slate-800 py-4 rounded-xl items-center active:bg-orange-600"
@@ -175,7 +175,7 @@ const OrderConfirmation = () => {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

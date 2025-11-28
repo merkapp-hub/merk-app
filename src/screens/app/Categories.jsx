@@ -18,8 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
-
-
 const { width } = Dimensions.get('window');
 
 const Categories = () => {

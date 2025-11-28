@@ -571,16 +571,17 @@ export default function ProductScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Products</Text>
-        <View style={styles.headerRight} />
-      </View>
+       <View className="bg-slate-800 px-4 py-5">
+              <View className="flex-row items-center">
+                <TouchableOpacity 
+                  onPress={() => navigation.goBack()}
+                  className="mr-4"
+                >
+                  <ChevronLeftIcon size={24} color="white" />
+                </TouchableOpacity>
+                <Text className="text-white text-xl font-semibold">Products</Text>
+              </View>
+            </View>
 
       {/* Success Message Modal */}
       <SuccessMessage

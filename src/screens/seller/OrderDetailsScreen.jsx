@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, StyleSheet } from 'react-native';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ArrowLeftIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { Api, GetApi } from '../../Helper/Service';
@@ -13,7 +13,7 @@ const OrderDetailsScreen = () => {
   const route = useRoute();
   const { t } = useTranslation();
   const { orderId } = route.params;
-
+  
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,7 +22,7 @@ const OrderDetailsScreen = () => {
     try {
       setLoading(true);
       const response = await GetApi(`getProductRequest/${orderId}`);
-
+      
       if (response && response.data) {
         const orderData = response.data;
         const transformedOrder = {
@@ -43,7 +43,7 @@ const OrderDetailsScreen = () => {
           adminFee: orderData.adminFee || 0,
           sellerEarnings: orderData.sellerEarnings || 0
         };
-
+        
         setOrder(transformedOrder);
       } else {
         setError(t('order_not_found'));
@@ -63,17 +63,17 @@ const OrderDetailsScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4F46F5" />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
+      <SafeAreaView style={styles.errorContainer}>
         <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity
+        <TouchableOpacity 
           style={styles.retryButton}
           onPress={() => {
             setError(null);
@@ -83,15 +83,15 @@ const OrderDetailsScreen = () => {
         >
           <Text style={styles.retryButtonText}>{t('retry')}</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!order) {
     return (
-      <View style={styles.errorContainer}>
+      <SafeAreaView style={styles.errorContainer}>
         <Text style={styles.errorText}>Order not found</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -105,11 +105,9 @@ const OrderDetailsScreen = () => {
 
   return (
     <View style={styles.container}>
-
-
       <View className="bg-slate-800 px-4 py-3">
         <View className="flex-row items-center">
-          <TouchableOpacity
+          <TouchableOpacity 
             onPress={() => navigation.goBack()}
             className="mr-4"
           >
@@ -168,8 +166,8 @@ const OrderDetailsScreen = () => {
             {order.shipping_address?.address || 'N/A'}{'\n'}
             {order.shipping_address?.city}{order.shipping_address?.state ? `, ${order.shipping_address.state}` : ''}{'\n'}
             {order.shipping_address?.country ? (
-              typeof order.shipping_address.country === 'string'
-                ? order.shipping_address.country
+              typeof order.shipping_address.country === 'string' 
+                ? order.shipping_address.country 
                 : order.shipping_address.country.name || order.shipping_address.country.label || 'N/A'
             ) : 'N/A'}
             {order.shipping_address?.postalCode ? ` - ${order.shipping_address.postalCode}` : ''}
@@ -181,10 +179,10 @@ const OrderDetailsScreen = () => {
           {order.productDetail?.map((item, index) => (
             <View key={index} style={styles.orderItem}>
               <Image
-                source={{
-                  uri: Array.isArray(item.image) && item.image.length > 0
-                    ? item.image[0]
-                    : 'https://via.placeholder.com/150?text=No+Image'
+                source={{ 
+                  uri: Array.isArray(item.image) && item.image.length > 0 
+                    ? item.image[0] 
+                    : 'https://via.placeholder.com/150?text=No+Image' 
                 }}
                 style={styles.productImage}
                 resizeMode="contain"
@@ -211,34 +209,34 @@ const OrderDetailsScreen = () => {
             <Text style={styles.summaryLabel}>{t('subtotal')}</Text>
             <Text style={styles.summaryValue}>{currencySign}{order.total?.toFixed(2) || '0.00'}</Text>
           </View>
-
+          
           {/* Delivery Charge - Always show */}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>{t('delivery_charge')}</Text>
             <Text style={styles.summaryValue}>
-              {order.deliveryCharge > 0
-                ? `${currencySign}${order.deliveryCharge.toFixed(2)}`
+              {order.deliveryCharge > 0 
+                ? `${currencySign}${order.deliveryCharge.toFixed(2)}` 
                 : t('free')}
             </Text>
           </View>
-
+          
           {/* Tax - Always show */}
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>
               {t('tax')} ({order.taxRate || 0}%)
             </Text>
             <Text style={styles.summaryValue}>
-              {order.tax > 0
-                ? `${currencySign}${order.tax.toFixed(2)}`
+              {order.tax > 0 
+                ? `${currencySign}${order.tax.toFixed(2)}` 
                 : `${currencySign}0.00`}
             </Text>
           </View>
-
+          
           <View style={[styles.summaryRow, styles.totalRow]}>
             <Text style={styles.totalLabel}>{t('total')}</Text>
             <Text style={styles.totalAmount}>{currencySign}{order.finalAmount?.toFixed(2) || order.total?.toFixed(2) || '0.00'}</Text>
           </View>
-
+          
           <View style={[styles.summaryRow, styles.earningsRow]}>
             <Text style={styles.earningsLabel}>{t('your_earnings')}:</Text>
             <Text style={styles.earningsValue}>{currencySign}{order.sellerEarnings?.toFixed(2) || '0.00'}</Text>
@@ -296,7 +294,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
-    marginBottom: 100
   },
   section: {
     backgroundColor: '#FFFFFF',

@@ -91,7 +91,7 @@ function CartStackScreen() {
         options={{
           animation: 'slide_from_right',
           title: 'Billing Details',
-          headerShown: true,
+          headerShown: false,
           headerTitleAlign: 'center',
           headerStyle: {
             backgroundColor: '#ffffff',

@@ -21,8 +21,6 @@ import i18n from '../../i18n';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
-
-
 const AccountScreen = () => {
   const navigation = useNavigation();
   const { logout, userInfo } = useAuth();

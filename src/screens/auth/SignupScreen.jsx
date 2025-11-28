@@ -10,7 +10,6 @@ import {
   Alert,
   Linking,
   StyleSheet,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { EyeIcon, EyeSlashIcon } from 'react-native-heroicons/outline';

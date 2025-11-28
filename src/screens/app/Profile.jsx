@@ -22,11 +22,9 @@ import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
-
-
 const ProfileScreen = () => {
   const navigation = useNavigation();
-  const { userToken, userInfo } = useAuth();
+  const { userToken, userInfo, updateUserInfo } = useAuth();
   const { t } = useTranslation();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -43,7 +41,33 @@ const ProfileScreen = () => {
   const [profileImage, setProfileImage] = useState(null);
 
   useEffect(() => {
-    fetchProfile();
+    let isMounted = true;
+    
+    // Debug: Check what's in AsyncStorage
+    const debugStorage = async () => {
+      try {
+        const token = await AsyncStorage.getItem('userToken');
+        const userInfoStr = await AsyncStorage.getItem('userInfo');
+        if (isMounted) {
+          console.log('=== Profile Screen Debug ===');
+          console.log('Token in storage:', token ? 'EXISTS' : 'MISSING');
+          console.log('UserInfo in storage:', userInfoStr ? 'EXISTS' : 'MISSING');
+          console.log('UserInfo from context:', userInfo ? 'EXISTS' : 'MISSING');
+          console.log('===========================');
+        }
+      } catch (error) {
+        console.error('Debug storage error:', error);
+      }
+    };
+    
+    debugStorage();
+    if (isMounted) {
+      fetchProfile();
+    }
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const fetchProfile = async () => {
@@ -51,50 +75,42 @@ const ProfileScreen = () => {
       console.log('1. Starting to fetch profile...');
       setIsLoading(true);
 
-      // Get token from context instead of AsyncStorage directly
-      const token = await AsyncStorage.getItem('userToken');
-      console.log('2. Token in fetchProfile:', token ? 'Found' : 'Not found');
+      // Use userInfo from AuthContext first
+      if (userInfo) {
+        console.log('2. Using userInfo from AuthContext');
+        setFirstName(userInfo.firstName || '');
+        setLastName(userInfo.lastName || '');
+        setEmail(userInfo.email || '');
+        if (userInfo.profilePicture) {
+          setProfileImage(userInfo.profilePicture);
+        }
+      } else {
+        // Fallback to AsyncStorage
+        const userInfoStr = await AsyncStorage.getItem('userInfo');
+        console.log('3. UserInfo from storage:', userInfoStr ? 'Found' : 'Not found');
 
-      if (!token) {
-        console.log('3. No token found, redirecting to login...');
-        // Use replace to prevent going back to the profile screen
-        navigation.replace('Auth');
-        return;
-      }
+        if (!userInfoStr) {
+          console.log('4. No user info found');
+          Alert.alert(t('error'), 'Please login again');
+          return;
+        }
 
-      console.log('4. Making API call to get profile...');
-      const response = await GetApi('auth/getProfile', {});
-
-      if (response) {
-        console.log('5. Profile data received:', response);
-        // The API returns user data in response.data
-        const userData = response.data || {};
+        const userData = JSON.parse(userInfoStr);
+        console.log('5. User data parsed:', userData);
+        
         setFirstName(userData.firstName || '');
         setLastName(userData.lastName || '');
         setEmail(userData.email || '');
         if (userData.profilePicture) {
           setProfileImage(userData.profilePicture);
         }
-      } else {
-        console.warn('Unexpected response format:', response);
-        throw new Error('Invalid response format');
       }
+
+      // Skip API call if we already have data from context
+      // API call is optional and only for refreshing data
+      console.log('6. Profile loaded from context/cache successfully');
     } catch (error) {
       console.error('Error in fetchProfile:', error);
-
-      if (error.message === 'Session expired. Please login again.' ||
-        error.message === 'No authentication token found' ||
-        (error.response && error.response.status === 401)) {
-        // Clear any existing tokens
-        await AsyncStorage.multiRemove(['userToken', 'userInfo']);
-        // Navigate to Auth stack with a message
-        navigation.navigate('Auth', {
-          screen: 'Login',
-          params: { message: t('session_expired') }
-        });
-        return;
-      }
-
       Alert.alert(t('error'), error.message || t('failed_load_profile'));
     } finally {
       setIsLoading(false);
@@ -134,6 +150,13 @@ const ProfileScreen = () => {
     try {
       setIsUpdating(true);
 
+      // Check if token exists
+      const authToken = await AsyncStorage.getItem('userToken');
+      if (!authToken) {
+        Alert.alert('Error', 'Please login again to update profile picture');
+        return;
+      }
+
       // Create form data
       const formData = new FormData();
 
@@ -151,14 +174,12 @@ const ProfileScreen = () => {
       // Append the file to form data
       formData.append('profileImage', file);
 
-      const token = await AsyncStorage.getItem('userToken');
-
       // Make sure to use the correct endpoint
       const response = await fetch(`${API_BASE_URL}auth/uploadProfileImage`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'multipart/form-data',
         },
         body: formData
@@ -173,11 +194,12 @@ const ProfileScreen = () => {
       // Update the profile picture in the UI
       setProfileImage(data.profilePicture);
 
-      // Update the user info in AsyncStorage
-      const userInfo = JSON.parse(await AsyncStorage.getItem('userInfo'));
-      if (userInfo) {
-        userInfo.profilePicture = data.profilePicture;
-        await AsyncStorage.setItem('userInfo', JSON.stringify(userInfo));
+      // Update the user info in context and AsyncStorage
+      const storedUserInfo = JSON.parse(await AsyncStorage.getItem('userInfo'));
+      if (storedUserInfo) {
+        storedUserInfo.profilePicture = data.profilePicture;
+        await AsyncStorage.setItem('userInfo', JSON.stringify(storedUserInfo));
+        updateUserInfo(storedUserInfo); // Update context to reflect in Account.jsx and Header
       }
 
       Alert.alert('Success', 'Profile picture updated successfully');
@@ -216,9 +238,16 @@ const ProfileScreen = () => {
           throw new Error(data.message || 'Failed to update profile');
         }
 
+        // Update context with new data
+        const updatedUserInfo = {
+          ...userInfo,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          email: email.trim()
+        };
+        updateUserInfo(updatedUserInfo);
+        
         Alert.alert(t('success'), t('profile_updated_successfully'));
-        // Refresh the profile data
-        await fetchProfile();
         setIsEditing(false);
       } catch (error) {
         console.error('Error updating profile:', error);
@@ -247,18 +276,30 @@ const ProfileScreen = () => {
       return;
     }
 
+    if (newPassword.length < 6) {
+      Alert.alert(t('error'), 'Password must be at least 6 characters long');
+      return;
+    }
+
     try {
       setIsUpdating(true);
 
-      console.log('Using token from AuthContext:', userToken ? 'Available' : 'Not available');
+      // Get token from AsyncStorage
+      const token = await AsyncStorage.getItem('userToken');
+      console.log('Token for password change:', token ? 'Found' : 'Not found');
 
-      // Pass the token explicitly to ensure it's available
+      if (!token) {
+        Alert.alert(t('error'), 'Please login again to change password');
+        navigation.navigate('Login');
+        return;
+      }
+
       const response = await Put('auth/updatePassword', {
         currentPassword,
         newPassword,
-      }, { token: userToken });
+      });
 
-      if (response) {
+      if (response && response.status) {
         Alert.alert(t('success'), t('password_updated_successfully'));
         setChangePasswordModalVisible(false);
         setPasswordData({
@@ -266,10 +307,13 @@ const ProfileScreen = () => {
           newPassword: '',
           confirmPassword: ''
         });
+      } else {
+        throw new Error(response?.message || 'Failed to update password');
       }
     } catch (error) {
       console.error('Error updating password:', error);
-      Alert.alert(t('error'), error.message || error.response?.data?.message || t('failed_update_password'));
+      const errorMsg = error.response?.data?.message || error.message || t('failed_update_password');
+      Alert.alert(t('error'), errorMsg);
     } finally {
       setIsUpdating(false);
     }
@@ -324,11 +368,11 @@ const ProfileScreen = () => {
               </View>
             )}
           </TouchableOpacity>
-          <View>
-            <Text className="text-gray-900 text-xl font-semibold">
-              {`${firstName} ${lastName}`.trim()}
+          <View className="items-center mt-3">
+            <Text className="text-gray-900 text-xl font-semibold text-center">
+              {`${firstName} ${lastName}`.trim() || 'User'}
             </Text>
-            <Text className="text-gray-600 text-base">{email}</Text>
+            <Text className="text-gray-600 text-base text-center mt-1">{email}</Text>
           </View>
         </View>
 

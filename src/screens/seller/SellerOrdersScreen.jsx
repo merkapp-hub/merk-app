@@ -424,32 +424,21 @@ export default function SellerOrdersScreen() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Orders</Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      {/* Orders List with Infinite Scroll */}
       <View className="bg-slate-800 px-4 py-3">
         <View className="flex-row items-center">
-          <TouchableOpacity
+          <TouchableOpacity 
             onPress={() => navigation.goBack()}
             className="mr-4"
           >
             <ChevronLeftIcon size={24} color="white" />
           </TouchableOpacity>
-          <Text className="text-white text-xl font-semibold">{t('my_orders')}</Text>
+          <Text className="text-white text-xl font-semibold">{t('Orders')}</Text>
         </View>
       </View>
+
+      {/* Orders List with Infinite Scroll */}
       <FlatList
         data={orders}
-        className='mb-24'
         renderItem={renderOrderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 16 }}

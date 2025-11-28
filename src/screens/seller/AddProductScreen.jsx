@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Postwithimage, GetApi } from '../../Helper/Service';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 
 const API_BASE_URL = 'https://api.merkapp.net/api';
 const SIZE_LIST = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL', 'For adult'];
@@ -482,7 +483,7 @@ const uploadImagesToServer = async (images) => {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
@@ -491,7 +492,17 @@ const uploadImagesToServer = async (images) => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{productId ? 'Edit Product' : 'Add Product'}</Text>
         <View style={styles.headerRight} />
-      </View>
+      </View> */}<View className="bg-slate-800 px-4 py-5">
+                    <View className="flex-row items-center">
+                      <TouchableOpacity 
+                        onPress={() => navigation.goBack()}
+                        className="mr-4"
+                      >
+                        <ChevronLeftIcon size={24} color="white" />
+                      </TouchableOpacity>
+                      <Text style={styles.headerTitle}>{productId ? 'Edit Product' : 'Add Product'}</Text>
+                    </View>
+                  </View>
 
       <ScrollView style={styles.scrollView}>
         <View style={styles.content}>

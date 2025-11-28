@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal, TextInput, Alert, ActivityIndicator, RefreshControl } from 'react-native';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeftIcon, CreditCardIcon, BanknotesIcon, ArrowUpTrayIcon, ListBulletIcon, ArrowDownTrayIcon, XMarkIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { Api, GetApi, Post } from '../../Helper/Service';
@@ -219,32 +219,32 @@ export default function SellerWalletScreen() {
 
   if (loading && !refreshing) {
     return (
-      <View className="flex-1 bg-gray-50 justify-center items-center">
+      <SafeAreaView className="flex-1 bg-gray-50 justify-center items-center">
         <ActivityIndicator size="large" color="#4F46F5" />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
     <View className="flex-1 bg-gray-50">
-      <View className="bg-slate-800 px-4 py-3">
+       <View className="bg-slate-800 px-4 py-3">
         <View className="flex-row items-center">
-          <TouchableOpacity
+          <TouchableOpacity 
             onPress={() => navigation.goBack()}
             className="mr-4"
           >
             <ChevronLeftIcon size={24} color="white" />
           </TouchableOpacity>
-          <Text className="text-white text-xl font-semibold">{t('my_wallet')}</Text>
+          <Text className="text-white text-xl font-semibold">Wallet</Text>
         </View>
       </View>
       <ScrollView
-        className="flex-1 p-4 mb-24"
+        className="flex-1 p-4"
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* <Text className="text-2xl font-bold text-gray-900 mb-6">{t('my_wallet')}</Text> */}
+        <Text className="text-2xl font-bold text-gray-900 mb-6">{t('my_wallet')}</Text>
 
         {/* Balance Summary */}
         <View className="space-y-4 mb-6">
