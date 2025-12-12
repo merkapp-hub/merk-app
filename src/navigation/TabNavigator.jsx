@@ -5,17 +5,20 @@ import { createNativeStackNavigator, CommonActions } from '@react-navigation/nat
 import { Home, ShoppingBag, Heart, ShoppingCart, User } from 'react-native-feather';
 import { useAuth } from '../context/AuthContext';
 
-// Import screens
+
 import HomeScreen from '../screens/app/Home';
 import CategoriesScreen from '../screens/app/Categories';
 import FavoritesScreen from '../screens/app/Favorites';
 import CartScreen from '../screens/app/Cart';
 import AccountScreen from '../screens/app/Account';
 import OrdersScreen from '../screens/app/Orders';
+import OrderDetails from '../screens/app/OrderDetails';
 import ProductDetails from '../screens/app/ProductDetail';
 import BillingDetails from '../screens/app/BillingDetails';
 import OrderConfirmation from '../screens/app/OrderConfirmation';
+import PayPalPayment from '../screens/app/PayPalPayment';
 import BestSellingProducts from '../screens/app/BestSellingProducts';
+import TopSellingProducts from '../screens/app/TopSellingProducts';
 import CategoryProducts from '../screens/app/CategoryProducts';
 import FlashSaleDetail from '../screens/app/FlashSaleDetail';
 import SearchResultScreen from '../screens/SearchResultScreen';
@@ -24,6 +27,7 @@ import { COLORS } from '../config';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createNativeStackNavigator();
+const CategoriesStack = createNativeStackNavigator();
 const CartStack = createNativeStackNavigator();
 const AccountStack = createNativeStackNavigator();
 
@@ -49,6 +53,13 @@ function HomeStackScreen() {
       <HomeStack.Screen
         name="BestSellingProducts"
         component={BestSellingProducts}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+      <HomeStack.Screen
+        name="TopSellingProducts"
+        component={TopSellingProducts}
         options={{
           animation: 'slide_from_right',
         }}
@@ -80,6 +91,29 @@ function HomeStackScreen() {
   );
 }
 
+// Create a stack navigator for the Categories tab
+function CategoriesStackScreen() {
+  return (
+    <CategoriesStack.Navigator screenOptions={{ headerShown: false }}>
+      <CategoriesStack.Screen name="CategoriesScreen" component={CategoriesScreen} />
+      <CategoriesStack.Screen
+        name="CategoryProducts"
+        component={CategoryProducts}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+      <CategoriesStack.Screen
+        name="ProductDetail"
+        component={ProductDetails}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+    </CategoriesStack.Navigator>
+  );
+}
+
 // Create a stack navigator for the Cart tab
 function CartStackScreen() {
   return (
@@ -100,6 +134,15 @@ function CartStackScreen() {
           headerTitleStyle: {
             fontWeight: '600',
           },
+        }}
+      />
+      <CartStack.Screen
+        name="PayPalPayment"
+        component={PayPalPayment}
+        options={{
+          animation: 'slide_from_right',
+          headerShown: false,
+          gestureEnabled: false,
         }}
       />
       <CartStack.Screen
@@ -134,6 +177,13 @@ function AccountStackScreen() {
       <AccountStack.Screen
         name="Orders"
         component={OrdersScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
+      <AccountStack.Screen
+        name="OrderDetails"
+        component={OrderDetails}
         options={{
           headerShown: false,
         }}
@@ -202,7 +252,7 @@ const TabNavigator = () => {
       />
       <Tab.Screen
         name="CategoriesTab"
-        component={CategoriesScreen}
+        component={CategoriesStackScreen}
         options={{
           tabBarLabel: 'Categories',
           tabBarIcon: ({ color, size }) => (

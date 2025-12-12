@@ -18,6 +18,7 @@ import ProductGridCard from '../../components/ProductGridCard';
 import { GetApi } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
 import SwiperFlatList from 'react-native-swiper-flatlist';
+import { useCurrency } from '../../context/CurrencyContext';
 
 
 const { width } = Dimensions.get('window');
@@ -30,6 +31,7 @@ const HomeScreen = () => {
   // 
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const { convertPrice, currencySymbol, formatPrice, userCurrency, exchangeRate, isLoading: currencyLoading } = useCurrency();
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -37,6 +39,8 @@ const HomeScreen = () => {
 
   const [bestSellingProducts, setBestSellingProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
+  const [topSoldProducts, setTopSoldProducts] = useState([]);
+  const [loadingTopSold, setLoadingTopSold] = useState(true);
   const [exploreProducts, setExploreProducts] = useState([]);
   const [loadingExplore, setLoadingExplore] = useState(true);
   const [galleryData, setGalleryData] = useState([]);
@@ -81,7 +85,7 @@ const HomeScreen = () => {
       setError(null);
 
 
-      const response = await GetApi("getTopSoldProduct");
+      const response = await GetApi("getProduct");
 
 
       // Handle different response formats
@@ -195,15 +199,36 @@ const HomeScreen = () => {
               imageUrl = product.image;
             }
 
+            // Extract price with proper priority
+            let regularPrice = 0;
+            let offerPrice = 0;
+            
+            // Priority 1: price_slot
+            if (product.price_slot && product.price_slot.length > 0 && product.price_slot[0].price) {
+              regularPrice = product.price_slot[0].price;
+              offerPrice = product.price_slot[0].Offerprice || regularPrice;
+            }
+            // Priority 2: varients
+            else if (product.varients && product.varients.length > 0 && product.varients[0].price) {
+              regularPrice = product.varients[0].price;
+              offerPrice = product.varients[0].Offerprice || regularPrice;
+            }
+            // Priority 3: direct price
+            else if (product.price) {
+              regularPrice = product.price;
+              offerPrice = product.price;
+            }
+            
+            const displayPrice = offerPrice > 0 ? offerPrice : regularPrice;
+
             return {
               id: product._id || `product-${index}`,
               slug: product.slug || product._id,
               name: product.name || 'Unnamed Product',
-              price: `$${Math.round(product.price_slot?.[0]?.Offerprice || 0)}`,
-              originalPrice: `$${Math.round(product.price_slot?.[0]?.price || 0)}`,
-              discount: (product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice)
-                ? `${Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
-                  product.price_slot[0].price * 100))}% OFF`
+              price: `${Math.round(displayPrice)}`,
+              originalPrice: `${Math.round(regularPrice)}`,
+              discount: (regularPrice && offerPrice && offerPrice < regularPrice)
+                ? `${Math.round(((regularPrice - offerPrice) / regularPrice * 100))}% OFF`
                 : '0% OFF',
               rating: 4.0,
               image: imageUrl,
@@ -336,13 +361,35 @@ const HomeScreen = () => {
               'https://via.placeholder.com/300';
           }
 
+          // Extract price with proper priority
+          let regularPrice = 0;
+          let offerPrice = 0;
+          
+          // Priority 1: price_slot
+          if (product.price_slot && product.price_slot.length > 0 && product.price_slot[0].price) {
+            regularPrice = product.price_slot[0].price;
+            offerPrice = product.price_slot[0].Offerprice || regularPrice;
+          }
+          // Priority 2: varients
+          else if (product.varients && product.varients.length > 0 && product.varients[0].price) {
+            regularPrice = product.varients[0].price;
+            offerPrice = product.varients[0].Offerprice || regularPrice;
+          }
+          // Priority 3: direct price
+          else if (product.price) {
+            regularPrice = product.price;
+            offerPrice = product.price;
+          }
+          
+          const displayPrice = offerPrice > 0 ? offerPrice : regularPrice;
+
           return {
             id: product._id || `product-${index}`,
             slug: product.slug || product._id,
             name: product.name || 'Unnamed Product',
-            price: `$${(product.price_slot?.[0]?.Offerprice || product.price_slot?.[0]?.price || 0).toFixed(2)}`,
-            originalPrice: `$${(product.price_slot?.[0]?.price || 0).toFixed(2)}`,
-            discount: (product.price_slot?.[0]?.price && product.price_slot?.[0]?.Offerprice)
+            price: `${Math.round(displayPrice)}`,
+            originalPrice: `${Math.round(regularPrice)}`,
+            discount: (regularPrice && offerPrice && offerPrice < regularPrice)
               ? `${Math.round(((product.price_slot[0].price - product.price_slot[0].Offerprice) /
                 product.price_slot[0].price * 100))}% OFF`
               : '0% OFF',
@@ -392,10 +439,66 @@ const HomeScreen = () => {
     }
   }, []);
 
+  // Fetch top sold products
+  const fetchTopSoldProducts = useCallback(async () => {
+    try {
+      setLoadingTopSold(true);
+      const response = await GetApi("getTopSoldProduct");
+      console.log('Top sold products response:', response);
+      
+      // Handle response with data property
+      const productsData = response?.data || response;
+      
+      if (Array.isArray(productsData)) {
+        // Take only first 4 products for home page
+        const products = productsData.slice(0, 4).map(product => ({
+          id: product._id,
+          name: product.name,
+          price: (() => {
+            // Priority 1: price_slot
+            if (product.price_slot && product.price_slot.length > 0 && product.price_slot[0].price) {
+              return `${Math.round(product.price_slot[0].Offerprice || product.price_slot[0].price)}`;
+            }
+            // Priority 2: varients
+            if (product.varients && product.varients.length > 0 && product.varients[0].price) {
+              return `${Math.round(product.varients[0].Offerprice || product.varients[0].price)}`;
+            }
+            // Priority 3: direct price
+            return `${Math.round(product.price || 0)}`;
+          })(),
+          originalPrice: (() => {
+            // Priority 1: price_slot
+            if (product.price_slot && product.price_slot.length > 0 && product.price_slot[0].price) {
+              return `${Math.round(product.price_slot[0].price)}`;
+            }
+            // Priority 2: varients
+            if (product.varients && product.varients.length > 0 && product.varients[0].price) {
+              return `${Math.round(product.varients[0].price)}`;
+            }
+            // Priority 3: direct price
+            return `${Math.round(product.price || 0)}`;
+          })(),
+          image: product.varients?.[0]?.image?.[0] || product.images?.[0] || product.image || 'https://via.placeholder.com/300',
+          rating: 4.5,
+          slug: product.slug || product._id
+        }));
+        setTopSoldProducts(products);
+      } else {
+        setTopSoldProducts([]);
+      }
+    } catch (error) {
+      console.error('Error fetching top sold products:', error);
+      setTopSoldProducts([]);
+    } finally {
+      setLoadingTopSold(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchCarouselImages();
     fetchExploreProducts();
-  }, [fetchExploreProducts]);
+    fetchTopSoldProducts();
+  }, [fetchExploreProducts, fetchTopSoldProducts]);
 
 
 
@@ -485,27 +588,107 @@ const HomeScreen = () => {
     <ProductGridCard item={item} />
   );
 
-  const renderProductItem = ({ item }) => (
-    <TouchableOpacity
-      key={`explore-${item.id}`}
-      onPress={() => handleProductPress(item)}
-      className="w-40 mr-4 mb-4"
-    >
-      <View className="bg-gray-100 rounded-lg p-4 w-full">
-        <Image
-          source={{ uri: item.image }}
-          className="w-full h-32 rounded-lg mb-3"
-          resizeMode="contain"
-        />
-        <Text className="text-black font-medium text-sm mb-2" numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text className="text-black font-bold text-lg">
-          ${typeof item.price === 'number' ? item.price.toFixed(2) : item.price}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderProductItem = ({ item }) => {
+    // Get price with comprehensive fallbacks (same logic as ProductGridCard)
+    const getPrice = () => {
+      let price = 0;
+      let offerPrice = 0;
+      
+      // Priority 1: Check price_slot (most reliable)
+      if (item.price_slot && item.price_slot.length > 0) {
+        const priceSlot = item.price_slot[0];
+        price = parseFloat(priceSlot.price) || 0;
+        offerPrice = priceSlot.Offerprice && parseFloat(priceSlot.Offerprice) > 0 
+          ? parseFloat(priceSlot.Offerprice) 
+          : price;
+      }
+      
+      // Priority 2: Check variants for price
+      if (price === 0 && item.varients && item.varients.length > 0) {
+        const variant = item.varients[0];
+        if (variant.price && parseFloat(variant.price) > 0) {
+          price = parseFloat(variant.price) || 0;
+          offerPrice = variant.Offerprice && parseFloat(variant.Offerprice) > 0 
+            ? parseFloat(variant.Offerprice) 
+            : price;
+        } else if (variant.Offerprice && parseFloat(variant.Offerprice) > 0) {
+          offerPrice = parseFloat(variant.Offerprice) || 0;
+          price = offerPrice;
+        }
+      }
+      
+      // Priority 3: Check direct price properties
+      if (price === 0) {
+        if (item.Offerprice && parseFloat(item.Offerprice) > 0) {
+          offerPrice = parseFloat(item.Offerprice) || 0;
+          price = parseFloat(item.price) || offerPrice;
+        } else if (item.price && parseFloat(item.price) > 0) {
+          price = parseFloat(item.price) || 0;
+          offerPrice = price;
+        }
+      }
+      
+      return { price, offerPrice };
+    };
+
+    // Get image
+    const getImage = () => {
+      if (item.varients && item.varients.length > 0 && item.varients[0].image && item.varients[0].image.length > 0) {
+        return item.varients[0].image[0];
+      }
+      if (item.images && item.images.length > 0) {
+        return item.images[0];
+      }
+      if (item.image) {
+        return item.image;
+      }
+      return 'https://via.placeholder.com/300';
+    };
+
+    const { price, offerPrice } = getPrice();
+    const imageUri = getImage();
+    const hasDiscount = offerPrice && offerPrice < price;
+
+    return (
+      <TouchableOpacity
+        key={`explore-${item.id}`}
+        onPress={() => handleProductPress(item)}
+        className="w-40 mr-4 mb-4"
+      >
+        <View className="bg-gray-100 rounded-lg p-4 w-full">
+          {hasDiscount && (
+            <View className="absolute top-2 left-2 bg-slate-800 px-2 py-1 rounded z-10">
+              <Text className="text-white text-xs font-bold">
+                {Math.round(((price - offerPrice) / price) * 100)}% OFF
+              </Text>
+            </View>
+          )}
+          <Image
+            source={{ uri: imageUri }}
+            className="w-full h-32 rounded-lg mb-3"
+            resizeMode="contain"
+          />
+          <Text className="text-black font-medium text-sm mb-2" numberOfLines={1}>
+            {item.name}
+          </Text>
+          {hasDiscount ? (
+            <View className="flex-row items-center">
+              <Text className="text-black font-bold text-lg mr-2">
+                ${offerPrice.toFixed(2)}
+              </Text>
+              <Text className="text-gray-400 line-through text-sm">
+                ${price.toFixed(2)}
+              </Text>
+            </View>
+          ) : (
+            <Text className="text-black font-bold text-lg">
+              ${(offerPrice || price).toFixed(2)}
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View className="flex-1 bg-white">
@@ -641,16 +824,55 @@ const HomeScreen = () => {
           <Text className="text-2xl font-bold text-black mb-4">{t('flash_sales')}</Text>
           <FlashSale />
         </View>
-
-        {/* This Month - Best Selling Products */}
-        <View className="px-4 mb-6">
+  {/* Best Selling Products Section */}
+        <View className="mb-6 px-4">
           <View className="flex-row items-center mb-4">
             <View className="w-4 h-6 bg-orange-500 rounded mr-3" />
             <Text className="text-orange-500 font-semibold">{t('this_month')}</Text>
           </View>
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className="text-2xl font-bold text-black">{t('best_selling_products')}</Text>
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('TopSellingProducts')}
+              className="bg-slate-800 px-6 py-2 rounded"
+            >
+              <Text className="text-white font-medium">{t('view_all')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {loadingTopSold ? (
+            <View className="items-center py-8">
+              <ActivityIndicator size="large" color="#f97316" />
+              <Text className="text-gray-400 mt-2">{t('loading_products')}</Text>
+            </View>
+          ) : topSoldProducts.length > 0 ? (
+            <FlatList
+              data={topSoldProducts}
+              renderItem={({ item }) => (
+                <View style={{ marginRight: 2 }}>
+                  <ProductGridCard item={item} />
+                </View>
+              )}
+              keyExtractor={(item) => item.id.toString()}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingRight: 16 }}
+            />
+          ) : (
+            <View className="items-center py-8">
+              <Text className="text-gray-400">{t('no_products_available')}</Text>
+            </View>
+          )}
+        </View>
+        {/* This Month - Best Selling Products */}
+        <View className="px-4 mb-6">
+          {/* <View className="flex-row items-center mb-4">
+            <View className="w-4 h-6 bg-orange-500 rounded mr-3" />
+            <Text className="text-orange-500 font-semibold">{t('this_month')}</Text>
+          </View> */}
 
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-2xl font-bold text-black">{t('best_selling_products')}</Text>
+            <Text className="text-2xl font-bold text-black">{t('explore_our_products')}</Text>
             <TouchableOpacity
               className="bg-slate-800 px-6 py-2 rounded"
               onPress={() => navigation.navigate('BestSellingProducts', { products: bestSellingProducts })}
@@ -692,6 +914,8 @@ const HomeScreen = () => {
             </View>
           )}
         </View>
+
+      
 
         {/* Explore Our Products - Temporarily Commented Out 
         <View className="mb-6 px-4">

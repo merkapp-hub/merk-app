@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image, StyleSheet, Dimensions, FlatList, 
 import { useNavigation } from '@react-navigation/native';
 import { GetApi } from '../Helper/Service';
 import { useTranslation } from 'react-i18next';
+import { useCurrency } from '../context/CurrencyContext';
 
 const { width } = Dimensions.get('window');
 
@@ -10,6 +11,7 @@ const FlashSale = () => {
   const [saleData, setSaleData] = useState([]);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const { convertPrice, currencySymbol } = useCurrency();
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -118,9 +120,9 @@ const FlashSale = () => {
             {product.name || 'Product Name'}
           </Text>
           <View style={styles.priceContainer}>
-            <Text style={styles.salePrice}>${salePrice.toFixed(2)}</Text>
+            <Text style={styles.salePrice}>{currencySymbol} {convertPrice(salePrice).toLocaleString()}</Text>
             {originalPrice > salePrice && (
-              <Text style={styles.originalPrice}>${originalPrice.toFixed(2)}</Text>
+              <Text style={styles.originalPrice}>{currencySymbol} {convertPrice(originalPrice).toLocaleString()}</Text>
             )}
           </View>
           <View style={styles.timerContainer}>
@@ -194,11 +196,12 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingHorizontal: 10,
+    paddingBottom: 10,
   },
   productCard: {
-    width: 160,
+    width: 170,
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 12,
     marginRight: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -206,11 +209,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     overflow: 'hidden',
+    marginBottom: 5,
   },
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: 120,
+    height: 140,
+    backgroundColor: '#f5f5f5',
   },
   productImage: {
     width: '100%',
@@ -218,53 +223,61 @@ const styles = StyleSheet.create({
   },
   discountBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 8,
+    left: 8,
     backgroundColor: '#FF6B6B',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   discountText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
   productInfo: {
-    padding: 10,
+    padding: 12,
+    minHeight: 110,
   },
   productName: {
-    fontSize: 14,
-    marginBottom: 5,
-    fontWeight: '500',
+    fontSize: 13,
+    marginBottom: 4,
+    fontWeight: '600',
+    color: '#1F2937',
+    height: 32,
   },
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 8,
   },
   salePrice: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FF6B6B',
-    marginRight: 8,
+    marginRight: 6,
   },
   originalPrice: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 11,
+    color: '#9CA3AF',
     textDecorationLine: 'line-through',
   },
   timerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   timerText: {
-    fontSize: 10,
-    color: '#666',
+    fontSize: 9,
+    color: '#991B1B',
+    fontWeight: '500',
   },
   timerValue: {
-    fontSize: 10,
-    color: '#FF6B6B',
+    fontSize: 9,
+    color: '#DC2626',
     fontWeight: 'bold',
   },
   loadingContainer: {

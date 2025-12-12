@@ -14,6 +14,7 @@ import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { GetApi } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCurrency } from '../../context/CurrencyContext';
 
 
 const { width } = Dimensions.get('window');
@@ -23,6 +24,7 @@ const CategoryProducts = () => {
   const route = useRoute();
   const { categoryId, categoryName } = route.params || {};
   const { t } = useTranslation();
+  const { convertPrice, currencySymbol } = useCurrency();
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -282,10 +284,13 @@ const CategoryProducts = () => {
     return (
       <TouchableOpacity
         style={styles.productCard}
-        onPress={() => navigation.navigate('ProductDetail', {
-          productId: item.slug || item.id,
-          productName: item.name
-        })}
+        onPress={() => {
+          // Navigate to ProductDetail within the current stack
+          navigation.push('ProductDetail', {
+            productId: item.slug || item.id,
+            productName: item.name
+          });
+        }}
       >
         {discountText && (
           <View style={styles.discountBadge}>
@@ -305,11 +310,11 @@ const CategoryProducts = () => {
           <View style={styles.priceContainer}>
             {isOnSale ? (
               <>
-                <Text style={styles.price}>${Number(item.price).toFixed(2)}</Text>
-                <Text style={styles.originalPrice}>${Number(item.originalPrice).toFixed(2)}</Text>
+                <Text style={styles.price}>{currencySymbol} {convertPrice(Number(item.price)).toLocaleString()}</Text>
+                <Text style={styles.originalPrice}>{currencySymbol} {convertPrice(Number(item.originalPrice)).toLocaleString()}</Text>
               </>
             ) : (
-              <Text style={styles.price}>${Number(item.originalPrice).toFixed(2)}</Text>
+              <Text style={styles.price}>{currencySymbol} {convertPrice(Number(item.originalPrice)).toLocaleString()}</Text>
             )}
           </View>
         </View>
@@ -362,7 +367,7 @@ const CategoryProducts = () => {
         renderItem={renderItem}
         keyExtractor={(item) => item.id.toString()}
         numColumns={2}
-        contentContainerStyle={styles.productList}
+        contentContainerStyle={[styles.productList, { paddingBottom: 80 }]}
         columnWrapperStyle={styles.columnWrapper}
         showsVerticalScrollIndicator={false}
         onEndReached={loadMore}

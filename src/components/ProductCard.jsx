@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useCurrency } from '../context/CurrencyContext';
 
 const ProductCard = ({ product, onPress, style }) => {
   const navigation = useNavigation();
+  const { convertPrice, currencySymbol } = useCurrency();
   
   const handlePress = () => {
     if (onPress) {
@@ -40,8 +42,8 @@ const ProductCard = ({ product, onPress, style }) => {
       
       if (offerPrice > 0) {
         return {
-          price: `$${Math.round(offerPrice)}`,
-          originalPrice: offerPrice < originalPrice ? `$${Math.round(originalPrice)}` : null,
+          price: `${currencySymbol} ${convertPrice(offerPrice).toLocaleString()}`,
+          originalPrice: offerPrice < originalPrice ? `${currencySymbol} ${convertPrice(originalPrice).toLocaleString()}` : null,
           discount: offerPrice < originalPrice ? `${Math.round(((originalPrice - offerPrice) / originalPrice) * 100)}% OFF` : null
         };
       }
@@ -56,8 +58,8 @@ const ProductCard = ({ product, onPress, style }) => {
       
       if (offerPrice > 0) {
         return {
-          price: `$${Math.round(offerPrice)}`,
-          originalPrice: offerPrice < originalPrice ? `$${Math.round(originalPrice)}` : null,
+          price: `${currencySymbol} ${convertPrice(offerPrice).toLocaleString()}`,
+          originalPrice: offerPrice < originalPrice ? `${currencySymbol} ${convertPrice(originalPrice).toLocaleString()}` : null,
           discount: offerPrice < originalPrice ? `${Math.round(((originalPrice - offerPrice) / originalPrice) * 100)}% OFF` : null
         };
       }
@@ -65,15 +67,16 @@ const ProductCard = ({ product, onPress, style }) => {
     
     // Finally check direct price property
     if (product.price) {
+      const priceValue = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
       return {
-        price: typeof product.price === 'string' ? product.price : `$${Math.round(product.price)}`,
-        originalPrice: product.originalPrice,
+        price: `${currencySymbol} ${convertPrice(priceValue).toLocaleString()}`,
+        originalPrice: product.originalPrice ? `${currencySymbol} ${convertPrice(product.originalPrice).toLocaleString()}` : null,
         discount: product.discount
       };
     }
     
     return {
-      price: '$0',
+      price: `${currencySymbol} 0`,
       originalPrice: null,
       discount: null
     };

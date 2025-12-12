@@ -85,7 +85,7 @@ const SearchResultScreen = () => {
           renderItem={renderProductItem}
           keyExtractor={(item) => item._id}
           numColumns={2}
-          contentContainerStyle={styles.productList}
+     contentContainerStyle={[styles.productList, { paddingBottom: 80 }]}
           columnWrapperStyle={styles.columnWrapper}
           showsVerticalScrollIndicator={false}
         />

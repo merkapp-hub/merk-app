@@ -56,13 +56,10 @@ const Categories = () => {
       key={`category-${item._id || index}`}
       className="w-1/4 p-2"
       onPress={() => {
-        // Navigate to HomeTab first, then to CategoryProducts
-        navigation.navigate('HomeTab', {
-          screen: 'CategoryProducts',
-          params: {
-            categoryId: item._id,
-            categoryName: item.name.trim()
-          }
+        // Navigate to CategoryProducts within CategoriesTab stack
+        navigation.navigate('CategoryProducts', {
+          categoryId: item._id,
+          categoryName: item.name.trim()
         });
       }}
     >

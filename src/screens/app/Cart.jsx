@@ -14,24 +14,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeftIcon } from 'react-native-heroicons/outline';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const CartScreen = () => {
   const navigation = useNavigation();
   const { userInfo: user, updateCartCount } = useAuth();
   const { t } = useTranslation();
+  const { convertPrice, currencySymbol, formatPrice, userCurrency, exchangeRate } = useCurrency();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [updatingItem, setUpdatingItem] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('online');
+  // Payment method will be selected in BillingDetails
   const [taxRate, setTaxRate] = useState(0);
   const [deliveryCharge, setDeliveryCharge] = useState(0);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
   
   // Constants
-  const SERVICE_FEE = 25;
   const SHIPPING_FEE = 0; // Free shipping
 
-  // Fetch cart items from localStorage
+  // Fetch cart items with fresh product data from backend using dedicated API (like website)
   const fetchCartItems = async () => {
     try {
       setLoading(true);
@@ -40,10 +42,113 @@ const CartScreen = () => {
       const cartData = await AsyncStorage.getItem('cartData');
       console.log('Cart data from storage:', cartData);
       
-      if (cartData) {
-        const parsedCart = JSON.parse(cartData);
-        if (Array.isArray(parsedCart)) {
-          const formattedItems = parsedCart.map(item => ({
+      if (!cartData) {
+        setCartItems([]);
+        setLoading(false);
+        return;
+      }
+
+      const parsedCart = JSON.parse(cartData);
+      if (!Array.isArray(parsedCart) || parsedCart.length === 0) {
+        setCartItems([]);
+        setLoading(false);
+        return;
+      }
+
+      // Prepare cart items for API call (minimal data)
+      const cartItemsForAPI = parsedCart.map(item => ({
+        productId: item.product_id,
+        quantity: item.qty,
+        selectedVariant: item.selectedColor ? {
+          color: item.selectedColor,
+          selected: item.selectedSize ? [item.selectedSize] : []
+        } : null,
+        selectedSize: item.selectedSize
+      }));
+
+      // Call dedicated backend API to get fresh cart data (same as website)
+      const { Post } = require('../../Helper/Service');
+      const response = await Post('getCartItems', { items: cartItemsForAPI });
+      
+      console.log('Fresh cart data from API:', response);
+
+      // Handle response format: {status: true, data: [...]}
+      let cartDataArray = [];
+      if (response?.data && Array.isArray(response.data)) {
+        cartDataArray = response.data;
+      } else if (Array.isArray(response)) {
+        cartDataArray = response;
+      } else {
+        console.warn('Invalid response from getCartItems API:', response);
+        setCartItems([]);
+        setLoading(false);
+        return;
+      }
+
+      if (cartDataArray.length === 0) {
+        setCartItems([]);
+        setLoading(false);
+        return;
+      }
+
+      // Format response for UI
+      const freshCartItems = cartDataArray.map(item => {
+        // Create unique cart item ID
+        const cartItemId = item.selectedSize 
+          ? `${item._id}_${item.selectedVariant?.color || 0}_${item.selectedSize}`
+          : `${item._id}_${item.selectedVariant?.color || 0}`;
+
+        return {
+          id: cartItemId,
+          product: {
+            _id: item._id,
+            name: item.name,
+            image: item.image || 'https://via.placeholder.com/300',
+            price: item.Offerprice || item.price || 0,
+            originalPrice: item.price || 0,
+            category: item.category?.name || 'Uncategorized',
+            stock: item.stock || 0
+          },
+          variant: item.selectedVariant,
+          selectedVariantName: item.selectedVariant?.name || '',
+          selectedColor: item.selectedColor?.color || null,
+          selectedSize: item.selectedSize,
+          quantity: item.qty,
+          totalPrice: item.total,
+          inStock: item.inStock
+        };
+      });
+
+      setCartItems(freshCartItems);
+
+      // Update AsyncStorage with fresh data
+      const updatedCartData = freshCartItems.map(item => ({
+        _id: item.id,
+        product_id: item.product._id,
+        name: item.product.name,
+        price: item.product.price,
+        originalPrice: item.product.originalPrice,
+        qty: item.quantity,
+        total: item.totalPrice,
+        image: item.product.image,
+        selectedVariant: item.variant,
+        selectedVariantName: item.selectedVariantName,
+        selectedColor: item.selectedColor,
+        selectedSize: item.selectedSize,
+        userid: user?._id || 'guest'
+      }));
+      await AsyncStorage.setItem('cartData', JSON.stringify(updatedCartData));
+
+    } catch (error) {
+      console.error('Error fetching cart:', error);
+      setError(error.message || 'Failed to load cart');
+      
+      // Fallback to cached data on error
+      try {
+        const cartData = await AsyncStorage.getItem('cartData');
+        if (cartData) {
+          const parsedCart = JSON.parse(cartData);
+          const cachedItems = parsedCart.map(item => ({
             id: item._id,
             product: {
               _id: item.product_id,
@@ -60,17 +165,11 @@ const CartScreen = () => {
             quantity: item.qty,
             totalPrice: item.total
           }));
-          
-          setCartItems(formattedItems);
-        } else {
-          setCartItems([]);
+          setCartItems(cachedItems);
         }
-      } else {
-        setCartItems([]);
+      } catch (fallbackError) {
+        console.error('Error loading cached cart:', fallbackError);
       }
-    } catch (error) {
-      console.error('Error fetching cart:', error);
-      setError(error.message || 'Failed to load cart');
     } finally {
       setLoading(false);
     }
@@ -147,7 +246,11 @@ const CartScreen = () => {
 
   // Calculate totals
   const calculateSubtotal = () => {
-    return cartItems.reduce((total, item) => total + item.totalPrice, 0);
+    return cartItems.reduce((total, item) => {
+      // Convert totalPrice to number (it might be string like "300.00")
+      const itemTotal = parseFloat(item.totalPrice) || 0;
+      return total + itemTotal;
+    }, 0);
   };
 
   const calculateTax = () => {
@@ -158,7 +261,7 @@ const CartScreen = () => {
   const calculateTotal = () => {
     const subtotal = calculateSubtotal();
     const tax = calculateTax();
-    return subtotal + tax + deliveryCharge + SERVICE_FEE;
+    return subtotal + tax + deliveryCharge;
   };
 
   // const calculateTotal = () => {
@@ -216,11 +319,11 @@ const CartScreen = () => {
             <View className="flex-row items-center justify-between">
               <View>
                 <Text className="text-black font-bold text-lg">
-                  ${Number(item.product.price || 0).toFixed(2)}
+                  {currencySymbol} {convertPrice(Number(item.product.price || 0)).toLocaleString()}
                 </Text>
                 {item.product.originalPrice > item.product.price && (
                   <Text className="text-gray-400 line-through text-sm">
-                    ${Number(item.product.originalPrice || 0).toFixed(2)}
+                    {currencySymbol} {convertPrice(Number(item.product.originalPrice || 0)).toLocaleString()}
                   </Text>
                 )}
               </View>
@@ -253,7 +356,7 @@ const CartScreen = () => {
             
             {/* Item Total */}
             <Text className="text-right text-black font-bold text-lg mt-2">
-              {t('total')}: ${Number(item.totalPrice || 0).toFixed(2)}
+              {t('total')}: {currencySymbol} {convertPrice(Number(item.totalPrice || 0)).toLocaleString()}
             </Text>
           </View>
         </View>
@@ -286,9 +389,10 @@ const CartScreen = () => {
 
         // Fetch delivery charge
         const deliveryResponse = await GetApi('getDeliveryCharge');
-        console.log("ddddddd",deliveryCharge)
+        console.log("Delivery charge response:", deliveryResponse);
         if (deliveryResponse?.data?.deliveryCharge !== undefined) {
           setDeliveryCharge(deliveryResponse.data.deliveryCharge);
+          console.log("Delivery charge set to:", deliveryResponse.data.deliveryCharge);
         }
       } catch (error) {
         console.error('Error fetching charges:', error);
@@ -329,6 +433,8 @@ const CartScreen = () => {
   // }
 
   const navigateToBilling = () => {
+    setIsCheckingOut(true);
+    
     // Pass complete product data including image
     const simplifiedCartItems = cartItems.map(item => ({
       id: item.id,
@@ -349,14 +455,15 @@ const CartScreen = () => {
       params: {
         cartItems: simplifiedCartItems,
         subtotal: calculateSubtotal(),
-        serviceFee: SERVICE_FEE,
         shipping: SHIPPING_FEE,
         total: calculateTotal(),
-        paymentMethod,
         taxRate: taxRate,
         deliveryCharge: deliveryCharge
       }
     });
+    
+    // Reset loading state after navigation
+    setTimeout(() => setIsCheckingOut(false), 500);
   };
 
   if (loading) {
@@ -401,7 +508,7 @@ const CartScreen = () => {
                 })
               );
             }}
-            className="bg-orange-500 px-6 py-3 rounded-lg"
+            className="bg-slate-800 px-6 py-3 rounded-lg"
           >
             <Text className="text-white font-medium">{t('continue_shopping')}</Text>
           </TouchableOpacity>
@@ -449,19 +556,15 @@ const CartScreen = () => {
         <View className="mb-2">
           <View className="flex-row justify-between mb-1">
             <Text className="text-gray-600 text-sm">{t('subtotal')}</Text>
-            <Text className="font-medium text-sm">${calculateSubtotal().toFixed(2)}</Text>
-          </View>
-          <View className="flex-row justify-between mb-1">
-            <Text className="text-gray-600 text-sm">{t('service_fee')}</Text>
-            <Text className="font-medium text-sm">${SERVICE_FEE.toFixed(2)}</Text>
+            <Text className="font-medium text-sm">{currencySymbol} {convertPrice(calculateSubtotal()).toLocaleString()}</Text>
           </View>
           <View className="flex-row justify-between mb-1">
             <Text className="text-gray-600 text-sm">Tax ({taxRate}%)</Text>
-            <Text className="font-medium text-sm">${calculateTax().toFixed(2)}</Text>
+            <Text className="font-medium text-sm">{currencySymbol} {convertPrice(calculateTax()).toLocaleString()}</Text>
           </View>
           <View className="flex-row justify-between mb-1">
             <Text className="text-gray-600 text-sm">Delivery Charge</Text>
-            <Text className="font-medium text-sm">${deliveryCharge.toFixed(2)}</Text>
+            <Text className="font-medium text-sm">{currencySymbol} {convertPrice(deliveryCharge).toLocaleString()}</Text>
           </View>
           {/* <View className="flex-row justify-between mb-1">
             <Text className="text-gray-600 text-sm">{t('shipping')}</Text>
@@ -472,46 +575,23 @@ const CartScreen = () => {
           <View className="h-px bg-gray-200 my-2" />
           <View className="flex-row justify-between mb-2">
             <Text className="text-base font-bold">{t('total')}</Text>
-            <Text className="text-base font-bold">${calculateTotal().toFixed(2)}</Text>
-          </View>
-        </View>
-
-        {/* Payment Method */}
-        <View className="mb-2">
-          <Text className="font-medium text-sm mb-1">{t('payment_method')}</Text>
-          <View className="flex-row items-center mb-2">
-            <TouchableOpacity
-              onPress={() => setPaymentMethod('online')}
-              className="flex-row items-center flex-1 p-3 border rounded-lg mr-2"
-              style={{
-                borderColor: paymentMethod === 'online' ? '#E58F14' : '#E5E7EB',
-                backgroundColor: paymentMethod === 'online' ? '#FEF3C7' : '#FFFFFF'
-              }}
-            >
-              <View className="w-5 h-5 rounded-full border-2 border-gray-300 mr-3 items-center justify-center"
-                style={{
-                  borderColor: paymentMethod === 'online' ? '#E58F14' : '#9CA3AF',
-                  backgroundColor: paymentMethod === 'online' ? '#E58F14' : 'transparent'
-                }}
-              >
-                {paymentMethod === 'online' && (
-                  <View className="w-2 h-2 rounded-full bg-white" />
-                )}
-              </View>
-              <Text className="font-medium">{t('pay_online')}</Text>
-            </TouchableOpacity>
+            <Text className="text-base font-bold">{currencySymbol} {convertPrice(calculateTotal()).toLocaleString()}</Text>
           </View>
         </View>
 
         {/* Checkout Button */}
         <TouchableOpacity
           onPress={navigateToBilling}
-          className="bg-slate-800 py-3 rounded-lg items-center justify-center mb-2"
-          disabled={cartItems.length === 0}
+          className={`py-3 rounded-lg items-center justify-center mb-2 ${isCheckingOut ? 'bg-slate-400' : 'bg-slate-800'}`}
+          disabled={cartItems.length === 0 || isCheckingOut}
         >
-          <Text className="text-white font-bold text-base">
-            {t('continue_to_pay')} ${calculateTotal().toFixed(2)}
-          </Text>
+          {isCheckingOut ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-white font-bold text-base">
+              {t('proceed_to_checkout')} {currencySymbol} {convertPrice(calculateTotal()).toLocaleString()}
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
     </View>

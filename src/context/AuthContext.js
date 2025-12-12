@@ -242,9 +242,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    isLoggedIn();
-    updateFavoritesCount();
-    updateCartCount();
+    // Wrap async function calls properly
+    const initializeAuth = async () => {
+      await isLoggedIn();
+      await updateFavoritesCount();
+      await updateCartCount();
+    };
+    initializeAuth();
   }, []);
 
   const [cart, setCart] = useState([]);
@@ -297,14 +301,44 @@ export const AuthProvider = ({ children }) => {
       // Get price from selected variant if available, otherwise use price_slot
       const variant = product.varients?.[selectedVariant];
       
-      // Use provided price if available (from size selection), otherwise use variant price
-      // Check Offerprice first, but if it's 0 or undefined, use regular price
-      const offerPrice = selectedPrice?.Offerprice || variant?.Offerprice || product.price_slot?.[0]?.Offerprice;
-      const regularPrice = selectedPrice?.price || variant?.price || product.price_slot?.[0]?.price || 0;
+      // Determine price with multiple fallbacks
+      let variantPrice = 0;
+      let variantOriginalPrice = 0;
       
-      // Use offer price if it exists and is greater than 0, otherwise use regular price
-      const variantPrice = (offerPrice && offerPrice > 0) ? offerPrice : regularPrice;
-      const variantOriginalPrice = regularPrice;
+      if (selectedPrice && selectedPrice.Offerprice) {
+        // Use provided price from size/variant selection
+        variantPrice = selectedPrice.Offerprice;
+        variantOriginalPrice = selectedPrice.price || selectedPrice.Offerprice;
+      } else if (variant) {
+        // Use variant price
+        variantPrice = variant.Offerprice || variant.price || 0;
+        variantOriginalPrice = variant.price || variantPrice;
+      } else if (product.price_slot && product.price_slot.length > 0) {
+        // Use price_slot
+        variantPrice = product.price_slot[0].Offerprice || product.price_slot[0].price || 0;
+        variantOriginalPrice = product.price_slot[0].price || variantPrice;
+      } else {
+        // Use direct product price
+        variantPrice = product.Offerprice || product.price || 0;
+        variantOriginalPrice = product.price || variantPrice;
+      }
+      
+      // Ensure price is greater than 0
+      if (variantPrice === 0 && variantOriginalPrice > 0) {
+        variantPrice = variantOriginalPrice;
+      }
+      
+      // Determine image with multiple fallbacks
+      let productImage = 'https://via.placeholder.com/300';
+      if (variant?.image && variant.image.length > 0) {
+        productImage = variant.image[0];
+      } else if (product.varients?.[selectedVariant]?.image && product.varients[selectedVariant].image.length > 0) {
+        productImage = product.varients[selectedVariant].image[0];
+      } else if (product.images && product.images.length > 0) {
+        productImage = product.images[0];
+      } else if (product.image) {
+        productImage = product.image;
+      }
       
       // Use provided size or get from variant's selected array
       const variantSize = selectedSize || variant?.selected?.[0]?.value || variant?.size || null;
@@ -322,7 +356,7 @@ export const AuthProvider = ({ children }) => {
         originalPrice: variantOriginalPrice,
         qty: quantity,
         total: variantPrice * quantity,
-        image: variant?.image?.[0] || product.varients?.[selectedVariant]?.image?.[0] || product.images?.[0] || product.image || 'https://via.placeholder.com/300',
+        image: productImage,
         selectedVariant: selectedVariant,
         selectedVariantName: variant?.name || '',
         selectedColor: variant?.color || null,
@@ -353,7 +387,11 @@ export const AuthProvider = ({ children }) => {
 
   // Initialize cart count on app load
   useEffect(() => {
-    updateCartCount();
+    // Wrap async function call properly
+    const initializeCart = async () => {
+      await updateCartCount();
+    };
+    initializeCart();
   }, [userInfo]);
 
   const authContextValue = {
