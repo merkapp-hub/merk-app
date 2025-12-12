@@ -296,12 +296,8 @@
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 68FH8633Q8;
-<<<<<<< HEAD:ios/merkapp.xcodeproj/project.pbxproj
-				INFOPLIST_FILE = merkapp/Info.plist;
-=======
 				INFOPLIST_FILE = merK/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = merK;
->>>>>>> origin/latest-app:ios/merK.xcodeproj/project.pbxproj
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

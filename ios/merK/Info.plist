@@ -33,23 +33,10 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-<<<<<<< HEAD:ios/merkapp/Info.plist
-    <key>NSCameraUsageDescription</key>
-	<string>merK Will use Camera to click and upload the documents for verification.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>merK Will use Location to show nearby drivers </string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>merK Will use Location to show nearby drivers </string>
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>merK Will use Location to show nearby drivers.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>merK Will use Photo Library to upload the documents for verification.</string>
-=======
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>merK Will use Photo Library to upload the documents for verification.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string/>
->>>>>>> origin/latest-app:ios/merK/Info.plist
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
