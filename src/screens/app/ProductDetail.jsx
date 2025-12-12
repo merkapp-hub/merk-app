@@ -20,6 +20,7 @@ import { HeartIcon as HeartIconSolid } from 'react-native-heroicons/solid';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProductCard from '../../components/ProductCard';
 import { useTranslation } from 'react-i18next';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const { width } = Dimensions.get('window');
 
@@ -27,6 +28,7 @@ const ProductDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { userInfo: user, addToCart, updateCartCount, updateFavoritesCount } = useAuth();
+  const { convertPrice, currencySymbol, formatPrice, userCurrency, exchangeRate } = useCurrency();
   
   // Remove item from cart
   const removeFromCart = async (itemId) => {
@@ -140,18 +142,48 @@ const fetchProductDetails = useCallback(async () => {
         const firstSize = firstVariant.selected[0];
         setSelectedSize(firstSize.value);
         
-        // Use variant price (not size.total which is quantity)
-        const variantOfferPrice = firstVariant?.Offerprice || firstVariant?.price || productData?.price_slot?.[0]?.Offerprice || 0;
-        const variantRegularPrice = firstVariant?.price || productData?.price_slot?.[0]?.price || variantOfferPrice;
+        // Determine price with multiple fallbacks
+        let variantOfferPrice = 0;
+        let variantRegularPrice = 0;
+        
+        if (firstVariant.Offerprice) {
+          variantOfferPrice = firstVariant.Offerprice;
+          variantRegularPrice = firstVariant.price || firstVariant.Offerprice;
+        } else if (firstVariant.price) {
+          variantOfferPrice = firstVariant.price;
+          variantRegularPrice = firstVariant.price;
+        } else if (productData.price_slot && productData.price_slot.length > 0) {
+          variantOfferPrice = productData.price_slot[0].Offerprice || productData.price_slot[0].price || 0;
+          variantRegularPrice = productData.price_slot[0].price || variantOfferPrice;
+        } else {
+          variantOfferPrice = productData.Offerprice || productData.price || 0;
+          variantRegularPrice = productData.price || variantOfferPrice;
+        }
+        
         setSelectedPrice({
           value: firstSize.value,
           Offerprice: variantOfferPrice,
           price: variantRegularPrice
         });
       } else {
-        // No sizes, use variant price
-        const variantOfferPrice = firstVariant?.Offerprice || firstVariant?.price || productData?.price_slot?.[0]?.Offerprice || 0;
-        const variantRegularPrice = firstVariant?.price || productData?.price_slot?.[0]?.price || variantOfferPrice;
+        // No sizes, use variant price with fallbacks
+        let variantOfferPrice = 0;
+        let variantRegularPrice = 0;
+        
+        if (firstVariant.Offerprice) {
+          variantOfferPrice = firstVariant.Offerprice;
+          variantRegularPrice = firstVariant.price || firstVariant.Offerprice;
+        } else if (firstVariant.price) {
+          variantOfferPrice = firstVariant.price;
+          variantRegularPrice = firstVariant.price;
+        } else if (productData.price_slot && productData.price_slot.length > 0) {
+          variantOfferPrice = productData.price_slot[0].Offerprice || productData.price_slot[0].price || 0;
+          variantRegularPrice = productData.price_slot[0].price || variantOfferPrice;
+        } else {
+          variantOfferPrice = productData.Offerprice || productData.price || 0;
+          variantRegularPrice = productData.price || variantOfferPrice;
+        }
+        
         setSelectedPrice({
           value: '',
           Offerprice: variantOfferPrice,
@@ -163,11 +195,22 @@ const fetchProductDetails = useCallback(async () => {
       const productImages = productData?.images || [];
       setSelectedImageList(productImages);
       
-      // Set price from price_slot
-      const priceSlot = productData?.price_slot?.[0];
-      if (priceSlot) {
-        setSelectedPrice(priceSlot);
+      // Set price with multiple fallbacks
+      let offerPrice = 0;
+      let regularPrice = 0;
+      
+      if (productData.price_slot && productData.price_slot.length > 0) {
+        offerPrice = productData.price_slot[0].Offerprice || productData.price_slot[0].price || 0;
+        regularPrice = productData.price_slot[0].price || offerPrice;
+      } else {
+        offerPrice = productData.Offerprice || productData.price || 0;
+        regularPrice = productData.price || offerPrice;
       }
+      
+      setSelectedPrice({
+        Offerprice: offerPrice,
+        price: regularPrice
+      });
     }
     
     // Handle reviews
@@ -206,8 +249,8 @@ const fetchProductDetails = useCallback(async () => {
           .map(product => ({
             id: product._id,
             name: product.name,
-            price: `$${(product.price_slot?.[0]?.Offerprice || product.price_slot?.[0]?.price || 0).toFixed(2)}`,
-            originalPrice: `$${(product.price_slot?.[0]?.price || 0).toFixed(2)}`,
+            price: `${currencySymbol} ${convertPrice(product.price_slot?.[0]?.Offerprice || product.price_slot?.[0]?.price || 0).toLocaleString()}`,
+            originalPrice: `${currencySymbol} ${convertPrice(product.price_slot?.[0]?.price || 0).toLocaleString()}`,
             image: product.varients?.[0]?.image?.[0] || product.image || 'https://via.placeholder.com/300',
             rating: 4.0
           }));
@@ -226,8 +269,26 @@ const fetchProductDetails = useCallback(async () => {
       setFavoriteLoading(true);
       const newFavoriteState = !isFavorite;
       
+      // Create unique ID for this specific variant+size combination (like cart)
+      const uniqueFavoriteId = selectedSize 
+        ? `${product._id}_${selectedVariant}_${selectedSize}`
+        : `${product._id}_${selectedVariant}`;
+      
+      // Create favorite item with current selection details
+      const favoriteItem = {
+        _id: product._id,
+        uniqueId: uniqueFavoriteId,
+        name: product.name,
+        selectedVariant: selectedVariant,
+        selectedColor: selectedColor,
+        selectedSize: selectedSize,
+        selectedPrice: selectedPrice,
+        image: selectedImageList[0] || product.image,
+        timestamp: Date.now()
+      };
+      
       // Update local storage for both logged in and guest users
-      const updated = await updateLocalFavorites(product._id, newFavoriteState);
+      const updated = await updateLocalFavorites(favoriteItem, newFavoriteState);
       
       if (updated) {
         // Only update the UI if the favorites were actually changed
@@ -249,51 +310,79 @@ const fetchProductDetails = useCallback(async () => {
   };
 
   
-  const updateLocalFavorites = async (productId, isFav) => {
+  const updateLocalFavorites = async (favoriteItem, isFav) => {
     try {
-      const favorites = await AsyncStorage.getItem('favorites');
-      let favArray = [];
+      // Get both old format (IDs only) and new format (objects)
+      const favoritesStr = await AsyncStorage.getItem('favorites');
+      const favoritesDetailStr = await AsyncStorage.getItem('favoritesDetail');
       
-      if (favorites) {
-        favArray = JSON.parse(favorites);
+      let favArray = [];
+      let favDetailArray = [];
+      
+      if (favoritesStr) {
+        favArray = JSON.parse(favoritesStr);
+      }
+      
+      if (favoritesDetailStr) {
+        favDetailArray = JSON.parse(favoritesDetailStr);
       }
   
-     
-  
       let updated = false;
+      const uniqueId = favoriteItem.uniqueId;
       
       if (isFav) {
-        if (!favArray.includes(productId)) {
-          favArray.push(productId);
+        // Add to favorites using unique ID (allows multiple variants of same product)
+        if (!favArray.includes(uniqueId)) {
+          favArray.push(uniqueId);
+          updated = true;
+        }
+        
+        // Add or update in detailed favorites using unique ID
+        const existingIndex = favDetailArray.findIndex(item => item.uniqueId === uniqueId);
+        if (existingIndex >= 0) {
+          // Update existing favorite with new selection
+          favDetailArray[existingIndex] = favoriteItem;
+        } else {
+          // Add new favorite
+          favDetailArray.push(favoriteItem);
           updated = true;
         }
       } else {
+        // Remove from favorites using unique ID
         const initialLength = favArray.length;
-        favArray = favArray.filter(id => id !== productId);
+        favArray = favArray.filter(id => id !== uniqueId);
+        favDetailArray = favDetailArray.filter(item => item.uniqueId !== uniqueId);
         updated = favArray.length !== initialLength;
       }
   
-      if (updated) {
+      if (updated || isFav) {
         await AsyncStorage.setItem('favorites', JSON.stringify(favArray));
+        await AsyncStorage.setItem('favoritesDetail', JSON.stringify(favDetailArray));
         console.log('Updated favorites:', favArray);
-        return true; // Return true if favorites were updated
+        console.log('Updated favorites detail:', favDetailArray);
+        return true;
       }
       
-      return false; // Return false if no changes were made
+      return false;
     } catch (error) {
       console.error('Error updating local favorites:', error);
-      throw error; // Re-throw to be caught by the calling function
+      throw error;
     }
   };
 
-  // Check if product is in favorites
+  // Check if product is in favorites (check current variant+size combination)
   const checkIfFavorite = async () => {
     try {
       const favorites = await AsyncStorage.getItem('favorites');
       if (favorites) {
         const favArray = JSON.parse(favorites);
-        setIsFavorite(favArray.includes(product?._id));
-        console.log('Checking favorites - product in favorites:', favArray.includes(product?._id));
+        // Create unique ID for current selection
+        const uniqueId = selectedSize 
+          ? `${product?._id}_${selectedVariant}_${selectedSize}`
+          : `${product?._id}_${selectedVariant}`;
+        const isInFavorites = favArray.includes(uniqueId);
+        setIsFavorite(isInFavorites);
+        console.log('Checking favorites - current variant+size in favorites:', isInFavorites);
       }
     } catch (error) {
       console.error('Error checking favorites:', error);
@@ -549,22 +638,45 @@ const fetchProductDetails = useCallback(async () => {
   useEffect(() => {
     // Fetch reviews when product data is available
     if (product?._id) {
-      fetchProductReviews();
+      // Wrap async function call properly
+      const fetchReviews = async () => {
+        await fetchProductReviews();
+      };
+      fetchReviews();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?._id]);
 
   useEffect(() => {
     if (product) {
-      checkIfFavorite();
+      // Wrap async function call properly
+      const checkFavorite = async () => {
+        await checkIfFavorite();
+      };
+      checkFavorite();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [product?._id]);
 
+  // Re-check favorite status when variant or size changes
+  useEffect(() => {
+    if (product) {
+      const checkFavorite = async () => {
+        await checkIfFavorite();
+      };
+      checkFavorite();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVariant, selectedSize]);
+
   // Update favorites count when favorite status changes
   useEffect(() => {
     if (updateFavoritesCount && favoriteUpdated !== false) {
-      updateFavoritesCount();
+      // Wrap async function call properly
+      const updateCount = async () => {
+        await updateFavoritesCount();
+      };
+      updateCount();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [favoriteUpdated]);
@@ -753,19 +865,55 @@ const fetchProductDetails = useCallback(async () => {
                         if (variant.selected && variant.selected.length > 0) {
                           const firstSize = variant.selected[0];
                           setSelectedSize(firstSize.value);
-                          const sizePrice = parseFloat(firstSize.total) || variant?.Offerprice || variant?.price || 0;
+                          
+                          // Determine price with fallbacks
+                          let offerPrice = 0;
+                          let regularPrice = 0;
+                          
+                          if (variant.Offerprice) {
+                            offerPrice = variant.Offerprice;
+                            regularPrice = variant.price || variant.Offerprice;
+                          } else if (variant.price) {
+                            offerPrice = variant.price;
+                            regularPrice = variant.price;
+                          } else if (product.price_slot && product.price_slot.length > 0) {
+                            offerPrice = product.price_slot[0].Offerprice || product.price_slot[0].price || 0;
+                            regularPrice = product.price_slot[0].price || offerPrice;
+                          } else {
+                            offerPrice = product.Offerprice || product.price || 0;
+                            regularPrice = product.price || offerPrice;
+                          }
+                          
                           setSelectedPrice({
                             value: firstSize.value,
-                            Offerprice: sizePrice,
-                            price: sizePrice
+                            Offerprice: offerPrice,
+                            price: regularPrice
                           });
                         } else {
                           setSelectedSize(null);
-                          const variantPrice = variant?.Offerprice || variant?.price || 0;
+                          
+                          // Determine price with fallbacks
+                          let offerPrice = 0;
+                          let regularPrice = 0;
+                          
+                          if (variant.Offerprice) {
+                            offerPrice = variant.Offerprice;
+                            regularPrice = variant.price || variant.Offerprice;
+                          } else if (variant.price) {
+                            offerPrice = variant.price;
+                            regularPrice = variant.price;
+                          } else if (product.price_slot && product.price_slot.length > 0) {
+                            offerPrice = product.price_slot[0].Offerprice || product.price_slot[0].price || 0;
+                            regularPrice = product.price_slot[0].price || offerPrice;
+                          } else {
+                            offerPrice = product.Offerprice || product.price || 0;
+                            regularPrice = product.price || offerPrice;
+                          }
+                          
                           setSelectedPrice({
                             value: '',
-                            Offerprice: variantPrice,
-                            price: variant?.price || 0
+                            Offerprice: offerPrice,
+                            price: regularPrice
                           });
                         }
                         
@@ -797,8 +945,17 @@ const fetchProductDetails = useCallback(async () => {
             </View>
           )}
 
-          {/* Size Selection - if current variant has sizes */}
-          {product.varients && product.varients.length > 0 && product.varients[selectedVariant]?.selected && product.varients[selectedVariant].selected.length > 0 && (
+          {/* Size Selection - only show if variant has actual size data (not dimensions like Height/Width) */}
+          {product.varients && product.varients.length > 0 && 
+           product.varients[selectedVariant]?.selected && 
+           product.varients[selectedVariant].selected.length > 0 &&
+           product.varients[selectedVariant].selected.some(item => 
+             item.label && (
+               item.label.toLowerCase().includes('size') || 
+               item.label.toLowerCase().includes('weight') || 
+               item.label.toLowerCase().includes('capacity')
+             )
+           ) && (
             <View className="mb-4">
               <Text className="text-base font-semibold text-black mb-3">
                 Select Size:
@@ -818,12 +975,30 @@ const fetchProductDetails = useCallback(async () => {
                       key={index}
                       onPress={async () => {
                         setSelectedSize(sizeOption.value);
-                        // Update price based on selected size
-                        const sizePrice = parseFloat(sizeOption.total) || 0;
+                        
+                        // Update price based on selected variant (not size.total)
+                        const variant = product.varients[selectedVariant];
+                        let offerPrice = 0;
+                        let regularPrice = 0;
+                        
+                        if (variant.Offerprice) {
+                          offerPrice = variant.Offerprice;
+                          regularPrice = variant.price || variant.Offerprice;
+                        } else if (variant.price) {
+                          offerPrice = variant.price;
+                          regularPrice = variant.price;
+                        } else if (product.price_slot && product.price_slot.length > 0) {
+                          offerPrice = product.price_slot[0].Offerprice || product.price_slot[0].price || 0;
+                          regularPrice = product.price_slot[0].price || offerPrice;
+                        } else {
+                          offerPrice = product.Offerprice || product.price || 0;
+                          regularPrice = product.price || offerPrice;
+                        }
+                        
                         setSelectedPrice({
                           value: sizeOption.value,
-                          Offerprice: sizePrice,
-                          price: sizePrice
+                          Offerprice: offerPrice,
+                          price: regularPrice
                         });
                         
                         // Check if this variant+size combination is in cart
@@ -881,7 +1056,7 @@ const fetchProductDetails = useCallback(async () => {
               <View className="flex-col">
                 <View className="flex-row items-center">
                   <Text className="text-3xl font-bold text-black">
-                    ${Number(currentPrice).toFixed(2)}
+                    {currencySymbol} {convertPrice(Number(currentPrice)).toLocaleString()}
                   </Text>
                   {isFlashSaleActive && (
                     <Text className="ml-2 text-sm text-red-600 bg-red-100 px-2 py-0.5 rounded-md">
@@ -891,7 +1066,7 @@ const fetchProductDetails = useCallback(async () => {
                 </View>
                 {originalPrice > currentPrice && (
                   <Text className="text-base text-gray-400 line-through">
-                    ${Number(originalPrice).toFixed(2)}
+                    {currencySymbol} {convertPrice(Number(originalPrice)).toLocaleString()}
                   </Text>
                 )}
               </View>

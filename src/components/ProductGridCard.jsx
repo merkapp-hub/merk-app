@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useCurrency } from '../context/CurrencyContext';
 
 const { width } = Dimensions.get('window');
 
 const ProductGridCard = ({ item }) => {
   const navigation = useNavigation();
+  const { convertPrice, currencySymbol, formatPrice } = useCurrency();
 
   // Get image - check variants first, then images array, then direct image
   const getProductImage = () => {
@@ -21,24 +23,13 @@ const ProductGridCard = ({ item }) => {
     return 'https://via.placeholder.com/300';
   };
 
-  // Get price - check all possible locations
+  // Get price - check all possible locations with comprehensive fallbacks
   const getPrice = () => {
     let price = 0;
     let offerPrice = 0;
     
-    // First check variants for price
-    if (item.varients && item.varients.length > 0) {
-      const variant = item.varients[0];
-      if (variant.price) {
-        price = parseFloat(variant.price) || 0;
-        offerPrice = variant.Offerprice && parseFloat(variant.Offerprice) > 0 
-          ? parseFloat(variant.Offerprice) 
-          : price;
-      }
-    }
-    
-    // If no price from variants, check price_slot
-    if (price === 0 && item.price_slot && item.price_slot.length > 0) {
+    // Priority 1: Check price_slot (most reliable)
+    if (item.price_slot && item.price_slot.length > 0) {
       const priceSlot = item.price_slot[0];
       price = parseFloat(priceSlot.price) || 0;
       offerPrice = priceSlot.Offerprice && parseFloat(priceSlot.Offerprice) > 0 
@@ -46,14 +37,36 @@ const ProductGridCard = ({ item }) => {
         : price;
     }
     
-    // If still no price, check direct price property
-    if (price === 0 && item.price) {
-      price = parseFloat(item.price) || 0;
-      offerPrice = price;
+    // Priority 2: Check variants for price (if price_slot didn't have price)
+    if (price === 0 && item.varients && item.varients.length > 0) {
+      const variant = item.varients[0];
+      // Check if variant has price
+      if (variant.price && parseFloat(variant.price) > 0) {
+        price = parseFloat(variant.price) || 0;
+        offerPrice = variant.Offerprice && parseFloat(variant.Offerprice) > 0 
+          ? parseFloat(variant.Offerprice) 
+          : price;
+      }
+      // Check if variant has Offerprice only
+      else if (variant.Offerprice && parseFloat(variant.Offerprice) > 0) {
+        offerPrice = parseFloat(variant.Offerprice) || 0;
+        price = offerPrice;
+      }
     }
     
-    // Fallback to originalPrice if available
-    if (price === 0 && item.originalPrice) {
+    // Priority 3: Check direct price properties
+    if (price === 0) {
+      if (item.Offerprice && parseFloat(item.Offerprice) > 0) {
+        offerPrice = parseFloat(item.Offerprice) || 0;
+        price = parseFloat(item.price) || offerPrice;
+      } else if (item.price && parseFloat(item.price) > 0) {
+        price = parseFloat(item.price) || 0;
+        offerPrice = price;
+      }
+    }
+    
+    // Priority 4: Fallback to originalPrice
+    if (price === 0 && item.originalPrice && parseFloat(item.originalPrice) > 0) {
       price = parseFloat(item.originalPrice) || 0;
       offerPrice = parseFloat(item.price) || price;
     }
@@ -65,6 +78,10 @@ const ProductGridCard = ({ item }) => {
   const { price, offerPrice } = getPrice();
   const discountPercentage = (offerPrice && offerPrice < price) ?
     Math.round(((price - offerPrice) / price) * 100) : 0;
+
+  // Convert prices to user currency
+  const convertedPrice = convertPrice(price);
+  const convertedOfferPrice = convertPrice(offerPrice);
 
   return (
     <TouchableOpacity
@@ -97,11 +114,11 @@ const ProductGridCard = ({ item }) => {
         <View style={styles.priceContainer}>
           {offerPrice && offerPrice < price ? (
             <>
-              <Text style={styles.price}>${Number(offerPrice).toFixed(2)}</Text>
-              <Text style={styles.originalPrice}>${Number(price).toFixed(2)}</Text>
+              <Text style={styles.price}>{currencySymbol} {convertedOfferPrice.toLocaleString()}</Text>
+              <Text style={styles.originalPrice}>{currencySymbol} {convertedPrice.toLocaleString()}</Text>
             </>
           ) : (
-            <Text style={styles.price}>${Number(offerPrice || price).toFixed(2)}</Text>
+            <Text style={styles.price}>{currencySymbol} {(convertedOfferPrice || convertedPrice).toLocaleString()}</Text>
           )}
         </View>
       </View>

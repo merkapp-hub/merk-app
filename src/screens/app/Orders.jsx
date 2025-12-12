@@ -19,11 +19,13 @@ import { GetApi, Post } from '../../Helper/Service';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCurrency } from '../../context/CurrencyContext';
 
 
 const OrdersScreen = ({ navigation }) => {
   const { userInfo } = useAuth();
   const { t } = useTranslation();
+  const { convertPrice, currencySymbol } = useCurrency();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -263,9 +265,13 @@ const OrdersScreen = ({ navigation }) => {
 
       if (response?.data) {
         const ordersData = Array.isArray(response.data) ? response.data : [];
-        console.log('Orders API Response:', ordersData); // Debug log
+        console.log('📦 ORDERS API Response:', ordersData.length, 'orders');
+        console.log('First order sample:', ordersData[0]);
+        console.log('First order _id:', ordersData[0]?._id);
+        console.log('First order orderId:', ordersData[0]?.orderId);
 
         const groupedOrders = groupOrdersByOrderNumber(ordersData);
+        console.log('📦 Grouped orders:', groupedOrders.length, 'groups');
 
         if (isRefreshing || currentPage === 1) {
           setOrders(groupedOrders);
@@ -378,7 +384,7 @@ const OrdersScreen = ({ navigation }) => {
         {/* Order Summary */}
         <View style={styles.orderSummary}>
           <Text style={styles.totalAmount}>
-            {t('total_amount')}: <Text style={styles.totalValue}>${(item.total || 0).toFixed(2)}</Text>
+            {t('total_amount')}: <Text style={styles.totalValue}>{currencySymbol} {convertPrice(item.total || 0).toLocaleString()}</Text>
           </Text>
           <View style={styles.statusContainer}>
             <Text style={[styles.statusBadge, getStatusStyle(item.status)]}>
@@ -443,7 +449,7 @@ const OrdersScreen = ({ navigation }) => {
                     </View>
                     <View style={styles.productPrice}>
                       <Text style={styles.priceText}>
-                        ${((product.price || 0) * (product.qty || product.quantity || 1)).toFixed(2)}
+                        {currencySymbol} {convertPrice((product.price || 0) * (product.qty || product.quantity || 1)).toLocaleString()}
                       </Text>
                     </View>
                   </View>
@@ -453,17 +459,32 @@ const OrdersScreen = ({ navigation }) => {
                 <View style={styles.orderFooterInfo}>
                   {item.tax && (
                     <View style={styles.infoTag}>
-                      <Text style={styles.infoTagText}>{t('tax')}: ${(item.tax || 0).toFixed(2)}</Text>
+                      <Text style={styles.infoTagText}>{t('tax')}: {currencySymbol} {convertPrice(item.tax || 0).toLocaleString()}</Text>
                     </View>
                   )}
                   {item.deliveryCharge && (
                     <View style={styles.infoTag}>
                       <Text style={styles.infoTagText}>
-                        {t('delivery_charge')}: ${(item.deliveryCharge || 0).toFixed(2)}
+                        {t('delivery_charge')}: {currencySymbol} {convertPrice(item.deliveryCharge || 0).toLocaleString()}
                       </Text>
                     </View>
                   )}
                 </View>
+
+                {/* View Details Button */}
+                <TouchableOpacity
+                  style={styles.viewDetailsButton}
+                  onPress={() => {
+                    console.log('🔍 ORDER DEBUG:');
+                    console.log('Full item:', JSON.stringify(item, null, 2));
+                    console.log('item._id:', item._id);
+                    console.log('item.orderId:', item.orderId);
+                    console.log('Passing orderId:', item.orderId || item._id);
+                    navigation.navigate('OrderDetails', { orderId: item.orderId || item._id });
+                  }}
+                >
+                  <Text style={styles.viewDetailsText}>{t('view_details')}</Text>
+                </TouchableOpacity>
               </>
             ) : (
               <View style={styles.noProductsContainer}>
@@ -602,7 +623,7 @@ const OrdersScreen = ({ navigation }) => {
                       {selectedProduct.product?.name || selectedProduct.name || 'Product Name'}
                     </Text>
                     <Text style={styles.modalProductPrice}>
-                      ${(selectedProduct.price || 0).toFixed(2)}
+                      {currencySymbol} {convertPrice(selectedProduct.price || 0).toLocaleString()}
                     </Text>
                   </View>
                 </View>
@@ -696,7 +717,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
-    paddingBottom: 24,
   },
   header: {
     backgroundColor: '#1e293b',
@@ -748,11 +768,10 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
-    paddingBottom: 40,
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 100, // Increased for tab bar space
   },
   ordersHeader: {
     alignItems: 'center',
@@ -1294,7 +1313,20 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-  }
+  },
+  viewDetailsButton: {
+    backgroundColor: '#12344D',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 16,
+    alignItems: 'center',
+  },
+  viewDetailsText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });
 
 export default OrdersScreen;

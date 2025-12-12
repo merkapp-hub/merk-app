@@ -23,15 +23,25 @@ import { useAuth } from '../../context/AuthContext';
 import { Country, State, City } from 'country-state-city';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeftIcon } from 'react-native-heroicons/outline';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const BillingDetails = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { userInfo: user, updateCartCount } = useAuth();
   const { t } = useTranslation();
+  const { convertPrice, currencySymbol, userCurrency, exchangeRate } = useCurrency();
   
-  // Get cart data from route params
-  const { cartItems, subtotal, serviceFee, shipping, total, paymentMethod } = route.params;
+  // State for fresh cart data
+  const [freshCartItems, setFreshCartItems] = useState([]);
+  const [cartLoading, setCartLoading] = useState(true);
+  const [taxRate, setTaxRate] = useState(0);
+  const [deliveryCharge, setDeliveryCharge] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);  // Trigger for UI refresh
+  
+  // Payment method state
+  const [paymentMethod, setPaymentMethod] = useState('paypal');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -44,13 +54,14 @@ const BillingDetails = () => {
     city: '',
     state: '',
     country: 'United States',
-    postalCode: '',
+    pinCode: '',
     companyName: '',
     notes: '',
   });
   
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [isProcessing, setIsProcessing] = useState(false);
   
   // Country State City Selector
   const [countries, setCountries] = useState([]);
@@ -59,6 +70,168 @@ const BillingDetails = () => {
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [showStateDropdown, setShowStateDropdown] = useState(false);
   const [showCityDropdown, setShowCityDropdown] = useState(false);
+
+  // Fetch fresh cart data (for initial load and screen focus)
+  const fetchFreshCartData = async () => {
+    try {
+      setCartLoading(true);
+      
+      // Get cart data from AsyncStorage
+      const cartData = await AsyncStorage.getItem('cartData');
+      if (!cartData) {
+        Alert.alert(t('error'), t('cart_empty'));
+        navigation.goBack();
+        return;
+      }
+
+      const parsedCart = JSON.parse(cartData);
+      if (!Array.isArray(parsedCart) || parsedCart.length === 0) {
+        Alert.alert(t('error'), t('cart_empty'));
+        navigation.goBack();
+        return;
+      }
+
+      // Prepare cart items for API call
+      const cartItemsForAPI = parsedCart.map(item => ({
+        productId: item.product_id,
+        quantity: item.qty,
+        selectedVariant: item.selectedColor ? {
+          color: item.selectedColor,
+          selected: item.selectedSize ? [item.selectedSize] : []
+        } : null,
+        selectedSize: item.selectedSize
+      }));
+
+      // Fetch fresh cart data from backend
+      const response = await Post('getCartItems', { items: cartItemsForAPI });
+      
+      console.log('BillingDetails - Fresh cart data:', response);
+
+      // Handle response format
+      let cartDataArray = [];
+      if (response?.data && Array.isArray(response.data)) {
+        cartDataArray = response.data;
+      } else if (Array.isArray(response)) {
+        cartDataArray = response;
+      }
+
+      if (cartDataArray.length === 0) {
+        Alert.alert(t('error'), t('cart_empty'));
+        navigation.goBack();
+        return;
+      }
+
+      setFreshCartItems(cartDataArray);
+
+      // Fetch tax rate and delivery charges
+      const taxResponse = await GetApi('getTax');
+      if (taxResponse?.taxRate !== undefined) {
+        setTaxRate(taxResponse.taxRate);
+      }
+
+      const deliveryResponse = await GetApi('getDeliveryCharge');
+      if (deliveryResponse?.data?.deliveryCharge !== undefined) {
+        setDeliveryCharge(deliveryResponse.data.deliveryCharge);
+      }
+
+    } catch (error) {
+      console.error('Error fetching fresh cart data:', error);
+      Alert.alert(t('error'), t('failed_load_cart'));
+      navigation.goBack();
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  // Refresh cart data silently (for pre-order validation)
+  const refreshCartDataSilently = async () => {
+    try {
+      // Get cart data from AsyncStorage
+      const cartData = await AsyncStorage.getItem('cartData');
+      if (!cartData) {
+        throw new Error('Cart is empty');
+      }
+
+      const parsedCart = JSON.parse(cartData);
+      if (!Array.isArray(parsedCart) || parsedCart.length === 0) {
+        throw new Error('Cart is empty');
+      }
+
+      // Prepare cart items for API call
+      const cartItemsForAPI = parsedCart.map(item => ({
+        productId: item.product_id,
+        quantity: item.qty,
+        selectedVariant: item.selectedColor ? {
+          color: item.selectedColor,
+          selected: item.selectedSize ? [item.selectedSize] : []
+        } : null,
+        selectedSize: item.selectedSize
+      }));
+
+      // Fetch fresh cart data from backend
+      const response = await Post('getCartItems', { items: cartItemsForAPI });
+      
+      // Handle response format
+      let cartDataArray = [];
+      if (response?.data && Array.isArray(response.data)) {
+        cartDataArray = response.data;
+      } else if (Array.isArray(response)) {
+        cartDataArray = response;
+      }
+
+      if (cartDataArray.length === 0) {
+        throw new Error('No valid items in cart');
+      }
+
+      // Update state with fresh data
+      console.log('📦 Updating cart items with fresh data:', cartDataArray.length, 'items');
+      setFreshCartItems([...cartDataArray]);  // Force new array reference for re-render
+
+      // Fetch tax rate and delivery charges
+      const taxResponse = await GetApi('getTax');
+      if (taxResponse?.taxRate !== undefined) {
+        console.log('💰 Updated tax rate:', taxResponse.taxRate);
+        setTaxRate(taxResponse.taxRate);
+      }
+
+      const deliveryResponse = await GetApi('getDeliveryCharge');
+      if (deliveryResponse?.data?.deliveryCharge !== undefined) {
+        console.log('🚚 Updated delivery charge:', deliveryResponse.data.deliveryCharge);
+        setDeliveryCharge(deliveryResponse.data.deliveryCharge);
+      }
+
+      // Log updated totals
+      const newSubtotal = cartDataArray.reduce((total, item) => {
+        const itemTotal = parseFloat(item.total) || 0;
+        return total + itemTotal;
+      }, 0);
+      console.log('💵 New subtotal:', newSubtotal);
+
+      // Trigger UI refresh
+      setRefreshTrigger(prev => prev + 1);
+      console.log('🔄 UI refresh triggered');
+
+      return true;
+    } catch (error) {
+      console.error('Error refreshing cart data:', error);
+      throw error;
+    }
+  };
+
+  // Load fresh cart data on mount
+  useEffect(() => {
+    fetchFreshCartData();
+  }, []);
+
+  // Refresh cart data when screen comes into focus (e.g., returning from payment screen)
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('BillingDetails screen focused - refreshing cart data');
+      fetchFreshCartData();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
 
   // Load countries on component mount
   useEffect(() => {
@@ -77,6 +250,41 @@ const BillingDetails = () => {
     }
   }, []);
   
+  // Calculate totals from fresh cart data
+  const calculateSubtotal = () => {
+    const subtotal = freshCartItems.reduce((total, item) => {
+      const itemTotal = parseFloat(item.total) || 0;
+      return total + itemTotal;
+    }, 0);
+    return subtotal;
+  };
+
+  const calculateTax = () => {
+    const subtotal = calculateSubtotal();
+    return (subtotal * taxRate) / 100;
+  };
+
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal();
+    const tax = calculateTax();
+    return subtotal + tax + deliveryCharge;
+  };
+
+  // Log when cart data or prices change
+  useEffect(() => {
+    if (freshCartItems.length > 0) {
+      const subtotal = calculateSubtotal();
+      const tax = calculateTax();
+      const total = calculateTotal();
+      console.log('📊 Cart totals updated:');
+      console.log('   Items:', freshCartItems.length);
+      console.log('   Subtotal: $' + subtotal.toFixed(2));
+      console.log('   Tax: $' + tax.toFixed(2));
+      console.log('   Delivery: $' + deliveryCharge.toFixed(2));
+      console.log('   Total: $' + total.toFixed(2));
+    }
+  }, [freshCartItems, taxRate, deliveryCharge, refreshTrigger]);
+
   // Load states when country changes
   useEffect(() => {
     if (formData.country) {
@@ -114,23 +322,8 @@ const BillingDetails = () => {
   }, [formData.state]);
 
 
+  // Check authentication on mount
   useEffect(() => {
-    console.log('BillingDetails mounted with cartItems:', cartItems);
-    
-    // Log detailed product info for debugging
-    if (cartItems && cartItems.length > 0) {
-      console.log('Cart items details:');
-      cartItems.forEach((item, index) => {
-        console.log(`Item ${index + 1}:`, {
-          name: item?.product?.name,
-          image: item?.product?.image,
-          quantity: item?.quantity,
-          hasImage: !!item?.product?.image,
-          fullItem: item
-        });
-      });
-    }
-    
     const checkAuth = async () => {
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
@@ -147,27 +340,23 @@ const BillingDetails = () => {
       }
     };
     
-    // Cart items validation
-    if (!cartItems || cartItems.length === 0) {
-      Alert.alert(t('empty_cart'), t('no_items_cart'), [
-        { text: t('ok'), onPress: () => navigation.goBack() }
-      ]);
-      return;
-    }
-    
-
-    const invalidItems = cartItems.filter(item => 
-      !item || !item.product || !item.product._id
-    );
-    
-    if (invalidItems.length > 0) {
-      Alert.alert(t('invalid_cart_items'), t('some_items_invalid'), [
-        { text: t('ok'), onPress: () => navigation.goBack() }
-      ]);
-    }
-    
     checkAuth();
-  }, [cartItems]);
+  }, []);
+
+  // Log fresh cart items when loaded
+  useEffect(() => {
+    if (freshCartItems.length > 0) {
+      console.log('Fresh cart items loaded:', freshCartItems.length);
+      freshCartItems.forEach((item, index) => {
+        console.log(`Item ${index + 1}:`, {
+          name: item?.name,
+          price: item?.Offerprice || item?.price,
+          qty: item?.qty,
+          total: item?.total
+        });
+      });
+    }
+  }, [freshCartItems]);
 
   // Validate form
   const validateForm = () => {
@@ -179,7 +368,7 @@ const BillingDetails = () => {
     if (!formData.phone.trim()) newErrors.phone = t('phone_required');
     if (!formData.address.trim()) newErrors.address = t('address_required');
     if (!formData.city.trim()) newErrors.city = t('city_required');
-    if (!formData.postalCode.trim()) newErrors.postalCode = t('postal_code_required');
+    if (!formData.pinCode.trim()) newErrors.pinCode = t('postal_code_required');
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -279,8 +468,39 @@ const BillingDetails = () => {
     if (!validateForm()) return;
     
     setLoading(true);
+    setIsProcessing(true);
     
     try {
+      // IMPORTANT: Fetch fresh cart data before placing order
+      // This ensures we have the latest prices even if user stayed on screen for hours
+      console.log('🔄 Refreshing cart data before placing order...');
+      try {
+        await refreshCartDataSilently();
+        console.log('✅ Fresh cart data loaded - proceeding with order');
+        
+        // Log current totals after refresh
+        const currentSubtotal = calculateSubtotal();
+        const currentTax = calculateTax();
+        const currentTotal = calculateTotal();
+        console.log('💰 Current order totals after refresh:');
+        console.log('   Subtotal:', currentSubtotal.toFixed(2));
+        console.log('   Tax:', currentTax.toFixed(2));
+        console.log('   Delivery:', deliveryCharge.toFixed(2));
+        console.log('   Total:', currentTotal.toFixed(2));
+      } catch (refreshError) {
+        console.error('❌ Failed to refresh cart data:', refreshError);
+        Alert.alert(
+          t('error'), 
+          t('failed_load_latest_prices'),
+          [
+            { text: t('retry'), onPress: () => placeOrder() },
+            { text: t('cancel'), style: 'cancel' }
+          ]
+        );
+        setLoading(false);
+        setIsProcessing(false);
+        return;
+      }
     
       const token = await AsyncStorage.getItem('userToken');
       console.log('Token check before order:', token ? 'Found' : 'Not found');
@@ -292,21 +512,23 @@ const BillingDetails = () => {
       }
       
      
-      const productDetail = cartItems.map(item => {
+      // Use fresh cart data for order
+      const productDetail = freshCartItems.map(item => {
         
-        if (!item || !item.product || !item.product._id) {
+        if (!item || !item._id) {
           console.error('Invalid cart item:', item);
           throw new Error('Invalid product in cart');
         }
         
         return {
-          product: item.product._id,
-          qty: item.quantity || 1,
-          price: item.product.price || 0,
-          color: item.selectedColor || null,
+          product: item._id,
+          qty: item.qty || 1,
+          price: item.Offerprice || item.price || 0,
+          color: item.selectedColor?.color || null,
           size: item.selectedSize || null,
-          name: item.product.name || 'Unknown Product',
-          image: item.product.image || null,
+          name: item.name || 'Unknown Product',
+          image: item.image || null,
+          seller_id: item.userid || item.seller_id || 'FETCH_FROM_PRODUCT',
         };
       });
       
@@ -323,17 +545,35 @@ const BillingDetails = () => {
           city: formData.city.trim(),
           state: formData.state.trim(),
           country: formData.country.trim(),
-          postalCode: formData.postalCode.trim(),
-          phone: formData.phone.trim(),
+          pinCode: formData.pinCode.trim(),
+          phoneNumber: formData.phone.trim(),
         },
         paymentmode: paymentMethod === 'cod' ? 'cod' : 'pay',
-        deliveryCharge: shipping || 0,
+        subtotal: calculateSubtotal(),
+        shipping: 0,
+        tax: calculateTax(),
+        total: calculateTotal(),
+        deliveryCharge: deliveryCharge,
         deliveryTip: 0,
         timeslot: null, // Add if needed
       };
       
       console.log('Final order data:', orderData);
       
+      // If payment method is PayPal or Card, navigate to PayPal payment screen
+      if (paymentMethod === 'paypal' || paymentMethod === 'card') {
+        setLoading(false);
+        setIsProcessing(false);
+        navigation.push('PayPalPayment', {
+          orderData,
+          cartItems: freshCartItems,  // Use fresh cart items
+          total: calculateTotal(),
+          paymentMethod, // Pass payment method
+        });
+        return;
+      }
+      
+      // For COD, create order directly
       const response = await Post('createProductRequest', orderData);
       
       if (response.success || response.status) {
@@ -374,6 +614,7 @@ const BillingDetails = () => {
       }
     } finally {
       setLoading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -396,6 +637,18 @@ const BillingDetails = () => {
       )}
     </View>
   );
+
+  // Show loading while fetching fresh cart data
+  if (cartLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-white">
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#1e293b" />
+          <Text className="text-gray-400 mt-4">{t('loading_cart')}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <View className="flex-1 bg-gray-50">
@@ -497,7 +750,7 @@ const BillingDetails = () => {
             
             {/* ZIP/Postal Code */}
             <View className="mb-4">
-              {renderField(t('zip_postal_code'), 'postalCode', '10001', 'number-pad')}
+              {renderField(t('zip_postal_code'), 'pinCode', '10001', 'number-pad')}
             </View>
             
             {renderField(t('company_optional'), 'companyName', t('company_name'), 'default', false)}
@@ -507,12 +760,12 @@ const BillingDetails = () => {
           <View className="bg-white rounded-lg p-4 mb-4">
             <Text className="font-bold text-lg mb-3">{t('order_summary')}</Text>
             
-            {cartItems.map((item, index) => (
+            {freshCartItems.map((item, index) => (
               <View key={index} className="flex-row items-center mb-3">
                 <View className="w-16 h-16 bg-gray-200 rounded-lg mr-3 overflow-hidden">
-                  {item.product?.image ? (
+                  {item.image ? (
                     <Image 
-                      source={{ uri: item.product.image }} 
+                      source={{ uri: item.image }} 
                       style={{ width: '100%', height: '100%' }}
                       resizeMode="cover"
                     />
@@ -523,14 +776,14 @@ const BillingDetails = () => {
                   )}
                 </View>
                 <View className="flex-1">
-                  <Text className="font-medium" numberOfLines={1}>{item.product.name}</Text>
-                  <Text className="text-gray-500 text-sm">{t('qty')}: {item.quantity}</Text>
-                  {item.selectedColor && (
+                  <Text className="font-medium" numberOfLines={1}>{item.name}</Text>
+                  <Text className="text-gray-500 text-sm">{t('qty')}: {item.qty}</Text>
+                  {item.selectedColor?.color && (
                     <View className="flex-row items-center mt-1">
                       <Text className="text-gray-500 text-xs mr-1">{t('color')}:</Text>
                       <View 
                         className="w-3 h-3 rounded-full border border-gray-300"
-                        style={{ backgroundColor: item.selectedColor }}
+                        style={{ backgroundColor: item.selectedColor.color }}
                       />
                     </View>
                   )}
@@ -538,7 +791,7 @@ const BillingDetails = () => {
                     <Text className="text-gray-500 text-xs">{t('size')}: {item.selectedSize}</Text>
                   )}
                 </View>
-                <Text className="font-bold">${(item.product.price * item.quantity).toFixed(2)}</Text>
+                <Text className="font-bold">{currencySymbol} {convertPrice(parseFloat(item.total)).toLocaleString()}</Text>
               </View>
             ))}
             
@@ -547,30 +800,26 @@ const BillingDetails = () => {
             <View className="mb-2">
               <View className="flex-row justify-between mb-1">
                 <Text>{t('subtotal')}</Text>
-                <Text>${subtotal.toFixed(2)}</Text>
+                <Text>{currencySymbol} {convertPrice(calculateSubtotal()).toLocaleString()}</Text>
               </View>
               <View className="flex-row justify-between mb-1">
-                <Text>{t('service_fee')}</Text>
-                <Text>${serviceFee.toFixed(2)}</Text>
-              </View>
-              <View className="flex-row justify-between mb-1">
-                <Text>Tax ({route.params?.taxRate || 0}%)</Text>
-                <Text>${((subtotal * (route.params?.taxRate || 0)) / 100).toFixed(2)}</Text>
+                <Text>Tax ({taxRate}%)</Text>
+                <Text>{currencySymbol} {convertPrice(calculateTax()).toLocaleString()}</Text>
               </View>
               <View className="flex-row justify-between mb-1">
                 <Text>Delivery Charge</Text>
-                <Text>${(route.params?.deliveryCharge || 0).toFixed(2)}</Text>
+                <Text>{currencySymbol} {convertPrice(deliveryCharge).toLocaleString()}</Text>
               </View>
               <View className="flex-row justify-between mb-1">
                 <Text>{t('shipping')}</Text>
-                <Text className={shipping === 0 ? 'text-green-600' : ''}>
-                  {shipping === 0 ? t('free') : `$${shipping.toFixed(2)}`}
+                <Text className="text-green-600">
+                  {t('free')}
                 </Text>
               </View>
               <View className="border-t border-gray-200 my-2" />
               <View className="flex-row justify-between">
                 <Text className="font-bold">{t('total')}</Text>
-                <Text className="font-bold">${total.toFixed(2)}</Text>
+                <Text className="font-bold">{currencySymbol} {convertPrice(calculateTotal()).toLocaleString()}</Text>
               </View>
             </View>
           </View>
@@ -588,23 +837,101 @@ const BillingDetails = () => {
             </View>
           </View>
           
-          {/* Place Order Button */}
-          <View className="bg-white border-t border-gray-200 p-4 mb-20">
+          {/* Extra padding at bottom */}
+          {/* Payment Method Selection */}
+          <View className="px-4 mb-6">
+            <Text className="text-lg font-semibold text-gray-900 mb-3">
+              {t('select_payment_method')}
+            </Text>
+            
+            {/* PayPal Option */}
             <TouchableOpacity
-              onPress={placeOrder}
-              disabled={loading}
-              className={`py-3 rounded-lg items-center justify-center ${loading ? 'bg-slate-400' : 'bg-slate-700'}`}
+              onPress={() => setPaymentMethod('paypal')}
+              className="flex-row items-center p-4 border-2 rounded-xl mb-3"
+              style={{
+                borderColor: paymentMethod === 'paypal' ? '#0070BA' : '#E5E7EB',
+                backgroundColor: paymentMethod === 'paypal' ? '#F0F8FF' : '#FFFFFF',
+              }}
             >
-              {loading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text className="text-white font-bold text-lg">
-                  {t('place_order')} - ${total.toFixed(2)}
+              <View 
+                className="w-6 h-6 rounded-full border-2 mr-3 items-center justify-center"
+                style={{
+                  borderColor: paymentMethod === 'paypal' ? '#0070BA' : '#9CA3AF',
+                  backgroundColor: paymentMethod === 'paypal' ? '#0070BA' : 'transparent',
+                }}
+              >
+                {paymentMethod === 'paypal' && (
+                  <View className="w-3 h-3 rounded-full bg-white" />
+                )}
+              </View>
+              <View className="flex-1">
+                <Text 
+                  className="font-bold text-base"
+                  style={{ color: paymentMethod === 'paypal' ? '#0070BA' : '#111827' }}
+                >
+                  {t('pay_with_paypal')}
                 </Text>
-              )}
+                <Text className="text-xs text-gray-500 mt-1">
+                  {t('redirect_to_paypal')}
+                </Text>
+              </View>
+              <Text className="text-2xl">💳</Text>
+            </TouchableOpacity>
+
+            {/* Credit Card Option */}
+            <TouchableOpacity
+              onPress={() => setPaymentMethod('card')}
+              className="flex-row items-center p-4 border-2 rounded-xl"
+              style={{
+                borderColor: paymentMethod === 'card' ? '#E58F14' : '#E5E7EB',
+                backgroundColor: paymentMethod === 'card' ? '#FEF3C7' : '#FFFFFF',
+              }}
+            >
+              <View 
+                className="w-6 h-6 rounded-full border-2 mr-3 items-center justify-center"
+                style={{
+                  borderColor: paymentMethod === 'card' ? '#E58F14' : '#9CA3AF',
+                  backgroundColor: paymentMethod === 'card' ? '#E58F14' : 'transparent',
+                }}
+              >
+                {paymentMethod === 'card' && (
+                  <View className="w-3 h-3 rounded-full bg-white" />
+                )}
+              </View>
+              <View className="flex-1">
+                <Text 
+                  className="font-bold text-base"
+                  style={{ color: paymentMethod === 'card' ? '#E58F14' : '#111827' }}
+                >
+                  {t('pay_with_card')}
+                </Text>
+                <Text className="text-xs text-gray-500 mt-1">
+                  {t('enter_card_details')}
+                </Text>
+              </View>
+              <Text className="text-2xl">💳</Text>
             </TouchableOpacity>
           </View>
+
+          <View className="h-4" />
         </ScrollView>
+      
+      {/* Place Order Button - Fixed at bottom with proper spacing for tab bar */}
+      <View className="bg-white border-t border-gray-200 px-4 pt-3 pb-24">
+        <TouchableOpacity
+          onPress={placeOrder}
+          disabled={isProcessing}
+          className={`py-4 rounded-lg items-center justify-center ${isProcessing ? 'bg-slate-400' : 'bg-slate-800'}`}
+        >
+          {isProcessing ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text className="text-white font-bold text-lg">
+              {t('place_order')} - {currencySymbol} {convertPrice(calculateTotal()).toLocaleString()}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };

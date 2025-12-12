@@ -441,7 +441,7 @@ export default function SellerOrdersScreen() {
         data={orders}
         renderItem={renderOrderItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }

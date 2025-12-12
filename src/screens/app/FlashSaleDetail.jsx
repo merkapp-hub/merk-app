@@ -13,6 +13,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { GetApi } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeftIcon } from 'react-native-heroicons/outline';
+import { useCurrency } from '../../context/CurrencyContext';
 
 const { width } = Dimensions.get('window');
 
@@ -110,6 +111,7 @@ const FlashSaleDetail = () => {
   const route = useRoute();
   const { saleId, productId } = route.params || {};
   const { t } = useTranslation();
+  const { convertPrice, currencySymbol } = useCurrency();
 
   // Add back button to header
   React.useLayoutEffect(() => {
@@ -270,9 +272,9 @@ const FlashSaleDetail = () => {
           </Text>
           
           <View style={styles.priceContainer}>
-            <Text style={styles.salePrice}>${salePrice.toFixed(2)}</Text>
+            <Text style={styles.salePrice}>{currencySymbol} {convertPrice(salePrice).toLocaleString()}</Text>
             {originalPrice > salePrice && (
-              <Text style={styles.originalPrice}>${originalPrice.toFixed(2)}</Text>
+              <Text style={styles.originalPrice}>{currencySymbol} {convertPrice(originalPrice).toLocaleString()}</Text>
             )}
             {discount > 0 && (
               <Text style={styles.discountBadge}>{discount}% OFF</Text>
@@ -306,7 +308,7 @@ const FlashSaleDetail = () => {
                   <View style={styles.variantHeader}>
                     <View style={[styles.colorBox, { backgroundColor: variant.color }]} />
                     <Text style={styles.variantPrice}>
-                      ${(variant.Offerprice || variant.price || 0).toFixed(2)}
+                      {currencySymbol} {convertPrice(variant.Offerprice || variant.price || 0).toLocaleString()}
                     </Text>
                   </View>
                   {variant.selected && variant.selected.length > 0 && (

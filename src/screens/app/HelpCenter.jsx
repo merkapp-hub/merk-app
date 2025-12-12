@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, BackHandler, Modal, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeftIcon, PhoneIcon, EnvelopeIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, KeyboardAvoidingView, Platform, BackHandler, Modal, StyleSheet, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { PhoneIcon, EnvelopeIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { useNavigation } from '@react-navigation/native';
 import { Post } from '../../Helper/Service';
 import { useTranslation } from 'react-i18next';
@@ -53,6 +52,9 @@ const HelpCenter = ({ navigation, onBack }) => {
   };
 
   const handleSubmit = async () => {
+    // Dismiss keyboard first
+    Keyboard.dismiss();
+    
     if (!formData.name || !formData.email || !formData.phone) {
       Alert.alert(t('error'), t('contact_fill_all_required_fields'));
       return;
@@ -104,16 +106,19 @@ const HelpCenter = ({ navigation, onBack }) => {
       </View>
 
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <ScrollView 
-          className="flex-1 px-6"
-          contentContainerStyle={{ paddingVertical: 24 }}
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="space-y-6">
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView 
+            className="flex-1 px-6"
+            contentContainerStyle={{ paddingVertical: 24, paddingBottom: 100 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            nestedScrollEnabled={true}
+          >
+            <View className="space-y-6">
             {/* Contact Information - Simplified */}
             <View className="space-y-4">
               {/* Call to Us - Simple */}
@@ -159,39 +164,51 @@ const HelpCenter = ({ navigation, onBack }) => {
             <View className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
               <TextInput
                 placeholder={t('contact_your_name_placeholder')}
+                placeholderTextColor="#9CA3AF"
                 value={formData.name}
                 onChangeText={(text) => handleInputChange('name', text)}
                 className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
                 style={{ fontSize: 16 }}
+                returnKeyType="next"
+                blurOnSubmit={false}
               />
               
               <TextInput
                 placeholder={t('contact_your_email_placeholder')}
+                placeholderTextColor="#9CA3AF"
                 value={formData.email}
                 onChangeText={(text) => handleInputChange('email', text)}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
                 style={{ fontSize: 16 }}
+                returnKeyType="next"
+                blurOnSubmit={false}
               />
               
               <TextInput
                 placeholder={t('contact_your_phone_placeholder')}
+                placeholderTextColor="#9CA3AF"
                 value={formData.phone}
                 onChangeText={(text) => handleInputChange('phone', text)}
                 keyboardType="phone-pad"
                 className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
                 style={{ fontSize: 16 }}
+                returnKeyType="next"
+                blurOnSubmit={false}
               />
               
               <TextInput
                 placeholder={t('contact_your_message_placeholder')}
+                placeholderTextColor="#9CA3AF"
                 value={formData.message}
                 onChangeText={(text) => handleInputChange('message', text)}
                 multiline={true}
                 numberOfLines={4}
                 className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-6"
                 style={{ fontSize: 16, height: 100, textAlignVertical: 'top' }}
+                returnKeyType="done"
+                blurOnSubmit={true}
               />
 
               <TouchableOpacity
@@ -205,8 +222,9 @@ const HelpCenter = ({ navigation, onBack }) => {
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
-        </ScrollView>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
       </KeyboardAvoidingView>
       {/* Success Popup */}
       <Modal

@@ -17,6 +17,7 @@ import SearchResultScreen from "./src/screens/SearchResultScreen";
 import CreateStoreScreen from "./src/screens/seller/CreateStoreScreen";
 import SellerProductDetailScreen from "./src/screens/seller/SellerProductDetailScreen";
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { CurrencyProvider } from './src/context/CurrencyContext';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigationContainerRef } from '@react-navigation/native';
 import * as Sentry from '@sentry/react-native';
@@ -57,13 +58,12 @@ const AuthStack = () => {
   );
 };
 
-const AppStack = async () => {
+const AppStack = () => {
   const { userInfo } = useAuth();
   console.log('User Info in AppStack:', userInfo);
   // Set initial route based on user role and verification status
 
   const getInitialRouteName = () => {
-    // await BootSplash.hide({ fade: true })
     if (userInfo?.role === 'seller') {
       return userInfo?.status === 'Verified' ? 'SellerTabs' : 'CreateStore';
     }
@@ -181,9 +181,11 @@ export default Sentry.wrap(function App() {
           : ['bottom', 'left', 'right', 'top']
         }
       >
-        <AuthProvider>
-          <RootNavigator />
-        </AuthProvider>
+        <CurrencyProvider>
+          <AuthProvider>
+            <RootNavigator />
+          </AuthProvider>
+        </CurrencyProvider>
       </SafeAreaView>
     </SafeAreaProvider>
   );

@@ -14,6 +14,7 @@ import { ArrowLeftIcon, ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { useTranslation } from 'react-i18next';
 import { GetApi } from '../../Helper/Service';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useCurrency } from '../../context/CurrencyContext';
 
 
 const { width } = Dimensions.get('window');
@@ -21,6 +22,7 @@ const { width } = Dimensions.get('window');
 const BestSellingProducts = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const { convertPrice, currencySymbol } = useCurrency();
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -125,29 +127,27 @@ const BestSellingProducts = () => {
     let price = 0;
     let offerPrice = 0;
     
-    // First check variants for price
-    if (item.varients && item.varients.length > 0) {
-      const variant = item.varients[0];
-      
-      // Variant has direct price properties
-      if (variant.price) {
-        price = parseFloat(variant.price) || 0;
-        offerPrice = variant.Offerprice && parseFloat(variant.Offerprice) > 0 
-          ? parseFloat(variant.Offerprice) 
-          : price;
-      }
-    }
-    
-    // If no price from variants, check price_slot
-    if (price === 0 && item.price_slot && item.price_slot.length > 0) {
+    // Priority 1: Check price_slot
+    if (item.price_slot && item.price_slot.length > 0 && item.price_slot[0].price) {
       const priceSlot = item.price_slot[0];
       price = parseFloat(priceSlot.price) || 0;
-      offerPrice = priceSlot.Offerprice && parseFloat(priceSlot.Offerprice) > 0 
+      // If Offerprice exists and is greater than 0, use it, otherwise use price
+      offerPrice = (priceSlot.Offerprice && parseFloat(priceSlot.Offerprice) > 0) 
         ? parseFloat(priceSlot.Offerprice) 
         : price;
     }
     
-    // If still no price, check direct price property
+    // Priority 2: If no price from price_slot, check variants
+    if (price === 0 && item.varients && item.varients.length > 0 && item.varients[0].price) {
+      const variant = item.varients[0];
+      price = parseFloat(variant.price) || 0;
+      // If Offerprice exists and is greater than 0, use it, otherwise use price
+      offerPrice = (variant.Offerprice && parseFloat(variant.Offerprice) > 0) 
+        ? parseFloat(variant.Offerprice) 
+        : price;
+    }
+    
+    // Priority 3: If still no price, check direct price property
     if (price === 0 && item.price) {
       price = parseFloat(item.price) || 0;
       offerPrice = price;
@@ -156,7 +156,8 @@ const BestSellingProducts = () => {
     const imageData = getProductImage();
 
     // Calculate discount - use offer price if it's lower than regular price
-    const finalPrice = offerPrice > 0 && offerPrice < price ? offerPrice : price;
+    // If offerPrice is 0 or equal to price, use price as finalPrice
+    const finalPrice = (offerPrice > 0 && offerPrice < price) ? offerPrice : price;
     const discountPercentage = (offerPrice > 0 && price > 0 && offerPrice < price) ?
       Math.round(((price - offerPrice) / price) * 100) : 0;
 
@@ -191,11 +192,11 @@ const BestSellingProducts = () => {
           <View style={styles.priceContainer}>
             {discountPercentage > 0 ? (
               <>
-                <Text style={styles.price}>${finalPrice.toFixed(2)}</Text>
-                <Text style={styles.originalPrice}>${price.toFixed(2)}</Text>
+                <Text style={styles.price}>{currencySymbol} {convertPrice(finalPrice).toLocaleString()}</Text>
+                <Text style={styles.originalPrice}>{currencySymbol} {convertPrice(price).toLocaleString()}</Text>
               </>
             ) : (
-              <Text style={styles.price}>${(price || 0).toFixed(2)}</Text>
+              <Text style={styles.price}>{currencySymbol} {convertPrice(finalPrice || price || 0).toLocaleString()}</Text>
             )}
           </View>
 
@@ -251,7 +252,7 @@ const BestSellingProducts = () => {
               >
                 <ChevronLeftIcon size={24} color="white" />
               </TouchableOpacity>
-            <Text style={styles.headerTitle}>{t('best_selling_products')}</Text>
+            <Text style={styles.headerTitle}>{t('explore_our_products')}</Text>
             </View>
           </View>
         
