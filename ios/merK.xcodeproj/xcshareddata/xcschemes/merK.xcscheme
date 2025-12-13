@@ -16,13 +16,8 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
                BuildableName = "merK.app"
-<<<<<<< HEAD:ios/merkapp.xcodeproj/xcshareddata/xcschemes/merkapp.xcscheme
-               BlueprintName = "merkapp"
-               ReferencedContainer = "container:merkapp.xcodeproj">
-=======
                BlueprintName = "merK"
                ReferencedContainer = "container:merK.xcodeproj">
->>>>>>> origin/latest-app:ios/merK.xcodeproj/xcshareddata/xcschemes/merK.xcscheme
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -61,13 +56,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
             BuildableName = "merK.app"
-<<<<<<< HEAD:ios/merkapp.xcodeproj/xcshareddata/xcschemes/merkapp.xcscheme
-            BlueprintName = "merkapp"
-            ReferencedContainer = "container:merkapp.xcodeproj">
-=======
             BlueprintName = "merK"
             ReferencedContainer = "container:merK.xcodeproj">
->>>>>>> origin/latest-app:ios/merK.xcodeproj/xcshareddata/xcschemes/merK.xcscheme
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -83,13 +73,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
             BuildableName = "merK.app"
-<<<<<<< HEAD:ios/merkapp.xcodeproj/xcshareddata/xcschemes/merkapp.xcscheme
-            BlueprintName = "merkapp"
-            ReferencedContainer = "container:merkapp.xcodeproj">
-=======
             BlueprintName = "merK"
             ReferencedContainer = "container:merK.xcodeproj">
->>>>>>> origin/latest-app:ios/merK.xcodeproj/xcshareddata/xcschemes/merK.xcscheme
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
