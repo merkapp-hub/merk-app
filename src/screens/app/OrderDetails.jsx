@@ -109,12 +109,11 @@ const OrderDetails = ({ route, navigation }) => {
 
       console.log('Downloading invoice for order:', orderId);
       
-      // Build API URL
-      const apiUrl = `https://api.merkapp.net/api/generateInvoice/${orderId}`;
-      // Fix URL for Android emulator
-      const downloadUrl = Platform.OS === 'android' && apiUrl.includes('192.168.') 
-        ? apiUrl.replace(/192\.168\.\d+\.\d+/, '10.0.2.2')
-        : apiUrl;
+      
+      const { API_BASE_URL } = require('../../config');
+      
+    
+      const downloadUrl = `${API_BASE_URL}generateInvoice/${orderId}`;
       
       console.log('Download URL:', downloadUrl);
       
@@ -203,11 +202,14 @@ const OrderDetails = ({ route, navigation }) => {
       
       console.log('✅ Download complete!');
       console.log('📁 File path:', res.path());
-      console.log('📊 Response status:', res.respInfo?.status);
+      console.log('📊 Response info:', res.info());
       
-      // Check if response is actually a PDF
-      if (res.respInfo?.status !== 200) {
-        throw new Error(`Server returned status ${res.respInfo?.status}`);
+      // Check if response is successful
+      const statusCode = res.info()?.status;
+      console.log('📊 Status code:', statusCode);
+      
+      if (statusCode && statusCode !== 200) {
+        throw new Error(`Server returned status ${statusCode}`);
       }
       
       if (Platform.OS === 'ios') {

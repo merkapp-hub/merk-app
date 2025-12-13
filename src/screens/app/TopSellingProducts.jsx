@@ -32,7 +32,7 @@ const TopSellingProducts = () => {
       const productsArray = response?.data || response;
       
       if (Array.isArray(productsArray)) {
-        // Pass raw product data to ProductGridCard - it will handle price extraction and conversion
+        
         setProducts(productsArray);
       } else {
         setProducts([]);
