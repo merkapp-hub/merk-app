@@ -12,7 +12,7 @@ const CURRENCY_SYMBOLS = {
   EGP: 'E£', ILS: '₪', PHP: '₱', VND: '₫', BDT: '৳', LKR: 'Rs',
 };
 
-const EXCHANGE_API_KEY = '826ff07c1ff2bd58031f27fa';
+const EXCHANGE_API_KEY = 'e031fd3941a71a6b320a6d02';
 
 export const CurrencyProvider = ({ children }) => {
   const [userCurrency, setUserCurrency] = useState('USD');
