@@ -241,10 +241,14 @@ export default function ProductScreen() {
     if (variants.length > 0) {
       // Calculate total stock from all variants
       variants.forEach(variant => {
-        if (variant.selected && Array.isArray(variant.selected)) {
+        // Check if variant has sizes/parameters with stock
+        if (variant.selected && Array.isArray(variant.selected) && variant.selected.length > 0) {
           variant.selected.forEach(size => {
             totalStock += parseInt(size.total || 0);
           });
+        } else {
+          // Otherwise use direct variant stock
+          totalStock += parseInt(variant.stock || 0);
         }
       });
     } else {
@@ -617,10 +621,10 @@ export default function ProductScreen() {
           ListEmptyComponent={
             <View className="flex-1 justify-center items-center mt-20">
               <Text className="text-lg font-medium text-gray-500">
-                No products found
+                {t('no_products_found')}
               </Text>
               <Text className="text-sm text-gray-400 text-center mt-2">
-                Add your first product to get started
+                {t('add_first_product')}
               </Text>
             </View>
           }

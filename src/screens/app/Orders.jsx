@@ -543,7 +543,10 @@ const OrdersScreen = ({ navigation }) => {
             {t('no_orders_message')}
           </Text>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Home')}
+            onPress={() => {
+              // Navigate to Home tab in MainTabs
+              navigation.navigate('HomeTab');
+            }}
             style={styles.startShoppingButton}
           >
             <Text style={styles.startShoppingText}>{t('start_shopping')}</Text>
@@ -606,7 +609,11 @@ const OrdersScreen = ({ navigation }) => {
             </View>
 
             {selectedProduct && (
-              <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <ScrollView 
+                style={styles.modalBody} 
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 20 }}
+              >
                 {/* Rest of your modal content remains the same */}
                 {/* Product Info */}
                 <View style={styles.productInfoSection}>

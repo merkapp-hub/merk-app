@@ -373,10 +373,15 @@ export default function SellerProductDetailScreen() {
                 // If product has variants, calculate total stock from all variants
                 if (product?.varients && product.varients.length > 0) {
                   const totalStock = product.varients.reduce((sum, variant) => {
-                    const variantStock = variant?.selected?.reduce((vSum, sel) => {
-                      return vSum + (parseInt(sel?.total) || 0);
-                    }, 0) || 0;
-                    return sum + variantStock;
+                    // Check if variant has sizes/parameters with stock
+                    if (variant?.selected && variant.selected.length > 0) {
+                      const variantStock = variant.selected.reduce((vSum, sel) => {
+                        return vSum + (parseInt(sel?.total) || 0);
+                      }, 0);
+                      return sum + variantStock;
+                    }
+                    // Otherwise use direct variant stock
+                    return sum + (parseInt(variant?.stock) || 0);
                   }, 0);
                   return `${totalStock} pcs`;
                 }

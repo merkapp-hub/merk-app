@@ -1,5 +1,6 @@
 {
   "common": {
+    "cart_empty": "Tu carrito está vacío",
     "delete_product_title": "Eliminar Producto",
     "delete_product_message": "¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.",
     "cancel": "Cancelar",
@@ -74,6 +75,8 @@
     "password_changed": "Contraseña cambiada exitosamente. Por favor inicia sesión con tu nueva contraseña.",
     "my_account": "Mi cuenta",
     "my_orders": "Mis pedidos",
+    "my_dashboard": "Mi Panel",
+    "browse_products": "Ver Productos",
     "change_language": "Cambiar idioma",
     "help_center": "Centro de ayuda",
     "delete_account": "Eliminar cuenta",
@@ -90,10 +93,14 @@
     "state_province": "Estado/Provincia",
     "city": "Ciudad",
     "zip_postal": "Código postal",
+    "zip_postal_code": "Código postal",
     "company_optional": "Empresa (opcional)",
+    "company_name": "Nombre de la empresa",
     "select_country": "Seleccionar país",
     "select_state": "Seleccionar estado/provincia",
+    "select_state_province": "Seleccionar estado/provincia",
     "select_city": "Seleccionar ciudad",
+    "select_state_first": "Por favor selecciona un estado primero",
     "please_select_country": "Por favor selecciona un país primero",
     "please_select_state": "Por favor selecciona un estado primero",
     "no_cities_found": "No se encontraron ciudades",
@@ -186,6 +193,7 @@
     "authentication_required": "Autenticación requerida",
     "please_login_continue": "Por favor inicia sesión para continuar",
     "order_placed_successfully": "¡Pedido realizado exitosamente!",
+    "payment_successful": "¡Pago exitoso!",
     "failed_place_order": "Error al realizar pedido",
     "failed_update_quantity": "Error al actualizar cantidad",
     "failed_remove_item": "Error al eliminar artículo del carrito",
@@ -200,6 +208,7 @@
     "loading_products": "Cargando productos...",
     "favorites": "Favoritos",
     "no_favorites_yet": "Aún no hay favoritos",
+    "no_favorites_message": "Comienza a explorar productos para agregarlos a tus favoritos",
     "start_exploring": "Comienza a explorar productos para agregarlos a tus favoritos",
     "explore_products": "Explorar productos",
     "remove_from_favorites": "Eliminar de favoritos",
@@ -455,6 +464,10 @@
     "available_colors": "Colores Disponibles",
     "available_variants": "Variantes Disponibles",
     "available_sizes": "Tallas Disponibles",
+    "explore_categories": "Explorar Categorías",
+    "new_arrival": "Nueva Llegada",
+    "this_month": "Este Mes",
+    "todays": "Hoy",
     "please_select_color": "Por favor selecciona un color",
     "please_select_size": "Por favor selecciona una talla",
     "please_login_to_add_to_cart": "Por favor inicia sesión para agregar al carrito",
@@ -476,7 +489,14 @@
       "dashboard": "Panel",
       "orders": "Pedidos",
       "wallet": "Billetera",
-      "products": "Productos"
+      "products": "Productos",
+      "free_fast_delivery": "Entrega Gratis y Rápida",
+      "free_delivery_over_140": "Entrega gratis para todos los pedidos superiores a $140",
+      "customer_service_24_7": "Servicio al Cliente 24/7",
+      "friendly_customer_support": "Soporte al cliente amigable 24/7",
+      "money_back_guarantee": "Garantía de Devolución de Dinero",
+      "money_back_30_days": "Devolvemos el dinero dentro de 30 días",
+      "shop_now": "Comprar Ahora"
     
   }
 }

@@ -105,127 +105,122 @@ const HelpCenter = ({ navigation, onBack }) => {
         </View>
       </View>
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      <ScrollView 
+        className="flex-1 px-6"
+        contentContainerStyle={{ paddingVertical: 24, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        nestedScrollEnabled={true}
+        scrollEnabled={true}
+        bounces={true}
+        keyboardDismissMode="on-drag"
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <ScrollView 
-            className="flex-1 px-6"
-            contentContainerStyle={{ paddingVertical: 24, paddingBottom: 100 }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-            nestedScrollEnabled={true}
+        <View className="space-y-6">
+        {/* Contact Information - Simplified */}
+        <View className="space-y-4">
+          {/* Call to Us - Simple */}
+          <View className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+            <View className="flex-row items-center mb-3">
+              <View className="w-10 h-10 bg-[#12344D] rounded-full items-center justify-center mr-3">
+                <PhoneIcon size={20} color="white" />
+              </View>
+              <Text className="text-lg font-semibold text-gray-900">{t('contact_call_to_us')}</Text>
+            </View>
+            
+            <Text className="text-sm text-gray-600 mb-3">
+              {t('contact_available_24_7')}
+            </Text>
+            
+            <Text className="text-sm">
+              <Text className="font-medium">{t('contact_phone')}: </Text>
+              <Text className="text-[#12344D] font-semibold">+8801611112222</Text>
+            </Text>
+          </View>
+
+          {/* Write to Us - Simple */}
+          <View className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+            <View className="flex-row items-center mb-3">
+              <View className="w-10 h-10 bg-[#12344D] rounded-full items-center justify-center mr-3">
+                <EnvelopeIcon size={20} color="white" />
+              </View>
+              <Text className="text-lg font-semibold text-gray-900">{t('contact_write_to_us')}</Text>
+            </View>
+            
+            <Text className="text-sm text-gray-600 mb-3">
+              {t('contact_fill_form_contact_within_24_hours')}
+            </Text>
+            
+            <Text className="text-sm">
+              <Text className="font-medium">{t('contact_emails')}: </Text>
+              <Text className="text-[#12344D] font-semibold">merkapp25@gmail.com</Text>
+            </Text>
+          </View>
+        </View>
+
+        {/* Contact Form */}
+        <View className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+          <TextInput
+            placeholder={t('contact_your_name_placeholder')}
+            placeholderTextColor="#9CA3AF"
+            value={formData.name}
+            onChangeText={(text) => handleInputChange('name', text)}
+            className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
+            style={{ fontSize: 16 }}
+            returnKeyType="next"
+            blurOnSubmit={false}
+          />
+          
+          <TextInput
+            placeholder={t('contact_your_email_placeholder')}
+            placeholderTextColor="#9CA3AF"
+            value={formData.email}
+            onChangeText={(text) => handleInputChange('email', text)}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
+            style={{ fontSize: 16 }}
+            returnKeyType="next"
+            blurOnSubmit={false}
+          />
+          
+          <TextInput
+            placeholder={t('contact_your_phone_placeholder')}
+            placeholderTextColor="#9CA3AF"
+            value={formData.phone}
+            onChangeText={(text) => handleInputChange('phone', text)}
+            keyboardType="phone-pad"
+            className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
+            style={{ fontSize: 16 }}
+            returnKeyType="next"
+            blurOnSubmit={false}
+          />
+          
+          <TextInput
+            placeholder={t('contact_your_message_placeholder')}
+            placeholderTextColor="#9CA3AF"
+            value={formData.message}
+            onChangeText={(text) => handleInputChange('message', text)}
+            multiline={true}
+            numberOfLines={4}
+            className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-6"
+            style={{ fontSize: 16, height: 100, textAlignVertical: 'top' }}
+            returnKeyType="done"
+            blurOnSubmit={true}
+          />
+
+          <TouchableOpacity
+            onPress={handleSubmit}
+            disabled={isLoading}
+            className="bg-[#12344D] py-4 rounded-xl items-center justify-center shadow-sm"
+            activeOpacity={0.8}
           >
-            <View className="space-y-6">
-            {/* Contact Information - Simplified */}
-            <View className="space-y-4">
-              {/* Call to Us - Simple */}
-              <View className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                <View className="flex-row items-center mb-3">
-                  <View className="w-10 h-10 bg-[#12344D] rounded-full items-center justify-center mr-3">
-                    <PhoneIcon size={20} color="white" />
-                  </View>
-                  <Text className="text-lg font-semibold text-gray-900">{t('contact_call_to_us')}</Text>
-                </View>
-                
-                <Text className="text-sm text-gray-600 mb-3">
-                  {t('contact_available_24_7')}
-                </Text>
-                
-                <Text className="text-sm">
-                  <Text className="font-medium">{t('contact_phone')}: </Text>
-                  <Text className="text-[#12344D] font-semibold">+8801611112222</Text>
-                </Text>
-              </View>
-
-              {/* Write to Us - Simple */}
-              <View className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                <View className="flex-row items-center mb-3">
-                  <View className="w-10 h-10 bg-[#12344D] rounded-full items-center justify-center mr-3">
-                    <EnvelopeIcon size={20} color="white" />
-                  </View>
-                  <Text className="text-lg font-semibold text-gray-900">{t('contact_write_to_us')}</Text>
-                </View>
-                
-                <Text className="text-sm text-gray-600 mb-3">
-                  {t('contact_fill_form_contact_within_24_hours')}
-                </Text>
-                
-                <Text className="text-sm">
-                  <Text className="font-medium">{t('contact_emails')}: </Text>
-                  <Text className="text-[#12344D] font-semibold">merkapp25@gmail.com</Text>
-                </Text>
-              </View>
-            </View>
-
-            {/* Contact Form */}
-            <View className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-              <TextInput
-                placeholder={t('contact_your_name_placeholder')}
-                placeholderTextColor="#9CA3AF"
-                value={formData.name}
-                onChangeText={(text) => handleInputChange('name', text)}
-                className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
-                style={{ fontSize: 16 }}
-                returnKeyType="next"
-                blurOnSubmit={false}
-              />
-              
-              <TextInput
-                placeholder={t('contact_your_email_placeholder')}
-                placeholderTextColor="#9CA3AF"
-                value={formData.email}
-                onChangeText={(text) => handleInputChange('email', text)}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
-                style={{ fontSize: 16 }}
-                returnKeyType="next"
-                blurOnSubmit={false}
-              />
-              
-              <TextInput
-                placeholder={t('contact_your_phone_placeholder')}
-                placeholderTextColor="#9CA3AF"
-                value={formData.phone}
-                onChangeText={(text) => handleInputChange('phone', text)}
-                keyboardType="phone-pad"
-                className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-5"
-                style={{ fontSize: 16 }}
-                returnKeyType="next"
-                blurOnSubmit={false}
-              />
-              
-              <TextInput
-                placeholder={t('contact_your_message_placeholder')}
-                placeholderTextColor="#9CA3AF"
-                value={formData.message}
-                onChangeText={(text) => handleInputChange('message', text)}
-                multiline={true}
-                numberOfLines={4}
-                className="w-full px-4 py-4 text-gray-800 border border-gray-300 rounded-xl bg-gray-50 mb-6"
-                style={{ fontSize: 16, height: 100, textAlignVertical: 'top' }}
-                returnKeyType="done"
-                blurOnSubmit={true}
-              />
-
-              <TouchableOpacity
-                onPress={handleSubmit}
-                disabled={isLoading}
-                className="bg-[#12344D] py-4 rounded-xl items-center justify-center shadow-sm"
-                activeOpacity={0.8}
-              >
-                <Text className="text-white font-semibold text-base">
-                  {isLoading ? t('sending') : t('send_message')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-            </View>
-          </ScrollView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
+            <Text className="text-white font-semibold text-base">
+              {isLoading ? t('sending') : t('send_message')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        </View>
+      </ScrollView>
       {/* Success Popup */}
       <Modal
         animationType="fade"

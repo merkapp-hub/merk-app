@@ -240,6 +240,8 @@ export default function SellerWalletScreen() {
       </View>
       <ScrollView
         className="flex-1 p-4"
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -318,7 +320,7 @@ export default function SellerWalletScreen() {
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-lg font-semibold text-gray-900">{t('recent_transactions')}</Text>
             <TouchableOpacity>
-              <Text className="text-blue-600 text-sm">{t('view_all')}</Text>
+              {/* <Text className="text-blue-600 text-sm">{t('view_all')}</Text> */}
             </TouchableOpacity>
           </View>
 

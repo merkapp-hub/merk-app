@@ -31,8 +31,19 @@ const AccountScreen = () => {
   const [showFinalConfirm, setShowFinalConfirm] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  // Debug log to check userInfo
+  console.log('User Info in Account:', userInfo);
+  const userData = userInfo?.data || userInfo; // Handle both nested and flat structures
+
   const menuItems = [
     { id: 1, title: t('my_orders'), hasArrow: true },
+    // Show "My Dashboard" only for sellers
+    ...(userData?.role === 'seller' ? [{
+      id: 6,
+      title: t('my_dashboard'),
+      hasArrow: true,
+      onPress: () => navigation.navigate('SellerTabs')
+    }] : []),
     {
       id: 2,
       title: t('change_language'),
@@ -114,10 +125,6 @@ const AccountScreen = () => {
       console.log(`Pressed: ${item.title}`);
     }
   };
-
-  // Debug log to check userInfo
-  console.log('User Info in Account:', userInfo);
-  const userData = userInfo?.data || userInfo; // Handle both nested and flat structures
 
   return (
     <View className="flex-1 bg-gray-50">

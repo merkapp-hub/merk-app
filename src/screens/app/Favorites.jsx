@@ -18,6 +18,7 @@ import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { useCurrency } from '../../context/CurrencyContext';
+import { getUserStorageKey, STORAGE_KEYS } from '../../utils/storageKeys';
 
 const Favorites = () => {
   const navigation = useNavigation();
@@ -29,12 +30,18 @@ const Favorites = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [quantities, setQuantities] = useState({});
 
+  // Helper function to get user-specific storage keys
+  const getStorageKey = (baseKey) => {
+    return getUserStorageKey(baseKey, user?._id);
+  };
+
   const fetchFavorites = async () => {
     try {
       setRefreshing(true);
       
-      // Try to get detailed favorites first
-      const favoritesDetailStr = await AsyncStorage.getItem('favoritesDetail');
+      // Try to get detailed favorites first with user-specific key
+      const favoritesDetailKey = getStorageKey(STORAGE_KEYS.FAVORITES_DETAIL);
+      const favoritesDetailStr = await AsyncStorage.getItem(favoritesDetailKey);
       
       if (favoritesDetailStr && favoritesDetailStr !== 'null') {
         const favDetailArray = JSON.parse(favoritesDetailStr);
@@ -149,8 +156,9 @@ const Favorites = () => {
         console.log('Final favorite products with fresh data:', products);
         setFavorites(products);
       } else {
-        // Fallback to old format (IDs only)
-        const localFavorites = await AsyncStorage.getItem('favorites');
+        // Fallback to old format (IDs only) with user-specific key
+        const favoritesKey = getStorageKey(STORAGE_KEYS.FAVORITES);
+        const localFavorites = await AsyncStorage.getItem(favoritesKey);
         console.log('Local favorites from storage (old format):', localFavorites);
         
         if (localFavorites && localFavorites !== 'null') {
@@ -185,7 +193,8 @@ const Favorites = () => {
       
       // Fallback to cached data on error
       try {
-        const favoritesDetailStr = await AsyncStorage.getItem('favoritesDetail');
+        const favoritesDetailKey = getStorageKey(STORAGE_KEYS.FAVORITES_DETAIL);
+        const favoritesDetailStr = await AsyncStorage.getItem(favoritesDetailKey);
         if (favoritesDetailStr && favoritesDetailStr !== 'null') {
           const favDetailArray = JSON.parse(favoritesDetailStr);
           setFavorites(favDetailArray);
@@ -201,21 +210,23 @@ const Favorites = () => {
 
   const handleRemoveFavorite = async (uniqueId) => {
     try {
-      // Update both favorites storages using unique ID
-      const localFavorites = await AsyncStorage.getItem('favorites');
+      // Update both favorites storages using unique ID with user-specific keys
+      const favoritesKey = getStorageKey(STORAGE_KEYS.FAVORITES);
+      const localFavorites = await AsyncStorage.getItem(favoritesKey);
       if (localFavorites) {
         let favArray = JSON.parse(localFavorites);
         favArray = favArray.filter(id => id !== uniqueId);
-        await AsyncStorage.setItem('favorites', JSON.stringify(favArray));
+        await AsyncStorage.setItem(favoritesKey, JSON.stringify(favArray));
         console.log('Removed from local favorites:', uniqueId);
       }
       
-      // Also remove from detailed favorites using unique ID
-      const favoritesDetailStr = await AsyncStorage.getItem('favoritesDetail');
+      // Also remove from detailed favorites using unique ID with user-specific key
+      const favoritesDetailKey = getStorageKey(STORAGE_KEYS.FAVORITES_DETAIL);
+      const favoritesDetailStr = await AsyncStorage.getItem(favoritesDetailKey);
       if (favoritesDetailStr) {
         let favDetailArray = JSON.parse(favoritesDetailStr);
         favDetailArray = favDetailArray.filter(item => item.uniqueId !== uniqueId);
-        await AsyncStorage.setItem('favoritesDetail', JSON.stringify(favDetailArray));
+        await AsyncStorage.setItem(favoritesDetailKey, JSON.stringify(favDetailArray));
         console.log('Removed from detailed favorites:', uniqueId);
       }
       
@@ -310,14 +321,29 @@ const Favorites = () => {
     return (
       <View className="bg-white rounded-lg shadow-sm mb-4 mx-4 p-4 border border-gray-100">
         <View className="flex-row">
-          <Image 
-            source={{ uri: image }} 
-            className="w-24 h-24 rounded-lg mr-4"
-            resizeMode="cover"
-          />
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ProductDetail', {
+              productId: item.slug || item._id,
+              productName: item.name
+            })}
+            activeOpacity={0.7}
+          >
+            <Image 
+              source={{ uri: image }} 
+              className="w-24 h-24 rounded-lg mr-4"
+              resizeMode="cover"
+            />
+          </TouchableOpacity>
           <View className="flex-1">
             <View className="flex-row justify-between">
-              <View className="flex-1 mr-2">
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ProductDetail', {
+                  productId: item.slug || item._id,
+                  productName: item.name
+                })}
+                activeOpacity={0.7}
+                className="flex-1 mr-2"
+              >
                 <Text 
                   className="text-base font-semibold text-gray-900" 
                   numberOfLines={2}
@@ -329,7 +355,7 @@ const Favorites = () => {
                     {colorInfo}{variantInfo}
                   </Text>
                 )}
-              </View>
+              </TouchableOpacity>
               <TouchableOpacity 
                 onPress={() => handleRemoveFavorite(item.uniqueId || item._id)}
                 className="p-1"

@@ -332,72 +332,82 @@ const Post = async (url, data, props) => {
 };
 
 const Postwithimage = async (url, data, props = {}) => {
-  return new Promise(function (resolve, reject) {
-    ConnectionCheck.isConnected().then(
-      async connected => {
-        console.log('Connection status:', connected);
-        if (connected) {
-          // Get token from props or fallback to AsyncStorage
-          let token = props?.headers?.Authorization?.replace('Bearer ', '') || await AsyncStorage.getItem('userToken');
-          
-          console.log('API URL:', API_BASE_URL + url);
-          console.log('Using token:', token ? 'Yes' : 'No');
-          
-          if (!token) {
-            console.error('No authentication token available');
-            return reject('Authentication required. Please login again.');
-          }
-          
-          // Prepare headers
-          const headers = {
-            'Content-Type': 'multipart/form-data',
-            'Authorization': `Bearer ${token}`,
-            ...(props?.headers || {}) // Allow overriding headers from props
-          };
-          
-          console.log('Request headers:', JSON.stringify(headers, null, 2));
-          
-          axios
-            .post(API_BASE_URL + url, data, { headers })
-            .then(res => {
-              console.log(res);
-              resolve(res);
-            })
-            .catch(async err => {
-              if (err.response) {
-                console.log(err.response.status);
-                if (err?.response?.status === 401) {
-                  // Clear all auth related data
-                  await Promise.all([
-                    AsyncStorage.removeItem('userToken'),
-                    AsyncStorage.removeItem('userInfo'),
-                    AsyncStorage.removeItem('userDetail')
-                  ]);
-                  
-                  // Only navigate if we're not already on an auth screen
-                  const currentRoute = navigationRef.current?.getCurrentRoute();
-                  const authRoutes = ['Login', 'Signup', 'ForgotPassword'];
-                  
-                  if (currentRoute && !authRoutes.includes(currentRoute.name)) {
-                    reset('Auth');
-                  }
-                  
-                  return reject('Session expired. Please login again.');
-                }
-                resolve(err.response.data);
-              } else {
-                reject(err);
-              }
-            });
-        } else {
-          reject('No internet connection');
-        }
+  try {
+    console.log('=== Postwithimage Started ===');
+    console.log('URL:', url);
+    console.log('Data type:', data.constructor.name);
+    
+    // Check internet connection
+    const connected = await ConnectionCheck.isConnected();
+    console.log('Connection status:', connected);
+    
+    if (!connected) {
+      throw new Error('No internet connection');
+    }
+    
+    // Get token
+    let token = props?.headers?.Authorization?.replace('Bearer ', '') || await AsyncStorage.getItem('userToken');
+    
+    console.log('API URL:', API_BASE_URL + url);
+    console.log('Using token:', token ? 'Yes' : 'No');
+    
+    if (!token) {
+      throw new Error('Authentication required. Please login again.');
+    }
+    
+    // Use fetch instead of axios for better React Native FormData support
+    const response = await fetch(API_BASE_URL + url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+        // DO NOT set Content-Type - let fetch handle it for FormData
       },
-      err => {
-        reject(err);
-      },
-    );
-  });
+      body: data,
+    });
+    
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    
+    // Get response text first
+    const responseText = await response.text();
+    console.log('Response text (first 500 chars):', responseText.substring(0, 500));
+    
+    // Parse JSON
+    let responseData;
+    try {
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse response as JSON');
+      throw new Error('Invalid response from server');
+    }
+    
+    // Handle auth errors
+    if (response.status === 401) {
+      await Promise.all([
+        AsyncStorage.removeItem('userToken'),
+        AsyncStorage.removeItem('userInfo'),
+        AsyncStorage.removeItem('userDetail')
+      ]);
+      
+      const currentRoute = navigationRef.current?.getCurrentRoute();
+      const authRoutes = ['Login', 'Signup', 'ForgotPassword'];
+      
+      if (currentRoute && !authRoutes.includes(currentRoute.name)) {
+        reset('Auth');
+      }
+      
+      throw new Error('Session expired. Please login again.');
+    }
+    
+    console.log('=== Postwithimage Success ===');
+    return responseData;
+    
+  } catch (error) {
+    console.error('=== Postwithimage Error ===');
+    console.error('Error:', error.message);
+    throw error;
+  }
 };
 
 const Put = async (url, data, props = {}, retryCount = 0) => {
@@ -448,7 +458,7 @@ const Put = async (url, data, props = {}, retryCount = 0) => {
       
       const response = await axios.put(API_BASE_URL + url, data, {
         headers: {
-          'Authorization': `jwt ${token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
@@ -510,7 +520,7 @@ const Delete = async (url, data, props) => {
           axios
             .delete(API_BASE_URL + url, {
               headers: {
-                Authorization: `jwt ${token}`,
+                Authorization: `Bearer ${token}`,
               },
             })
             .then(res => {
@@ -753,10 +763,10 @@ const ApiFormData = async (method, url, data, props = {}) => {
       throw new Error('No authentication token found');
     }
 
-    // Set up headers with JWT token format
+    // Set up headers with Bearer token format
     const headers = {
       'Content-Type': 'multipart/form-data',
-      'Authorization': `jwt ${token}`,  // Changed from Bearer to jwt
+      'Authorization': `Bearer ${token}`,
       'Accept': 'application/json',
       ...props.headers
     };
@@ -854,8 +864,305 @@ const ApiFormData = async (method, url, data, props = {}) => {
   }
 };
 
+// Dedicated function for React Native file uploads using fetch
+const UploadFiles = async (url, files) => {
+  try {
+    console.log('=== UploadFiles Started ===');
+    console.log('URL:', url);
+    console.log('Files count:', files.length);
+    
+    // Check internet connection
+    const connected = await ConnectionCheck.isConnected();
+    console.log('Internet connected:', connected);
+    
+    if (!connected) {
+      throw new Error('No internet connection');
+    }
+    
+    // Get token
+    const token = await AsyncStorage.getItem('userToken');
+    console.log('Token available:', token ? 'Yes' : 'No');
+    
+    if (!token) {
+      throw new Error('Authentication required. Please login again.');
+    }
+    
+    // Create FormData
+    const formData = new FormData();
+    
+    files.forEach((file, index) => {
+      console.log(`Adding file ${index + 1}:`, {
+        uri: file.uri,
+        type: file.type,
+        name: file.name
+      });
+      
+      formData.append('images', {
+        uri: file.uri,
+        type: file.type || 'image/jpeg',
+        name: file.name || `image_${Date.now()}_${index}.jpg`,
+      });
+    });
+    
+    console.log('Sending request to:', API_BASE_URL + url);
+    
+    // Use fetch instead of axios for React Native file uploads
+    const response = await fetch(API_BASE_URL + url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Don't set Content-Type - fetch will set it automatically
+      },
+      body: formData,
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Server error:', errorData);
+      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    console.log('=== Upload Successful ===');
+    console.log('Response data:', data);
+    
+    return data;
+    
+  } catch (error) {
+    console.error('=== Upload Error ===');
+    console.error('Error:', error.message);
+    throw new Error(error.message || 'Failed to upload files');
+  } finally {
+    console.log('=== UploadFiles completed ===\n');
+  }
+};
+
+// Alternative: Upload as base64 (no multer needed)
+const UploadFilesBase64 = async (url, files) => {
+  try {
+    console.log('=== UploadFilesBase64 Started ===');
+    console.log('Files count:', files.length);
+    
+    // Check internet connection
+    const connected = await ConnectionCheck.isConnected();
+    if (!connected) {
+      throw new Error('No internet connection');
+    }
+    
+    // Get token
+    const token = await AsyncStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('Authentication required. Please login again.');
+    }
+    
+    // Read files as base64
+    const base64Files = await Promise.all(
+      files.map(async (file) => {
+        try {
+          // Read file as base64
+          const response = await fetch(file.uri);
+          const blob = await response.blob();
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              resolve({
+                data: reader.result,
+                name: file.name,
+                type: file.type
+              });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch (error) {
+          console.error('Error reading file:', error);
+          throw error;
+        }
+      })
+    );
+    
+    console.log('Sending base64 images to:', API_BASE_URL + url);
+    
+    // Send as JSON
+    const response = await fetch(API_BASE_URL + url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ images: base64Files }),
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('=== Upload Successful ===');
+    
+    return data;
+    
+  } catch (error) {
+    console.error('=== Upload Error ===');
+    console.error('Error:', error.message);
+    throw error;
+  }
+};
+
+// Upload files using FormData (better performance than base64)
+const UploadFilesFormData = async (url, files) => {
+  try {
+    console.log('=== UploadFilesFormData Started ===');
+    console.log('Files count:', files.length);
+    console.log('Target URL:', API_BASE_URL + url);
+    
+    // Check internet connection
+    const connected = await ConnectionCheck.isConnected();
+    if (!connected) {
+      throw new Error('No internet connection');
+    }
+    
+    // Get token
+    const token = await AsyncStorage.getItem('userToken');
+    if (!token) {
+      throw new Error('Authentication required. Please login again.');
+    }
+    
+    console.log('Token available:', token ? 'Yes' : 'No');
+    
+    // Create FormData
+    const formData = new FormData();
+    
+    // Backend expects 'images' field (plural) with multer array
+    files.forEach((file, index) => {
+      console.log(`Appending file ${index + 1}:`, {
+        uri: file.uri,
+        type: file.type,
+        name: file.name
+      });
+      
+      // For React Native, ensure proper file object structure
+      const fileObj = {
+        uri: Platform.OS === 'android' ? file.uri : file.uri.replace('file://', ''),
+        type: file.type || 'image/jpeg',
+        name: file.name || `image_${Date.now()}_${index}.jpg`,
+      };
+      
+      formData.append('images', fileObj);
+    });
+    
+    console.log('FormData created, sending request...');
+    
+    // CRITICAL: Do NOT set Content-Type header for multipart/form-data
+    // React Native fetch will automatically set it with the correct boundary
+    const response = await fetch(API_BASE_URL + url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // DO NOT set Content-Type - let fetch handle it automatically
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+    
+    console.log('Response received');
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    
+    // Get response text first for debugging
+    const responseText = await response.text();
+    console.log('Response text:', responseText.substring(0, 500));
+    
+    if (!response.ok) {
+      let errorData = {};
+      try {
+        errorData = JSON.parse(responseText);
+        console.error('Error response data:', errorData);
+      } catch (e) {
+        console.error('Could not parse error response as JSON');
+      }
+      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+    }
+    
+    // Parse response
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Could not parse success response as JSON:', e);
+      throw new Error('Invalid response from server');
+    }
+    
+    console.log('=== Upload Successful ===');
+    console.log('Response data:', JSON.stringify(data, null, 2));
+    
+    return data;
+    
+  } catch (error) {
+    console.error('=== Upload Error ===');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    throw error;
+  }
+};
+
+// Upload files directly to Cloudinary (best for React Native)
+const UploadToCloudinary = async (files) => {
+  try {
+    console.log('=== Cloudinary Upload Started ===');
+    console.log('Files count:', files.length);
+    
+    const CLOUDINARY_URL = 'https://api.cloudinary.com/v1_1/dhwoyf9b3/image/upload';
+    const UPLOAD_PRESET = 'merk_uploads'; // You may need to create this in Cloudinary dashboard
+    
+    const uploadPromises = files.map(async (file) => {
+      const formData = new FormData();
+      formData.append('file', {
+        uri: file.uri,
+        type: file.type || 'image/jpeg',
+        name: file.name || 'image.jpg',
+      });
+      formData.append('upload_preset', UPLOAD_PRESET);
+      formData.append('folder', 'merk_uploads');
+      
+      const response = await fetch(CLOUDINARY_URL, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Cloudinary upload failed: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.secure_url;
+    });
+    
+    const urls = await Promise.all(uploadPromises);
+    console.log('=== Upload Successful ===');
+    console.log('Uploaded URLs:', urls);
+    
+    return { success: true, urls };
+    
+  } catch (error) {
+    console.error('=== Cloudinary Upload Error ===');
+    console.error('Error:', error.message);
+    throw error;
+  }
+};
+
 // Export individual functions
-export { GetApi, Post, Put, Delete, Postwithimage, ApiFormData };
+export { GetApi, Post, Put, Delete, Postwithimage, ApiFormData, UploadFiles, UploadFilesBase64, UploadFilesFormData, UploadToCloudinary };
 
 // Export as Api object for backward compatibility
 export const Api = {

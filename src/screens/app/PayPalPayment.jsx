@@ -17,10 +17,13 @@ import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../Helper/Service';
 import { useAuth } from '../../context/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getUserStorageKey, STORAGE_KEYS } from '../../utils/storageKeys';
+import { CommonActions } from '@react-navigation/native';
 
 const PayPalPayment = ({ route, navigation }) => {
   const { t } = useTranslation();
-  const { updateCartCount } = useAuth();
+  const { updateCartCount, userInfo: user } = useAuth();
   const { orderData, cartItems, paymentMethod } = route.params;
 
   const [loading, setLoading] = useState(false);
@@ -147,24 +150,62 @@ const PayPalPayment = ({ route, navigation }) => {
     try {
       setLoading(true);
 
-      const response = await Post('paypal/capture-order', {
+      // Step 1: Capture PayPal payment
+      const captureResponse = await Post('paypal/capture-order', {
         orderID,
         orderData,
       });
 
-      console.log('Capture response:', response);
+      console.log('Capture response:', captureResponse);
 
-      if (response && response.status) {
-        // Clear cart
-        await updateCartCount(0);
+      if (captureResponse && captureResponse.status) {
+        console.log('✅ PayPal payment captured successfully');
         
-        // Navigate to success screen
-        navigation.replace('OrderConfirmation', {
-          orderId: response.orderId || orderID,
-          paymentMethod: 'PayPal',
+        // Step 2: Create order in database
+        console.log('📦 Creating order in database...');
+        const createOrderResponse = await Post('createProductRequest', {
+          ...orderData,
+          paymentmode: 'pay', // PayPal payment
+          paymentStatus: 'completed',
+          paypalOrderId: orderID,
         });
+
+        console.log('Order creation response:', createOrderResponse);
+
+        if (createOrderResponse.success || createOrderResponse.status) {
+          console.log('✅ Order created successfully');
+          
+          // Clear cart from AsyncStorage using user-specific key
+          const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
+          await AsyncStorage.removeItem(cartKey);
+          console.log('✅ Cart cleared after successful PayPal payment');
+          
+          // Update cart count in tab bar
+          if (updateCartCount) {
+            await updateCartCount();
+          }
+          
+          // Show success message and navigate to Orders
+          Alert.alert(
+            t('success'),
+            t('order_placed_successfully'),
+            [
+              {
+                text: t('ok'),
+                onPress: () => {
+                  // Pop all screens in current stack and navigate to Account -> Orders
+                  navigation.getParent()?.navigate('Account', {
+                    screen: 'Orders'
+                  });
+                }
+              }
+            ]
+          );
+        } else {
+          throw new Error(createOrderResponse.message || 'Failed to create order');
+        }
       } else {
-        throw new Error(response?.message || 'Failed to capture payment');
+        throw new Error(captureResponse?.message || 'Failed to capture payment');
       }
     } catch (error) {
       console.error('Error capturing payment:', error);
@@ -232,14 +273,32 @@ const PayPalPayment = ({ route, navigation }) => {
       console.log('Card payment response:', response);
 
       if (response && response.status) {
-        // Clear cart
-        await updateCartCount(0);
+        // Clear cart from AsyncStorage using user-specific key
+        const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
+        await AsyncStorage.removeItem(cartKey);
+        console.log('✅ Cart cleared after successful payment');
         
-        // Navigate to success screen
-        navigation.replace('OrderConfirmation', {
-          orderId: response.orderId,
-          paymentMethod: 'Credit Card',
-        });
+        // Update cart count in tab bar
+        if (updateCartCount) {
+          await updateCartCount();
+        }
+        
+        // Show success message and navigate to Orders
+        Alert.alert(
+          t('success'),
+          t('payment_successful'),
+          [
+            {
+              text: t('ok'),
+              onPress: () => {
+                // Pop all screens in current stack and navigate to Account -> Orders
+                navigation.getParent()?.navigate('Account', {
+                  screen: 'Orders'
+                });
+              }
+            }
+          ]
+        );
       } else {
         throw new Error(response?.message || 'Payment failed');
       }
@@ -262,7 +321,16 @@ const PayPalPayment = ({ route, navigation }) => {
           <TouchableOpacity
             onPress={() => {
               setShowWebView(false);
-              Alert.alert(t('cancelled'), 'Payment was cancelled');
+              Alert.alert(
+                t('cancelled'), 
+                'Payment was cancelled',
+                [
+                  {
+                    text: t('ok'),
+                    onPress: () => navigation.goBack()
+                  }
+                ]
+              );
             }}
             style={styles.backButton}
           >

@@ -10,11 +10,11 @@ import { Picker } from '@react-native-picker/picker';
 import { launchImageLibrary } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { Postwithimage, GetApi } from '../../Helper/Service';
+import { Postwithimage, GetApi, UploadFilesFormData } from '../../Helper/Service';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 
-const API_BASE_URL = 'https://api.merkapp.net/api';
+const API_BASE_URL = 'https://api.merkapp.net/api/';
 const SIZE_LIST = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', '5XL', 'For adult'];
 const PRESET_COLORS = [
   '#000000', '#FFFFFF', '#FF0000', '#00FF00', '#0000FF', '#FFFF00',
@@ -22,6 +22,37 @@ const PRESET_COLORS = [
   '#808080', '#008000', '#000080', '#800000', '#808000', '#008080',
   '#FFD700', '#C0C0C0', '#FF6347', '#4169E1', '#32CD32', '#FF1493'
 ];
+
+// Parameter Type Defaults
+const DEFAULT_SIZE = {
+  id: Date.now() + Math.random(),
+  label: "Size",
+  value: "",
+  total: 0,
+};
+
+const DEFAULT_CAPACITY = {
+  id: Date.now() + Math.random(),
+  label: "ML",
+  value: 0,
+  total: 0,
+};
+
+const DEFAULT_DIMENSIONS = {
+  id: Date.now() + Math.random(),
+  label: "Height (Inches)",
+  label2: "Width (Inches)",
+  Height: 0,
+  Width: 0,
+  total: 0,
+};
+
+const DEFAULT_WEIGHT = {
+  id: Date.now() + Math.random(),
+  label: "GR",
+  value: 0,
+  total: 0,
+};
 
 // Helper functions for color conversion
 const hexToRgb = (hex) => {
@@ -42,15 +73,21 @@ export default function AddProductScreen({ navigation, route }) {
   const [userId, setUserId] = useState(null);
   const productId = route?.params?.productId || null;
   
+  // Debug logs
+  console.log('=== AddProductScreen Loaded ===');
+  console.log('Route params:', route?.params);
+  console.log('Product ID:', productId);
+  
   const [productData, setProductData] = useState({
     name: '', category: '', sku: '', model: '', origin: '', expirydate: '',
     manufacturername: '', manufactureradd: '', short_description: '',
-    long_description: '', price: '', Offerprice: '', hasVariants: false, images: [], pendingImages: []
+    long_description: '', price: '', Offerprice: '', stock: '', hasVariants: false, 
+    images: [], attributes: []
   });
 
   const [categories, setCategories] = useState([]);
   const [variants, setVariants] = useState([{
-    color: '#000000', image: [], pendingImages: [], selected: [], price: '', Offerprice: ''
+    color: '#000000', image: [], selected: [], price: '', Offerprice: '', stock: ''
   }]);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [currentVariantIndex, setCurrentVariantIndex] = useState(0);
@@ -59,6 +96,8 @@ export default function AddProductScreen({ navigation, route }) {
   const [imageUrl, setImageUrl] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [parameterType, setParameterType] = useState('');
+  const [selectedParameterList, setSelectedParameterList] = useState([]);
 
   const updateColorFromRgb = (r, g, b) => {
     const hex = rgbToHex(Math.round(r), Math.round(g), Math.round(b));
@@ -74,11 +113,44 @@ export default function AddProductScreen({ navigation, route }) {
     }
   };
 
+  const resetForm = () => {
+    console.log('Resetting form...');
+    setProductData({
+      name: '', category: '', sku: '', model: '', origin: '', expirydate: '',
+      manufacturername: '', manufactureradd: '', short_description: '',
+      long_description: '', price: '', Offerprice: '', stock: '', hasVariants: false, 
+      images: [], attributes: []
+    });
+    setVariants([{
+      color: '#000000', image: [], selected: [], price: '', Offerprice: '', stock: ''
+    }]);
+    setParameterType('');
+    setSelectedParameterList([]);
+  };
+
   useEffect(() => {
     loadUserData();
     fetchCategories();
-    if (productId) fetchProductById();
-  }, []);
+    if (productId) {
+      fetchProductById();
+    } else {
+      // Reset form for new product
+      resetForm();
+    }
+  }, [productId]);
+
+  // Add focus listener to reset form when navigating back
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Screen focused - productId:', productId);
+      if (!productId) {
+        // Reset form when coming back to add new product
+        resetForm();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, productId]);
 
   const loadUserData = async () => {
     try {
@@ -114,11 +186,22 @@ export default function AddProductScreen({ navigation, route }) {
 
   const fetchProductById = async () => {
     try {
+      console.log('=== Fetching Product ===');
+      console.log('Product ID:', productId);
+      
       setLoading(true);
       const response = await GetApi(`getProductById/${productId}`);
+      
+      console.log('Product fetch response:', response);
+      
       if (response?.status) {
         const product = response.data;
+        console.log('Product data:', product);
+        
         const hasVariants = product.varients?.length > 0;
+        console.log('Has variants:', hasVariants);
+        console.log('Variants:', product.varients);
+        
         setProductData({
           ...productData,
           name: product.name || '',
@@ -134,9 +217,19 @@ export default function AddProductScreen({ navigation, route }) {
           hasVariants,
           price: hasVariants ? '' : (product.price_slot?.[0]?.price || ''),
           Offerprice: hasVariants ? '' : (product.price_slot?.[0]?.Offerprice || ''),
-          images: product.images || []
+          stock: hasVariants ? '' : (product.stock || ''),
+          images: product.images || [],
+          attributes: product.attributes || []
         });
-        if (hasVariants) setVariants(product.varients);
+        
+        if (hasVariants) {
+          console.log('Setting variants:', product.varients);
+          setVariants(product.varients);
+        }
+        
+        console.log('Product data loaded successfully');
+      } else {
+        console.error('Failed to fetch product - no status in response');
       }
     } catch (error) {
       console.error('Fetch product error:', error);
@@ -195,110 +288,276 @@ export default function AddProductScreen({ navigation, route }) {
 
       launchImageLibrary({ 
         mediaType: 'photo', 
-        quality: 0.8, 
-        selectionLimit: 0,
+        quality: 0.7, // Reduced quality for faster upload
+        selectionLimit: 5, // Limit to 5 images at once
         includeBase64: false,
+        maxWidth: 1200, // Resize to max 1200px width
+        maxHeight: 1200, // Resize to max 1200px height
       }, async (response) => {
         if (response.didCancel) {
           console.log('User cancelled image picker');
-        } else if (response.errorCode) {
+          return;
+        } 
+        
+        if (response.errorCode) {
           console.error('ImagePicker Error:', response.errorCode, response.errorMessage);
           Alert.alert('Error', `Failed to pick image: ${response.errorMessage || 'Unknown error'}`);
-        } else if (response.assets && response.assets.length > 0) {
-          // Store images locally first (for preview)
-          const imageFiles = response.assets.map(asset => ({
-            uri: asset.uri,
-            type: asset.type || 'image/jpeg',
-            name: asset.fileName || `image_${Date.now()}.jpg`,
-          }));
+          return;
+        } 
+        
+        if (response.assets && response.assets.length > 0) {
+          // Upload images immediately
+          setLoading(true);
           
-          if (variantIndex !== null) {
-            // Add to variant pending images
-            const newVariants = [...variants];
-            if (!newVariants[variantIndex].pendingImages) {
-              newVariants[variantIndex].pendingImages = [];
-            }
-            newVariants[variantIndex].pendingImages = [
-              ...newVariants[variantIndex].pendingImages, 
-              ...imageFiles
-            ];
-            setVariants(newVariants);
-            Alert.alert('Success', `${imageFiles.length} image(s) selected. They will be uploaded when you create the product.`);
-          } else {
-            // Add to product pending images
-            setProductData(prev => ({ 
-              ...prev, 
-              pendingImages: [...(prev.pendingImages || []), ...imageFiles] 
+          // Increased timeout to 2 minutes for slow connections
+          const loadingTimeout = setTimeout(() => {
+            console.warn('Upload timeout - forcing loading to stop');
+            setLoading(false);
+            Alert.alert('Timeout', 'Upload is taking too long. Please check your internet connection and try again.');
+          }, 120000); // 2 minutes
+          
+          try {
+            const imageFiles = response.assets.map((asset, index) => ({
+              uri: asset.uri,
+              type: asset.type || 'image/jpeg',
+              name: asset.fileName || `image_${Date.now()}_${index}.jpg`,
             }));
-            Alert.alert('Success', `${imageFiles.length} image(s) selected. They will be uploaded when you create the product.`);
+            
+            console.log('Image files prepared:', imageFiles);
+            
+            // Upload to server
+            const uploadedUrls = await uploadImagesToServer(imageFiles);
+            
+            // Clear timeout since upload succeeded
+            clearTimeout(loadingTimeout);
+            
+            if (variantIndex !== null) {
+              // Add uploaded URLs to variant images
+              const newVariants = [...variants];
+              newVariants[variantIndex].image = [
+                ...newVariants[variantIndex].image, 
+                ...uploadedUrls
+              ];
+              setVariants(newVariants);
+              Alert.alert('Success', `${uploadedUrls.length} image(s) uploaded successfully!`);
+            } else {
+              // Add uploaded URLs to product images
+              setProductData(prev => ({ 
+                ...prev, 
+                images: [...prev.images, ...uploadedUrls] 
+              }));
+              Alert.alert('Success', `${uploadedUrls.length} image(s) uploaded successfully!`);
+            }
+          } catch (error) {
+            console.error('Upload error:', error);
+            clearTimeout(loadingTimeout);
+            Alert.alert('Upload Failed', error.message || 'Failed to upload images. Please try again.');
+          } finally {
+            // Ensure loading is always turned off
+            console.log('Turning off loading spinner');
+            setLoading(false);
           }
         }
       });
     } catch (error) {
       console.error('Pick image error:', error);
+      setLoading(false);
       Alert.alert('Error', 'Failed to open image picker');
     }
   };
 
 const uploadImagesToServer = async (images) => {
   try {
-    console.log('Starting upload for', images.length, 'images');
+    console.log('=== Starting Image Upload ===');
+    console.log('Number of images:', images.length);
     
-    const formData = new FormData();
-    
-    images.forEach((asset, index) => {
-      console.log(`Processing image ${index + 1}:`, {
-        uri: asset.uri,
-        type: asset.type,
-        name: asset.fileName,
-        size: asset.fileSize
+    // Log each image details
+    images.forEach((img, idx) => {
+      console.log(`Image ${idx + 1}:`, {
+        uri: img.uri,
+        type: img.type,
+        name: img.name,
+        uriExists: !!img.uri
       });
-      
-      // Create the file object for FormData - backend expects 'images' field
-      const file = {
-        uri: asset.uri,
-        type: asset.type || 'image/jpeg',
-        name: asset.fileName || `image_${Date.now()}_${index}.jpg`,
-      };
-      
-      // Backend controller expects req.files, so we append with field name 'images'
-      formData.append('images', file);
     });
-
-    console.log('Uploading images using Postwithimage...');
     
-    // Use Postwithimage helper function
-    const response = await Postwithimage('uploadImages', formData);
-
-    console.log('Upload response:', response);
+    // Use backend upload (proven to work)
+    console.log('Uploading via backend...');
+    const response = await UploadFilesFormData('uploadImagesAlt', images);
     
-    // Check for error in response
-    if (response?.error) {
-      console.error('Server returned error:', response.error);
-      throw new Error(response.error);
-    }
+    console.log('=== Upload Response Received ===');
+    console.log('Response:', response);
     
-    // Handle success response - backend returns { message, images }
-    if (response?.data?.images) {
-      console.log('Images uploaded successfully:', response.data.images);
+    // Handle success response
+    if (response?.status && response?.data?.images) {
+      console.log('✓ Images uploaded successfully:', response.data.images);
       return response.data.images;
     } else if (response?.images) {
-      console.log('Images uploaded successfully:', response.images);
+      console.log('✓ Images uploaded successfully:', response.images);
       return response.images;
     } else if (Array.isArray(response?.data)) {
+      console.log('✓ Images uploaded successfully:', response.data);
       return response.data;
     } else if (Array.isArray(response)) {
+      console.log('✓ Images uploaded successfully:', response);
       return response;
     }
     
-    console.error('Unexpected response format:', response);
+    console.error('✗ Unexpected response format:', response);
     throw new Error('Server did not return image URLs');
     
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('=== Upload Error ===');
+    console.error('Error:', error.message);
     throw error;
   }
 };
+
+  const handleParameterTypeChange = (selectedType) => {
+    setParameterType(selectedType);
+    
+    const parameterDefaults = {
+      size: [DEFAULT_SIZE],
+      weight: [DEFAULT_WEIGHT],
+      dimensions: [DEFAULT_DIMENSIONS],
+      capacity: [DEFAULT_CAPACITY],
+    };
+
+    const defaultParameters = parameterDefaults[selectedType] || [];
+    setSelectedParameterList(defaultParameters);
+
+    // Update first variant with default parameters
+    const newVariants = [...variants];
+    newVariants[0].selected = [...defaultParameters];
+    setVariants(newVariants);
+  };
+
+  const updateParameterSlot = (variantIndex, slotIndex, field, value) => {
+    const newVariants = [...variants];
+    if (newVariants[variantIndex]?.selected[slotIndex]) {
+      newVariants[variantIndex].selected[slotIndex][field] = value;
+      setVariants(newVariants);
+    }
+  };
+
+  const addParameterSlot = (variantIndex) => {
+    if (selectedParameterList.length > 0) {
+      const newVariants = [...variants];
+      newVariants[variantIndex].selected.push({ 
+        ...selectedParameterList[0],
+        id: Date.now() + Math.random()
+      });
+      setVariants(newVariants);
+    }
+  };
+
+  const removeParameterSlot = (variantIndex, slotIndex) => {
+    const newVariants = [...variants];
+    newVariants[variantIndex].selected.splice(slotIndex, 1);
+    setVariants(newVariants);
+  };
+
+  // Parameter Type Component for rendering different parameter types
+  const renderParameterSlot = (slot, variantIndex, slotIndex) => {
+    if (!slot.label2 && slot.label !== "Size") {
+      // Capacity or Weight
+      return (
+        <View key={slotIndex} style={styles.parameterCard}>
+          <TouchableOpacity
+            style={styles.parameterRemoveBtn}
+            onPress={() => removeParameterSlot(variantIndex, slotIndex)}
+          >
+            <Text style={styles.removeBtnText}>×</Text>
+          </TouchableOpacity>
+          <Text style={styles.parameterLabel}>{slot.label}</Text>
+          <TextInput
+            style={styles.parameterInput}
+            placeholder="Value"
+            value={slot.value ? slot.value.toString() : ''}
+            onChangeText={(text) => updateParameterSlot(variantIndex, slotIndex, 'value', text)}
+            keyboardType="number-pad"
+          />
+          <Text style={styles.parameterLabel}>Qty</Text>
+          <TextInput
+            style={styles.parameterInput}
+            placeholder="Quantity"
+            value={slot.total ? slot.total.toString() : ''}
+            onChangeText={(text) => updateParameterSlot(variantIndex, slotIndex, 'total', text)}
+            keyboardType="number-pad"
+          />
+        </View>
+      );
+    } else if (!slot.label2 && slot.label === "Size") {
+      // Size
+      return (
+        <View key={slotIndex} style={styles.parameterCard}>
+          <TouchableOpacity
+            style={styles.parameterRemoveBtn}
+            onPress={() => removeParameterSlot(variantIndex, slotIndex)}
+          >
+            <Text style={styles.removeBtnText}>×</Text>
+          </TouchableOpacity>
+          <Text style={styles.parameterLabel}>{slot.label}</Text>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={slot.value}
+              style={styles.picker}
+              onValueChange={(value) => updateParameterSlot(variantIndex, slotIndex, 'value', value)}
+            >
+              <Picker.Item label="Select Size" value="" />
+              {SIZE_LIST.map((s) => (
+                <Picker.Item key={s} label={s} value={s} />
+              ))}
+            </Picker>
+          </View>
+          <Text style={styles.parameterLabel}>Qty</Text>
+          <TextInput
+            style={styles.parameterInput}
+            placeholder="Quantity"
+            value={slot.total ? slot.total.toString() : ''}
+            onChangeText={(text) => updateParameterSlot(variantIndex, slotIndex, 'total', text)}
+            keyboardType="number-pad"
+          />
+        </View>
+      );
+    } else if (slot.label2) {
+      // Dimensions
+      return (
+        <View key={slotIndex} style={styles.parameterCard}>
+          <TouchableOpacity
+            style={styles.parameterRemoveBtn}
+            onPress={() => removeParameterSlot(variantIndex, slotIndex)}
+          >
+            <Text style={styles.removeBtnText}>×</Text>
+          </TouchableOpacity>
+          <Text style={styles.parameterLabel}>{slot.label}</Text>
+          <TextInput
+            style={styles.parameterInput}
+            placeholder="Height"
+            value={slot.Height ? slot.Height.toString() : ''}
+            onChangeText={(text) => updateParameterSlot(variantIndex, slotIndex, 'Height', text)}
+            keyboardType="number-pad"
+          />
+          <Text style={styles.parameterLabel}>{slot.label2}</Text>
+          <TextInput
+            style={styles.parameterInput}
+            placeholder="Width"
+            value={slot.Width ? slot.Width.toString() : ''}
+            onChangeText={(text) => updateParameterSlot(variantIndex, slotIndex, 'Width', text)}
+            keyboardType="number-pad"
+          />
+          <Text style={styles.parameterLabel}>Qty</Text>
+          <TextInput
+            style={styles.parameterInput}
+            placeholder="Quantity"
+            value={slot.total ? slot.total.toString() : ''}
+            onChangeText={(text) => updateParameterSlot(variantIndex, slotIndex, 'total', text)}
+            keyboardType="number-pad"
+          />
+        </View>
+      );
+    }
+  };
 
 
 
@@ -314,8 +573,7 @@ const uploadImagesToServer = async (images) => {
         Alert.alert('Error', 'Please enter product price');
         return;
       }
-      const totalImages = (productData.images?.length || 0) + (productData.pendingImages?.length || 0);
-      if (totalImages === 0) {
+      if (productData.images.length === 0) {
         Alert.alert('Error', 'Please add at least one product image');
         return;
       }
@@ -331,12 +589,24 @@ const uploadImagesToServer = async (images) => {
           Alert.alert('Error', `Please enter price for Variant #${i + 1}`);
           return;
         }
-        if (variant.selected.length === 0) {
-          Alert.alert('Error', `Please add at least one size for Variant #${i + 1}`);
-          return;
+        
+        // Validation based on parameter type
+        if (parameterType && parameterType !== '') {
+          // If parameter type is selected, check for parameter slots
+          if (!variant.selected || variant.selected.length === 0) {
+            Alert.alert('Error', `Please add at least one parameter for Variant #${i + 1}`);
+            return;
+          }
+        } else {
+          // If no parameter type, check for stock quantity
+          if (!variant.stock) {
+            Alert.alert('Error', `Please enter stock quantity for Variant #${i + 1}`);
+            return;
+          }
+          // Sizes are optional when no parameter type
         }
-        const totalImages = (variant.image?.length || 0) + (variant.pendingImages?.length || 0);
-        if (totalImages === 0) {
+        
+        if (variant.image.length === 0) {
           Alert.alert('Error', `Please add at least one image for Variant #${i + 1}`);
           return;
         }
@@ -355,45 +625,13 @@ const uploadImagesToServer = async (images) => {
       
       console.log('User ID:', userId);
       
-      // Upload pending images first
-      let uploadedProductImages = [];
-      if (productData.pendingImages && productData.pendingImages.length > 0) {
-        console.log('Uploading', productData.pendingImages.length, 'product images...');
-        try {
-          uploadedProductImages = await uploadImagesToServer(productData.pendingImages);
-          console.log('Product images uploaded:', uploadedProductImages);
-        } catch (error) {
-          console.error('Failed to upload product images:', error);
-          Alert.alert('Error', 'Failed to upload product images. Please try again.');
-          setLoading(false);
-          return;
-        }
-      }
-      
-      // Upload variant images
-      const updatedVariants = [...variants];
-      for (let i = 0; i < updatedVariants.length; i++) {
-        if (updatedVariants[i].pendingImages && updatedVariants[i].pendingImages.length > 0) {
-          console.log(`Uploading ${updatedVariants[i].pendingImages.length} images for variant ${i + 1}...`);
-          try {
-            const uploadedUrls = await uploadImagesToServer(updatedVariants[i].pendingImages);
-            updatedVariants[i].image = [...updatedVariants[i].image, ...uploadedUrls];
-            console.log(`Variant ${i + 1} images uploaded:`, uploadedUrls);
-          } catch (error) {
-            console.error(`Failed to upload variant ${i + 1} images:`, error);
-            Alert.alert('Error', `Failed to upload images for Variant #${i + 1}. Please try again.`);
-            setLoading(false);
-            return;
-          }
-        }
-      }
-      
-      // Combine URL images with uploaded images
-      const allProductImages = [...productData.images, ...uploadedProductImages];
+      // Images are already uploaded when selected from gallery
+      // No need to upload again, just use the URLs
       
       const formData = new FormData();
       Object.keys(productData).forEach(key => {
-        if (key !== 'images' && key !== 'hasVariants' && key !== 'pendingImages') {
+        if (key !== 'images' && key !== 'hasVariants' && key !== 'pendingImages' && 
+            key !== 'attributes' && key !== 'stock' && key !== 'price' && key !== 'Offerprice') {
           const value = productData[key];
           console.log(`Adding ${key}:`, value);
           formData.append(key, value || '');
@@ -402,24 +640,27 @@ const uploadImagesToServer = async (images) => {
       formData.append('userid', userId);
       formData.append('hasVariants', productData.hasVariants);
       
+      // Add attributes as JSON (not in the loop above)
+      formData.append('attributes', JSON.stringify(productData.attributes || []));
+      
       if (productData.hasVariants) {
+        // For variant products, set stock to 0 (stock is in variants)
+        formData.append('stock', '0');
         formData.append('price_slot', JSON.stringify([]));
-        // Remove pendingImages from variants before sending
-        const variantsToSend = updatedVariants.map(v => {
-          const { pendingImages, ...rest } = v;
-          return rest;
-        });
-        formData.append('varients', JSON.stringify(variantsToSend));
-        console.log('Variants:', JSON.stringify(variantsToSend, null, 2));
+        // Send variants with image URLs
+        formData.append('varients', JSON.stringify(variants));
+        console.log('Variants:', JSON.stringify(variants, null, 2));
       } else {
+        // For normal products, use the entered stock and price
+        formData.append('stock', productData.stock || '0');
         formData.append('price_slot', JSON.stringify([{
           value: 1,
           price: parseFloat(productData.price) || 0,
           Offerprice: parseFloat(productData.Offerprice) || 0
         }]));
         formData.append('varients', JSON.stringify([]));
-        formData.append('imageUrls', JSON.stringify(allProductImages));
-        console.log('Images:', allProductImages);
+        formData.append('imageUrls', JSON.stringify(productData.images));
+        console.log('Images:', productData.images);
       }
       
       if (productId) formData.append('id', productId);
@@ -439,7 +680,15 @@ const uploadImagesToServer = async (images) => {
           { text: 'OK', onPress: () => navigation.goBack() }
         ]);
       } else {
-        Alert.alert('Error', response?.message || 'Failed to save product');
+        // Handle specific error cases
+        let errorMessage = response?.message || 'Failed to save product';
+        
+        // Check for duplicate SKU error
+        if (response?.message?.includes('E11000') && response?.message?.includes('sku')) {
+          errorMessage = 'This SKU is already in use. Please use a different SKU or leave it empty for auto-generation.';
+        }
+        
+        Alert.alert('Error', errorMessage);
       }
     } catch (error) {
       console.error('Submit error:', error);
@@ -474,8 +723,28 @@ const uploadImagesToServer = async (images) => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E59013" />
+      <View style={styles.container}>
+        {/* Header */}
+        <View className="bg-slate-800 px-4 py-5">
+          <View className="flex-row items-center">
+            <TouchableOpacity 
+              onPress={() => navigation.goBack()}
+              className="mr-4"
+            >
+              <ChevronLeftIcon size={24} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{productId ? 'Edit Product' : 'Add Product'}</Text>
+          </View>
+        </View>
+        
+        {/* Loading Overlay */}
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color="#E59013" />
+            {/* <Text style={styles.loadingText}>Uploading images...</Text> */}
+            <Text style={styles.loadingSubtext}>Please wait</Text>
+          </View>
+        </View>
       </View>
     );
   }
@@ -522,7 +791,15 @@ const uploadImagesToServer = async (images) => {
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={productData.category}
-              onValueChange={(value) => setProductData({ ...productData, category: value })}
+              style={styles.picker}
+              onValueChange={(value) => {
+                const selectedCategory = categories.find(cat => cat._id === value);
+                setProductData({ 
+                  ...productData, 
+                  category: value,
+                  attributes: selectedCategory?.attributes || []
+                });
+              }}
             >
               <Picker.Item label="Select Category" value="" />
               {categories.map((cat) => (
@@ -532,13 +809,35 @@ const uploadImagesToServer = async (images) => {
           </View>
         </View>
 
+        {productData.hasVariants && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Parameter Type</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={parameterType}
+                style={styles.picker}
+                onValueChange={(value) => handleParameterTypeChange(value)}
+              >
+                <Picker.Item label="Select Parameter Type" value="" />
+                <Picker.Item label="Size" value="size" />
+                <Picker.Item label="Capacity" value="capacity" />
+                <Picker.Item label="Dimensions" value="dimensions" />
+                <Picker.Item label="Weight" value="weight" />
+              </Picker>
+            </View>
+          </View>
+        )}
+
         <View style={styles.inputGroup}>
           <Text style={styles.label}>SKU (Optional)</Text>
           <TextInput
             style={styles.input}
             placeholder="Auto-generated if empty"
             value={productData.sku}
-            onChangeText={(text) => setProductData({ ...productData, sku: text })}
+            onChangeText={(text) => {
+              console.log('SKU changed to:', text);
+              setProductData({ ...productData, sku: text });
+            }}
           />
         </View>
 
@@ -635,6 +934,19 @@ const uploadImagesToServer = async (images) => {
           />
         </View>
 
+        {/* Attributes Section */}
+        {productData.attributes && productData.attributes.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Product Attributes</Text>
+            {productData.attributes.map((attr, idx) => (
+              <View key={idx} style={styles.attributeRow}>
+                <Text style={styles.attributeName}>{attr.name}:</Text>
+                <Text style={styles.attributeValue}>{attr.value}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Product Type */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Product Type</Text>
@@ -678,6 +990,16 @@ const uploadImagesToServer = async (images) => {
                 keyboardType="decimal-pad"
               />
             </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Stock Quantity *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="0"
+                value={productData.stock}
+                onChangeText={(text) => setProductData({ ...productData, stock: text })}
+                keyboardType="number-pad"
+              />
+            </View>
 
             <Text style={styles.cardTitle}>Product Images</Text>
             <View style={styles.row}>
@@ -710,25 +1032,6 @@ const uploadImagesToServer = async (images) => {
                       const newImages = [...productData.images];
                       newImages.splice(idx, 1);
                       setProductData({ ...productData, images: newImages });
-                    }}
-                  >
-                    <Text style={styles.removeBtnText}>×</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {/* Pending Images (from gallery) */}
-              {productData.pendingImages && productData.pendingImages.map((file, idx) => (
-                <View key={`pending-${idx}`} style={styles.imageWrapper}>
-                  <Image source={{ uri: file.uri }} style={styles.imageThumb} />
-                  <View style={styles.pendingBadge}>
-                    <Text style={styles.pendingText}>📤</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.removeBtn}
-                    onPress={() => {
-                      const newFiles = [...productData.pendingImages];
-                      newFiles.splice(idx, 1);
-                      setProductData({ ...productData, pendingImages: newFiles });
                     }}
                   >
                     <Text style={styles.removeBtnText}>×</Text>
@@ -817,57 +1120,38 @@ const uploadImagesToServer = async (images) => {
                   />
                 </View>
 
-                <Text style={styles.label}>Sizes</Text>
-                {variant.selected.map((size, sIdx) => (
-                  <View key={sIdx} style={styles.sizeRow}>
-                    <View style={[styles.pickerContainer, styles.flex1]}>
-                      <Picker
-                        selectedValue={size.value}
-                        onValueChange={(value) => {
-                          const newVariants = [...variants];
-                          newVariants[vIdx].selected[sIdx].value = value;
-                          setVariants(newVariants);
-                        }}
-                      >
-                        <Picker.Item label="Select Size" value="" />
-                        {SIZE_LIST.map((s) => (
-                          <Picker.Item key={s} label={s} value={s} />
-                        ))}
-                      </Picker>
+                {/* Parameter Type or Stock Quantity */}
+                {parameterType && parameterType !== '' ? (
+                  // Show Parameters when parameter type is selected
+                  <View>
+                    <Text style={styles.label}>Parameters</Text>
+                    <View style={styles.parameterGrid}>
+                      {variant.selected && variant.selected.map((slot, sIdx) => renderParameterSlot(slot, vIdx, sIdx))}
                     </View>
+                    <TouchableOpacity
+                      style={styles.btnSuccess}
+                      onPress={() => addParameterSlot(vIdx)}
+                    >
+                      <Text style={styles.btnText}>Add More Parameter</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  // Show only Stock Quantity when no parameter type
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Stock Quantity *</Text>
                     <TextInput
-                      style={[styles.input, styles.qtyInput]}
-                      placeholder="Qty"
-                      value={size.total?.toString()}
+                      style={styles.input}
+                      placeholder="0"
+                      value={variant.stock?.toString() || ''}
                       onChangeText={(text) => {
                         const newVariants = [...variants];
-                        newVariants[vIdx].selected[sIdx].total = text;
+                        newVariants[vIdx].stock = text;
                         setVariants(newVariants);
                       }}
                       keyboardType="number-pad"
                     />
-                    <TouchableOpacity
-                      style={styles.btnDanger}
-                      onPress={() => {
-                        const newVariants = [...variants];
-                        newVariants[vIdx].selected.splice(sIdx, 1);
-                        setVariants(newVariants);
-                      }}
-                    >
-                      <Text style={styles.btnText}>×</Text>
-                    </TouchableOpacity>
                   </View>
-                ))}
-                <TouchableOpacity
-                  style={styles.btnSuccess}
-                  onPress={() => {
-                    const newVariants = [...variants];
-                    newVariants[vIdx].selected.push({ value: '', total: 0 });
-                    setVariants(newVariants);
-                  }}
-                >
-                  <Text style={styles.btnText}>Add Size</Text>
-                </TouchableOpacity>
+                )}
 
                 <Text style={styles.label}>Variant Images</Text>
                 <View style={styles.row}>
@@ -911,25 +1195,6 @@ const uploadImagesToServer = async (images) => {
                       </TouchableOpacity>
                     </View>
                   ))}
-                  {/* Pending Images */}
-                  {variant.pendingImages && variant.pendingImages.map((file, imgIdx) => (
-                    <View key={`pending-${imgIdx}`} style={styles.imageWrapper}>
-                      <Image source={{ uri: file.uri }} style={styles.imageThumb} />
-                      <View style={styles.pendingBadge}>
-                        <Text style={styles.pendingText}>📤</Text>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.removeBtn}
-                        onPress={() => {
-                          const newVariants = [...variants];
-                          newVariants[vIdx].pendingImages.splice(imgIdx, 1);
-                          setVariants(newVariants);
-                        }}
-                      >
-                        <Text style={styles.removeBtnText}>×</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
                 </View>
               </View>
             ))}
@@ -937,7 +1202,12 @@ const uploadImagesToServer = async (images) => {
             <TouchableOpacity
               style={styles.btnPrimary}
               onPress={() => setVariants([...variants, {
-                color: '#000000', image: [], pendingImages: [], selected: [], price: '', Offerprice: ''
+                color: '#000000', 
+                image: [], 
+                selected: selectedParameterList.length > 0 ? [selectedParameterList[0]] : [], 
+                price: '', 
+                Offerprice: '',
+                stock: ''
               }])}
             >
               <Text style={styles.btnText}>Add More Variant</Text>
@@ -1068,6 +1338,35 @@ const styles = StyleSheet.create({
   },
   scrollView: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  loadingCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 200,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#6b7280',
+  },
   content: { padding: 16, paddingBottom: 100 },
   title: { fontSize: 24, fontWeight: 'bold', color: '#1f2937', marginBottom: 16 },
   inputGroup: { marginBottom: 16 },
@@ -1088,6 +1387,7 @@ const styles = StyleSheet.create({
   datePickerText: { fontSize: 14, color: '#1f2937' },
   calendarIcon: { fontSize: 20 },
   pickerContainer: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8 },
+  picker: { color: '#1f2937', backgroundColor: 'transparent' },
   card: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 16, marginBottom: 16 },
   cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#1f2937', marginBottom: 12 },
   radioOption: { flexDirection: 'row', alignItems: 'center', padding: 8, borderRadius: 8, marginBottom: 8 },
@@ -1140,4 +1440,12 @@ const styles = StyleSheet.create({
   sliderValue: { fontSize: 14, fontWeight: 'bold', color: '#1f2937' },
   slider: { width: '100%', height: 40 },
   helperText: { fontSize: 12, color: '#6b7280', marginTop: 4, fontStyle: 'italic' },
+  attributeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+  attributeName: { fontSize: 14, fontWeight: '600', color: '#374151', flex: 1 },
+  attributeValue: { fontSize: 14, color: '#1f2937', flex: 2 },
+  parameterGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
+  parameterCard: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, width: '48%', position: 'relative' },
+  parameterRemoveBtn: { position: 'absolute', top: 4, right: 4, backgroundColor: '#ef4444', width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', zIndex: 1 },
+  parameterLabel: { fontSize: 12, fontWeight: '600', color: '#374151', marginTop: 8, marginBottom: 4 },
+  parameterInput: { backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#d1d5db', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 6, fontSize: 14, color: '#1f2937' },
 });

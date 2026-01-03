@@ -13,10 +13,11 @@ import {
   Modal,
   TouchableWithoutFeedback,
   FlatList,
-  StyleSheet
+  StyleSheet,
+  Keyboard
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GetApi, Post } from '../../Helper/Service';
 import { useAuth } from '../../context/AuthContext';
@@ -24,6 +25,7 @@ import { Country, State, City } from 'country-state-city';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { useCurrency } from '../../context/CurrencyContext';
+import { getUserStorageKey, STORAGE_KEYS } from '../../utils/storageKeys';
 
 const BillingDetails = () => {
   const navigation = useNavigation();
@@ -62,6 +64,7 @@ const BillingDetails = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   
   // Country State City Selector
   const [countries, setCountries] = useState([]);
@@ -76,8 +79,9 @@ const BillingDetails = () => {
     try {
       setCartLoading(true);
       
-      // Get cart data from AsyncStorage
-      const cartData = await AsyncStorage.getItem('cartData');
+      // Get cart data from AsyncStorage using user-specific key
+      const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
+      const cartData = await AsyncStorage.getItem(cartKey);
       if (!cartData) {
         Alert.alert(t('error'), t('cart_empty'));
         navigation.goBack();
@@ -121,7 +125,34 @@ const BillingDetails = () => {
         return;
       }
 
-      setFreshCartItems(cartDataArray);
+      // Process cart items to ensure proper image display
+      // Priority: variant image > product image > placeholder
+      const processedCartItems = cartDataArray.map(item => {
+        let displayImage = item.image;
+        
+        // If no main image, check variants for images
+        if (!displayImage || displayImage === '') {
+          if (item.varients && item.varients.length > 0) {
+            // Check if selectedVariant has image
+            if (item.selectedVariant !== null && item.selectedVariant !== undefined && 
+                item.varients[item.selectedVariant]?.image && 
+                item.varients[item.selectedVariant].image.length > 0) {
+              displayImage = item.varients[item.selectedVariant].image[0];
+            } 
+            // Otherwise use first variant's image
+            else if (item.varients[0]?.image && item.varients[0].image.length > 0) {
+              displayImage = item.varients[0].image[0];
+            }
+          }
+        }
+        
+        return {
+          ...item,
+          image: displayImage || 'https://via.placeholder.com/150'
+        };
+      });
+
+      setFreshCartItems(processedCartItems);
 
       // Fetch tax rate and delivery charges
       const taxResponse = await GetApi('getTax');
@@ -146,8 +177,9 @@ const BillingDetails = () => {
   // Refresh cart data silently (for pre-order validation)
   const refreshCartDataSilently = async () => {
     try {
-      // Get cart data from AsyncStorage
-      const cartData = await AsyncStorage.getItem('cartData');
+      // Get cart data from AsyncStorage using user-specific key
+      const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
+      const cartData = await AsyncStorage.getItem(cartKey);
       if (!cartData) {
         throw new Error('Cart is empty');
       }
@@ -183,9 +215,36 @@ const BillingDetails = () => {
         throw new Error('No valid items in cart');
       }
 
+      // Process cart items to ensure proper image display
+      // Priority: variant image > product image > placeholder
+      const processedCartItems = cartDataArray.map(item => {
+        let displayImage = item.image;
+        
+        // If no main image, check variants for images
+        if (!displayImage || displayImage === '') {
+          if (item.varients && item.varients.length > 0) {
+            // Check if selectedVariant has image
+            if (item.selectedVariant !== null && item.selectedVariant !== undefined && 
+                item.varients[item.selectedVariant]?.image && 
+                item.varients[item.selectedVariant].image.length > 0) {
+              displayImage = item.varients[item.selectedVariant].image[0];
+            } 
+            // Otherwise use first variant's image
+            else if (item.varients[0]?.image && item.varients[0].image.length > 0) {
+              displayImage = item.varients[0].image[0];
+            }
+          }
+        }
+        
+        return {
+          ...item,
+          image: displayImage || 'https://via.placeholder.com/150'
+        };
+      });
+
       // Update state with fresh data
-      console.log('📦 Updating cart items with fresh data:', cartDataArray.length, 'items');
-      setFreshCartItems([...cartDataArray]);  // Force new array reference for re-render
+      console.log('📦 Updating cart items with fresh data:', processedCartItems.length, 'items');
+      setFreshCartItems([...processedCartItems]);  // Force new array reference for re-render
 
       // Fetch tax rate and delivery charges
       const taxResponse = await GetApi('getTax');
@@ -284,6 +343,23 @@ const BillingDetails = () => {
       console.log('   Total: $' + total.toFixed(2));
     }
   }, [freshCartItems, taxRate, deliveryCharge, refreshTrigger]);
+
+  // Keyboard listener
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => setIsKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => setIsKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   // Load states when country changes
   useEffect(() => {
@@ -577,20 +653,32 @@ const BillingDetails = () => {
       const response = await Post('createProductRequest', orderData);
       
       if (response.success || response.status) {
-        // Clear cart on successful order
-        await AsyncStorage.removeItem('cartData');
+        // Clear cart on successful order using user-specific key
+        const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
+        await AsyncStorage.removeItem(cartKey);
+        console.log('✅ Cart cleared after successful order');
         
         // Update cart count in tab bar
         if (updateCartCount) {
           await updateCartCount();
         }
         
-     
-        navigation.replace('OrderConfirmation', {
-          orderId: response.data?.orders?.[0]?._id || 'N/A',
-          orderNumber: response.data?.orders?.[0]?._id || 'N/A',
-          total
-        });
+        // Show success message
+        Alert.alert(
+          t('success'),
+          t('order_placed_successfully'),
+          [
+            {
+              text: t('ok'),
+              onPress: () => {
+                // Pop all screens in current stack and navigate to Account -> Orders
+                navigation.getParent()?.navigate('Account', {
+                  screen: 'Orders'
+                });
+              }
+            }
+          ]
+        );
       } else {
         Alert.alert(t('error'), response.message || t('failed_place_order'));
       }
@@ -651,10 +739,14 @@ const BillingDetails = () => {
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
-      {/* Header */}
-       <View className="bg-slate-800 px-4 py-3">
-            <View className="flex-row items-center">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#1e293b' }}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1, backgroundColor: '#f9fafb' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        {/* Header */}
+        <View className="bg-slate-800 px-4 py-3">
+          <View className="flex-row items-center">
               <TouchableOpacity 
                 onPress={() => navigation.goBack()}
                 className="mr-4"
@@ -916,8 +1008,8 @@ const BillingDetails = () => {
           <View className="h-4" />
         </ScrollView>
       
-      {/* Place Order Button - Fixed at bottom with proper spacing for tab bar */}
-      <View className="bg-white border-t border-gray-200 px-4 pt-3 pb-24">
+      {/* Place Order Button - Fixed at bottom */}
+      <View className={`bg-white border-t border-gray-200 px-4 pt-3 ${isKeyboardVisible ? 'pb-6' : 'pb-20'}`}>
         <TouchableOpacity
           onPress={placeOrder}
           disabled={isProcessing}
@@ -932,7 +1024,8 @@ const BillingDetails = () => {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

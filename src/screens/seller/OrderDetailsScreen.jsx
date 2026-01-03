@@ -117,7 +117,11 @@ const OrderDetailsScreen = () => {
         </View>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('order_information')}</Text>
           <View style={styles.infoRow}>

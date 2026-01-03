@@ -1,5 +1,5 @@
 import "./global.css";
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { ActivityIndicator, View, Platform, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -60,9 +60,10 @@ const AuthStack = () => {
 
 const AppStack = () => {
   const { userInfo } = useAuth();
+  
   console.log('User Info in AppStack:', userInfo);
-  // Set initial route based on user role and verification status
 
+  // Set initial route based on user role and verification status
   const getInitialRouteName = () => {
     if (userInfo?.role === 'seller') {
       return userInfo?.status === 'Verified' ? 'SellerTabs' : 'CreateStore';
@@ -156,6 +157,29 @@ const RootNavigator = () => {
   //     </View>
   //   );
   // }
+
+  // Navigate to appropriate screen when userInfo loads
+  useEffect(() => {
+    if (userToken && userInfo && navigationRef.current) {
+      console.log('UserInfo loaded in RootNavigator, role:', userInfo.role, 'status:', userInfo.status);
+      
+      // Small delay to ensure navigation is ready
+      setTimeout(() => {
+        if (userInfo.role === 'seller') {
+          const targetScreen = userInfo.status === 'Verified' ? 'SellerTabs' : 'CreateStore';
+          console.log('Navigating to:', targetScreen);
+          navigationRef.current?.navigate('App', {
+            screen: targetScreen
+          });
+        } else {
+          console.log('Navigating to: MainTabs');
+          navigationRef.current?.navigate('App', {
+            screen: 'MainTabs'
+          });
+        }
+      }, 100);
+    }
+  }, [userToken, userInfo]);
 
   return (
     <NavigationContainer ref={navigationRef}>

@@ -15,6 +15,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { useCurrency } from '../../context/CurrencyContext';
+import { getUserStorageKey, STORAGE_KEYS } from '../../utils/storageKeys';
 
 const CartScreen = () => {
   const navigation = useNavigation();
@@ -23,6 +24,9 @@ const CartScreen = () => {
   const { convertPrice, currencySymbol, formatPrice, userCurrency, exchangeRate } = useCurrency();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Helper to get user-specific cart key
+  const getCartKey = () => getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
   const [error, setError] = useState(null);
   const [updatingItem, setUpdatingItem] = useState(null);
   // Payment method will be selected in BillingDetails
@@ -39,7 +43,7 @@ const CartScreen = () => {
       setLoading(true);
       setError(null);
       
-      const cartData = await AsyncStorage.getItem('cartData');
+      const cartData = await AsyncStorage.getItem(getCartKey());
       console.log('Cart data from storage:', cartData);
       
       if (!cartData) {
@@ -103,7 +107,14 @@ const CartScreen = () => {
           product: {
             _id: item._id,
             name: item.name,
-            image: item.image || 'https://via.placeholder.com/300',
+            // Priority: selectedVariant image > first variant image > product images > placeholder
+            image: (item.selectedVariant?.image && item.selectedVariant.image.length > 0) 
+              ? item.selectedVariant.image[0] 
+              : (item.varients && item.varients.length > 0 && item.varients[0].image && item.varients[0].image.length > 0)
+                ? item.varients[0].image[0]
+                : (item.images && item.images.length > 0) 
+                  ? item.images[0] 
+                  : 'https://via.placeholder.com/300',
             price: item.Offerprice || item.price || 0,
             originalPrice: item.price || 0,
             category: item.category?.name || 'Uncategorized',
@@ -137,7 +148,7 @@ const CartScreen = () => {
         selectedSize: item.selectedSize,
         userid: user?._id || 'guest'
       }));
-      await AsyncStorage.setItem('cartData', JSON.stringify(updatedCartData));
+      await AsyncStorage.setItem(getCartKey(), JSON.stringify(updatedCartData));
 
     } catch (error) {
       console.error('Error fetching cart:', error);
@@ -145,7 +156,7 @@ const CartScreen = () => {
       
       // Fallback to cached data on error
       try {
-        const cartData = await AsyncStorage.getItem('cartData');
+        const cartData = await AsyncStorage.getItem(getCartKey());
         if (cartData) {
           const parsedCart = JSON.parse(cartData);
           const cachedItems = parsedCart.map(item => ({
@@ -153,6 +164,7 @@ const CartScreen = () => {
             product: {
               _id: item.product_id,
               name: item.name,
+              // Use cached image or placeholder
               image: item.image || 'https://via.placeholder.com/300',
               price: item.price || 0,
               originalPrice: item.originalPrice || 0,
@@ -185,7 +197,7 @@ const CartScreen = () => {
     try {
       setUpdatingItem(itemId);
       
-      const cartData = await AsyncStorage.getItem('cartData');
+      const cartData = await AsyncStorage.getItem(getCartKey());
       if (cartData) {
         const parsedCart = JSON.parse(cartData);
         const updatedCart = parsedCart.map(item => {
@@ -199,7 +211,7 @@ const CartScreen = () => {
           return item;
         });
         
-        await AsyncStorage.setItem('cartData', JSON.stringify(updatedCart));
+        await AsyncStorage.setItem(getCartKey(), JSON.stringify(updatedCart));
         
         // Update local state
         setCartItems(prev => prev.map(item => 
@@ -209,7 +221,9 @@ const CartScreen = () => {
         ));
         
         // Update cart count in tab navigator
-        updateCartCount();
+        console.log('🔄 Cart.jsx - Calling updateCartCount after quantity update');
+        await updateCartCount();
+        console.log('✅ Cart.jsx - updateCartCount completed after quantity update');
       }
     } catch (error) {
       console.error('Error updating cart:', error);
@@ -224,16 +238,18 @@ const CartScreen = () => {
     try {
       setUpdatingItem(itemId);
       
-      const cartData = await AsyncStorage.getItem('cartData');
+      const cartData = await AsyncStorage.getItem(getCartKey());
       if (cartData) {
         const parsedCart = JSON.parse(cartData);
         const updatedCart = parsedCart.filter(item => item._id !== itemId);
         
-        await AsyncStorage.setItem('cartData', JSON.stringify(updatedCart));
+        await AsyncStorage.setItem(getCartKey(), JSON.stringify(updatedCart));
         setCartItems(prev => prev.filter(item => item.id !== itemId));
         
         // Update cart count in tab navigator
-        updateCartCount();
+        console.log('🔄 Cart.jsx - Calling updateCartCount after item removal');
+        await updateCartCount();
+        console.log('✅ Cart.jsx - updateCartCount completed after item removal');
         Alert.alert(t('success'), t('item_removed_cart'));
       }
     } catch (error) {
@@ -275,18 +291,42 @@ const CartScreen = () => {
     return (
       <View className="bg-white mx-4 mb-4 p-4 rounded-lg border border-gray-200">
         <View className="flex-row">
-          {/* Product Image */}
-          <Image
-            source={{ uri: item.product.image }}
-            className="w-20 h-20 rounded-lg mr-4"
-            resizeMode="contain"
-          />
+          {/* Product Image - Clickable */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ProductDetail', {
+              productId: item.product._id,
+              productName: item.product.name,
+              fromCart: true,
+              selectedVariantIndex: item.selectedVariant,
+              selectedColor: item.selectedColor,
+              selectedSize: item.selectedSize
+            })}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={{ uri: item.product.image }}
+              className="w-20 h-20 rounded-lg mr-4"
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
           
           {/* Product Info */}
           <View className="flex-1">
-            <Text className="text-black font-semibold text-base mb-1" numberOfLines={2}>
-              {item.product.name}
-            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('ProductDetail', {
+                productId: item.product._id,
+                productName: item.product.name,
+                fromCart: true,
+                selectedVariantIndex: item.selectedVariant,
+                selectedColor: item.selectedColor,
+                selectedSize: item.selectedSize
+              })}
+              activeOpacity={0.7}
+            >
+              <Text className="text-black font-semibold text-base mb-1" numberOfLines={2}>
+                {item.product.name}
+              </Text>
+            </TouchableOpacity>
             
             {/* Show variant details */}
             <View className="mb-2">
@@ -409,7 +449,11 @@ const CartScreen = () => {
   // Add focus listener to refresh cart when screen is focused
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      console.log('Cart screen focused - refreshing cart data');
       fetchCartItems();
+      // Also update cart count in tab bar
+      console.log('🔄 Cart.jsx - Calling updateCartCount on screen focus');
+      updateCartCount();
     });
 
     return unsubscribe;
@@ -450,16 +494,14 @@ const CartScreen = () => {
       selectedSize: item.selectedSize
     }));
 
-    navigation.navigate('CartStack', {
-      screen: 'BillingDetails',
-      params: {
-        cartItems: simplifiedCartItems,
-        subtotal: calculateSubtotal(),
-        shipping: SHIPPING_FEE,
-        total: calculateTotal(),
-        taxRate: taxRate,
-        deliveryCharge: deliveryCharge
-      }
+    // Use push instead of navigate to ensure proper navigation stack
+    navigation.push('BillingDetails', {
+      cartItems: simplifiedCartItems,
+      subtotal: calculateSubtotal(),
+      shipping: SHIPPING_FEE,
+      total: calculateTotal(),
+      taxRate: taxRate,
+      deliveryCharge: deliveryCharge
     });
     
     // Reset loading state after navigation

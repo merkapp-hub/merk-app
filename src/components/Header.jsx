@@ -5,10 +5,12 @@ import { MapPin, User, Search, X } from 'react-native-feather';
 import { useAuth } from '../context/AuthContext';
 import { GetApi } from '../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from 'react-i18next';
 
 const Header = () => {
   const navigation = useNavigation();
   const { userToken, userInfo } = useAuth();
+  const { t } = useTranslation();
   const [profilePicture, setProfilePicture] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -80,7 +82,7 @@ const Header = () => {
           <Search width={20} height={20} color="#6b7280" />
           <TextInput
             className="flex-1 ml-2 text-gray-900"
-            placeholder="Search for products..."
+            placeholder={t('search_products')}
             placeholderTextColor="#9ca3af"
             value={searchQuery}
             onChangeText={setSearchQuery}

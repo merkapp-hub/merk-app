@@ -271,6 +271,8 @@ const SellerDashboardScreen = () => {
     <View className="flex-1 bg-gray-100">
       <ScrollView
         className="flex-1"
+        contentContainerStyle={{ paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
@@ -278,20 +280,28 @@ const SellerDashboardScreen = () => {
         {/* Header */}
         <View className="p-4 bg-slate-800 shadow-sm">
           <View className="flex-row justify-between items-center">
-            <View>
+            <View className="flex-1">
               <Text className="text-2xl font-bold text-white">{t('dashboard')}</Text>
-              <Text className="text-gray-500">
+              <Text className="text-gray-300 text-sm">
                 {user?.firstName
                   ? t('welcome_back_seller', { name: user.firstName })
                   : t('welcome_back_seller', { name: 'Seller' })}
               </Text>
             </View>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Account')}
-              className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center"
-            >
-              <UserGroupIcon size={20} color="#4F46F5" />
-            </TouchableOpacity>
+            <View className="flex-row items-center">
+              <TouchableOpacity
+                onPress={() => navigation.navigate('MainTabs')}
+                className="mr-3 px-4 py-2 rounded-lg bg-orange-500 flex-row items-center"
+              >
+                <Text className="text-white font-semibold text-sm">{t('browse_products')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Account')}
+                className="w-10 h-10 rounded-full bg-gray-200 items-center justify-center"
+              >
+                <UserGroupIcon size={20} color="#4F46F5" />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 

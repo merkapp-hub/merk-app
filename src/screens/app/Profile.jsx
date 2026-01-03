@@ -12,7 +12,7 @@ import {
   Image,
 } from 'react-native';
 import * as ImagePicker from 'react-native-image-picker';
-import { ChevronLeftIcon, UserIcon, XMarkIcon, CameraIcon } from 'react-native-heroicons/outline';
+import { ChevronLeftIcon, UserIcon, XMarkIcon, CameraIcon, EyeIcon, EyeSlashIcon } from 'react-native-heroicons/outline';
 import { useNavigation } from '@react-navigation/native';
 import { GetApi, Put, UploadFile } from '../../Helper/Service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,6 +39,9 @@ const ProfileScreen = () => {
   });
   const [isUpdating, setIsUpdating] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -223,32 +226,48 @@ const ProfileScreen = () => {
         };
 
         const token = await AsyncStorage.getItem('userToken');
-        const response = await fetch(`${API_BASE_URL}auth/updateProfile`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(updateData)
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.message || 'Failed to update profile');
-        }
-
-        // Update context with new data
-        const updatedUserInfo = {
-          ...userInfo,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          email: email.trim()
-        };
-        updateUserInfo(updatedUserInfo);
         
-        Alert.alert(t('success'), t('profile_updated_successfully'));
-        setIsEditing(false);
+        // Add timeout to prevent infinite loading
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+        try {
+          const response = await fetch(`${API_BASE_URL}auth/updateProfile`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(updateData),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.message || 'Failed to update profile');
+          }
+
+          // Update context with new data
+          const updatedUserInfo = {
+            ...userInfo,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            email: email.trim()
+          };
+          updateUserInfo(updatedUserInfo);
+          
+          Alert.alert(t('success'), t('profile_updated_successfully'));
+          setIsEditing(false);
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          if (fetchError.name === 'AbortError') {
+            throw new Error('Request timeout. Please check your internet connection.');
+          }
+          throw fetchError;
+        }
       } catch (error) {
         console.error('Error updating profile:', error);
         Alert.alert(t('error'), error.message || t('failed_update_profile'));
@@ -284,11 +303,53 @@ const ProfileScreen = () => {
     try {
       setIsUpdating(true);
 
+      // Debug: Check all storage keys
+      const allKeys = await AsyncStorage.getAllKeys();
+      console.log('All AsyncStorage keys:', allKeys);
+      
       // Get token from AsyncStorage
       const token = await AsyncStorage.getItem('userToken');
       console.log('Token for password change:', token ? 'Found' : 'Not found');
+      console.log('Token value:', token ? token.substring(0, 20) + '...' : 'null');
 
       if (!token) {
+        // Try to get from userInfo
+        const userInfoStr = await AsyncStorage.getItem('userInfo');
+        console.log('UserInfo in storage:', userInfoStr ? 'Found' : 'Not found');
+        
+        if (userInfoStr) {
+          const userInfoData = JSON.parse(userInfoStr);
+          console.log('UserInfo has token:', !!userInfoData.token);
+          
+          if (userInfoData.token) {
+            console.log('Using token from userInfo');
+            // Store it in userToken for future use
+            await AsyncStorage.setItem('userToken', userInfoData.token);
+            
+            const response = await Put('auth/updatePassword', {
+              currentPassword,
+              newPassword,
+              confirmNewPassword: confirmPassword,
+            });
+
+            console.log('Password update response:', response);
+
+            // Backend returns { message: 'Password updated successfully' }
+            if (response && (response.message === 'Password updated successfully' || response.status)) {
+              Alert.alert(t('success'), t('password_updated_successfully'));
+              setChangePasswordModalVisible(false);
+              setPasswordData({
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+              });
+            } else {
+              throw new Error(response?.message || 'Failed to update password');
+            }
+            return;
+          }
+        }
+        
         Alert.alert(t('error'), 'Please login again to change password');
         navigation.navigate('Login');
         return;
@@ -297,9 +358,13 @@ const ProfileScreen = () => {
       const response = await Put('auth/updatePassword', {
         currentPassword,
         newPassword,
+        confirmNewPassword: confirmPassword,
       });
 
-      if (response && response.status) {
+      console.log('Password update response:', response);
+
+      // Backend returns { message: 'Password updated successfully' }
+      if (response && (response.message === 'Password updated successfully' || response.status)) {
         Alert.alert(t('success'), t('password_updated_successfully'));
         setChangePasswordModalVisible(false);
         setPasswordData({
@@ -463,41 +528,77 @@ const ProfileScreen = () => {
             <View className="space-y-4 mb-6">
               <View>
                 <Text className="text-gray-600 text-sm font-medium mb-1">{t('current_password')}</Text>
-                <TextInput
-                  value={passwordData.currentPassword}
-                  onChangeText={(text) => setPasswordData({ ...passwordData, currentPassword: text })}
-                  className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 text-gray-900"
-                  secureTextEntry
-                  placeholder={t('enter_current_password')}
-                  placeholderTextColor="#9CA3AF"
-                  editable={!isUpdating}
-                />
+                <View className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 flex-row items-center">
+                  <TextInput
+                    value={passwordData.currentPassword}
+                    onChangeText={(text) => setPasswordData({ ...passwordData, currentPassword: text })}
+                    className="flex-1 text-gray-900"
+                    secureTextEntry={!showCurrentPassword}
+                    placeholder={t('enter_current_password')}
+                    placeholderTextColor="#9CA3AF"
+                    editable={!isUpdating}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="ml-2"
+                  >
+                    {showCurrentPassword ? (
+                      <EyeSlashIcon size={20} color="#6B7280" />
+                    ) : (
+                      <EyeIcon size={20} color="#6B7280" />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View>
                 <Text className="text-gray-600 text-sm font-medium mb-1">{t('new_password')}</Text>
-                <TextInput
-                  value={passwordData.newPassword}
-                  onChangeText={(text) => setPasswordData({ ...passwordData, newPassword: text })}
-                  className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 text-gray-900"
-                  secureTextEntry
-                  placeholder={t('enter_new_password')}
-                  placeholderTextColor="#9CA3AF"
-                  editable={!isUpdating}
-                />
+                <View className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 flex-row items-center">
+                  <TextInput
+                    value={passwordData.newPassword}
+                    onChangeText={(text) => setPasswordData({ ...passwordData, newPassword: text })}
+                    className="flex-1 text-gray-900"
+                    secureTextEntry={!showNewPassword}
+                    placeholder={t('enter_new_password')}
+                    placeholderTextColor="#9CA3AF"
+                    editable={!isUpdating}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowNewPassword(!showNewPassword)}
+                    className="ml-2"
+                  >
+                    {showNewPassword ? (
+                      <EyeSlashIcon size={20} color="#6B7280" />
+                    ) : (
+                      <EyeIcon size={20} color="#6B7280" />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <View>
                 <Text className="text-gray-600 text-sm font-medium mb-1">{t('confirm_new_password')}</Text>
-                <TextInput
-                  value={passwordData.confirmPassword}
-                  onChangeText={(text) => setPasswordData({ ...passwordData, confirmPassword: text })}
-                  className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 text-gray-900"
-                  secureTextEntry
-                  placeholder={t('confirm_new_password')}
-                  placeholderTextColor="#9CA3AF"
-                  editable={!isUpdating}
-                />
+                <View className="bg-gray-50 rounded-lg border border-gray-200 px-4 py-3 flex-row items-center">
+                  <TextInput
+                    value={passwordData.confirmPassword}
+                    onChangeText={(text) => setPasswordData({ ...passwordData, confirmPassword: text })}
+                    className="flex-1 text-gray-900"
+                    secureTextEntry={!showConfirmPassword}
+                    placeholder={t('confirm_new_password')}
+                    placeholderTextColor="#9CA3AF"
+                    editable={!isUpdating}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="ml-2"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeSlashIcon size={20} color="#6B7280" />
+                    ) : (
+                      <EyeIcon size={20} color="#6B7280" />
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
 

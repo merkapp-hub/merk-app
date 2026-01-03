@@ -831,7 +831,7 @@ const HomeScreen = () => {
             <Text className="text-orange-500 font-semibold">{t('this_month')}</Text>
           </View>
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-2xl font-bold text-black">{t('best_selling_products')}</Text>
+            <Text className="text-xl font-bold text-black">{t('best_selling_products')}</Text>
             <TouchableOpacity 
               onPress={() => navigation.navigate('TopSellingProducts')}
               className="bg-slate-800 px-6 py-2 rounded"
@@ -872,7 +872,7 @@ const HomeScreen = () => {
           </View> */}
 
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-2xl font-bold text-black">{t('explore_our_products')}</Text>
+            <Text className="text-xl font-bold text-black">{t('explore_our_products')}</Text>
             <TouchableOpacity
               className="bg-slate-800 px-6 py-2 rounded"
               onPress={() => navigation.navigate('BestSellingProducts', { products: bestSellingProducts })}
@@ -993,7 +993,7 @@ const HomeScreen = () => {
         </View>
 
         {/* Services */}
-        <View className="px-4 pb-8">
+        <View className="px-4 pb-32">
           <View className="space-y-6">
 
             <View className="items-center">
@@ -1017,14 +1017,14 @@ const HomeScreen = () => {
               <Text className="text-gray-600 text-center">{t('friendly_customer_support')}</Text>
             </View>
 
-            <View className="items-center">
+            <View className="items-center mb-6">
               <View className="w-16 h-16 bg-gray-200 rounded-full items-center justify-center mb-3">
                 <View className="w-10 h-10 bg-slate-800 rounded-full items-center justify-center">
                   <Text className="text-white text-lg">✓</Text>
                 </View>
               </View>
               <Text className="text-black font-bold text-lg mb-1">{t('money_back_guarantee')}</Text>
-              <Text className="text-gray-600 text-center mb-2">{t('money_back_30_days')}</Text>
+              <Text className="text-gray-600 text-center">{t('money_back_30_days')}</Text>
             </View>
           </View>
         </View>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import ProductCard from '../../components/ProductCard';
 import { useTranslation } from 'react-i18next';
 import { useCurrency } from '../../context/CurrencyContext';
+import { getUserStorageKey, STORAGE_KEYS } from '../../utils/storageKeys';
 
 const { width } = Dimensions.get('window');
 
@@ -71,11 +72,12 @@ const ProductDetailScreen = () => {
   const [selectedImageList, setSelectedImageList] = useState([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [selectedPrice, setSelectedPrice] = useState({});
+  const imageScrollViewRef = useRef(null);
 
-const fetchProductDetails = useCallback(async () => {
-  try {
-    setLoading(true);
-    setError(null);
+  const fetchProductDetails = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
     
       // Check if we have product data from navigation (e.g., from flash sale)
     if (route.params?.productData) {
@@ -95,11 +97,23 @@ const fetchProductDetails = useCallback(async () => {
     const isFlashSale = !!route.params?.isFlashSale;
     const userParam = user?._id ? `?user=${user._id}` : '';
     
-    // Try to fetch product data
-    const response = await GetApi(`getProductByslug/${productId}${userParam}`).catch(err => {
-      console.error('API Error:', err);
+    // Check if productId is a MongoDB ObjectId (24 hex characters) or a slug
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(productId);
+    
+    // Fetch product data using the appropriate endpoint
+    let response;
+    try {
+      if (isObjectId) {
+        // Use _id endpoint for MongoDB IDs (from cart, etc.)
+        response = await GetApi(`getProductById/${productId}${userParam}`);
+      } else {
+        // Use slug endpoint for slugs (from product listings)
+        response = await GetApi(`getProductByslug/${productId}${userParam}`);
+      }
+    } catch (error) {
+      console.error('Product fetch failed:', error);
       throw new Error(t('failed_fetch_product_details'));
-    });
+    }
     
     console.log('Product details response:', response);
     
@@ -165,6 +179,37 @@ const fetchProductDetails = useCallback(async () => {
           Offerprice: variantOfferPrice,
           price: variantRegularPrice
         });
+        
+        // Check if this variant+size is already in cart
+        try {
+          const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
+          const cartData = await AsyncStorage.getItem(cartKey);
+          console.log('Checking cart on load - cartKey:', cartKey);
+          console.log('Cart data:', cartData);
+          if (cartData) {
+            const cart = JSON.parse(cartData);
+            // Try both with size and without size
+            const cartItemIdWithSize = `${productData._id}_0_${firstSize.value}`;
+            const cartItemIdWithoutSize = `${productData._id}_0`;
+            console.log('Looking for cartItemId (with size):', cartItemIdWithSize);
+            console.log('Looking for cartItemId (without size):', cartItemIdWithoutSize);
+            console.log('Cart items:', cart.map(item => item._id));
+            
+            let existingItem = cart.find(item => item._id === cartItemIdWithSize);
+            if (!existingItem) {
+              existingItem = cart.find(item => item._id === cartItemIdWithoutSize);
+            }
+            
+            if (existingItem) {
+              console.log('Found existing item in cart:', existingItem);
+              setQuantity(existingItem.qty);
+            } else {
+              console.log('Item not found in cart');
+            }
+          }
+        } catch (error) {
+          console.error('Error checking cart on load:', error);
+        }
       } else {
         // No sizes, use variant price with fallbacks
         let variantOfferPrice = 0;
@@ -211,6 +256,22 @@ const fetchProductDetails = useCallback(async () => {
         Offerprice: offerPrice,
         price: regularPrice
       });
+      
+      // Check if simple product is already in cart
+      try {
+        const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
+        const cartData = await AsyncStorage.getItem(cartKey);
+        if (cartData) {
+          const cart = JSON.parse(cartData);
+          const existingItem = cart.find(item => item.product_id === productData._id);
+          
+          if (existingItem) {
+            setQuantity(existingItem.qty);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking cart on load:', error);
+      }
     }
     
     // Handle reviews
@@ -312,9 +373,12 @@ const fetchProductDetails = useCallback(async () => {
   
   const updateLocalFavorites = async (favoriteItem, isFav) => {
     try {
-      // Get both old format (IDs only) and new format (objects)
-      const favoritesStr = await AsyncStorage.getItem('favorites');
-      const favoritesDetailStr = await AsyncStorage.getItem('favoritesDetail');
+      // Get both old format (IDs only) and new format (objects) with user-specific keys
+      const favoritesKey = getUserStorageKey(STORAGE_KEYS.FAVORITES, user?._id);
+      const favoritesDetailKey = getUserStorageKey(STORAGE_KEYS.FAVORITES_DETAIL, user?._id);
+      
+      const favoritesStr = await AsyncStorage.getItem(favoritesKey);
+      const favoritesDetailStr = await AsyncStorage.getItem(favoritesDetailKey);
       
       let favArray = [];
       let favDetailArray = [];
@@ -356,8 +420,8 @@ const fetchProductDetails = useCallback(async () => {
       }
   
       if (updated || isFav) {
-        await AsyncStorage.setItem('favorites', JSON.stringify(favArray));
-        await AsyncStorage.setItem('favoritesDetail', JSON.stringify(favDetailArray));
+        await AsyncStorage.setItem(favoritesKey, JSON.stringify(favArray));
+        await AsyncStorage.setItem(favoritesDetailKey, JSON.stringify(favDetailArray));
         console.log('Updated favorites:', favArray);
         console.log('Updated favorites detail:', favDetailArray);
         return true;
@@ -373,7 +437,8 @@ const fetchProductDetails = useCallback(async () => {
   // Check if product is in favorites (check current variant+size combination)
   const checkIfFavorite = async () => {
     try {
-      const favorites = await AsyncStorage.getItem('favorites');
+      const favoritesKey = getUserStorageKey(STORAGE_KEYS.FAVORITES, user?._id);
+      const favorites = await AsyncStorage.getItem(favoritesKey);
       if (favorites) {
         const favArray = JSON.parse(favorites);
         // Create unique ID for current selection
@@ -635,6 +700,73 @@ const fetchProductDetails = useCallback(async () => {
     fetchProductDetails();
   }, [fetchProductDetails]);
 
+  // Handle navigation from cart - select the specific variant/color/size
+  useEffect(() => {
+    if (product && route.params?.fromCart) {
+      const { selectedVariantIndex, selectedColor: cartColor, selectedSize: cartSize } = route.params;
+      
+      // If variant index is provided, select that variant
+      if (selectedVariantIndex !== undefined && product.varients && product.varients[selectedVariantIndex]) {
+        const variant = product.varients[selectedVariantIndex];
+        setSelectedColor(variant);
+        setSelectedVariant(selectedVariantIndex);
+        setSelectedImageList(variant.image || []);
+        
+        // If size is provided, select that size
+        if (cartSize && variant.selected && variant.selected.length > 0) {
+          const sizeOption = variant.selected.find(s => s.value === cartSize);
+          if (sizeOption) {
+            setSelectedSize(cartSize);
+            
+            // Set price for this variant+size
+            let variantOfferPrice = variant.Offerprice || variant.price || product.price_slot?.[0]?.Offerprice || product.Offerprice || 0;
+            let variantRegularPrice = variant.price || variant.Offerprice || product.price_slot?.[0]?.price || product.price || variantOfferPrice;
+            
+            setSelectedPrice({
+              value: cartSize,
+              Offerprice: variantOfferPrice,
+              price: variantRegularPrice
+            });
+          }
+        } else {
+          // No size, just set variant price
+          let variantOfferPrice = variant.Offerprice || variant.price || product.price_slot?.[0]?.Offerprice || product.Offerprice || 0;
+          let variantRegularPrice = variant.price || variant.Offerprice || product.price_slot?.[0]?.price || product.price || variantOfferPrice;
+          
+          setSelectedPrice({
+            value: '',
+            Offerprice: variantOfferPrice,
+            price: variantRegularPrice
+          });
+        }
+        
+        // Load quantity from cart for this specific variant+size
+        const loadCartQuantity = async () => {
+          try {
+            const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
+            const cartData = await AsyncStorage.getItem(cartKey);
+            if (cartData) {
+              const cart = JSON.parse(cartData);
+              const cartItemId = cartSize 
+                ? `${product._id}_${selectedVariantIndex}_${cartSize}`
+                : `${product._id}_${selectedVariantIndex}`;
+              
+              const existingItem = cart.find(item => item._id === cartItemId);
+              if (existingItem) {
+                setQuantity(existingItem.qty);
+              }
+            }
+          } catch (error) {
+            console.error('Error loading cart quantity:', error);
+          }
+        };
+        
+        loadCartQuantity();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product, route.params?.fromCart]);
+
   useEffect(() => {
     // Fetch reviews when product data is available
     if (product?._id) {
@@ -754,6 +886,7 @@ const fetchProductDetails = useCallback(async () => {
           {/* Main Image */}
           <View className="bg-gray-100 mx-4 rounded-lg" style={{ height: 350 }}>
             <ScrollView
+              ref={imageScrollViewRef}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
@@ -804,7 +937,14 @@ const fetchProductDetails = useCallback(async () => {
               {selectedImageList.map((imageUri, index) => (
                 <TouchableOpacity
                   key={index}
-                  onPress={() => setCurrentImageIndex(index)}
+                  onPress={() => {
+                    setCurrentImageIndex(index);
+                    // Scroll main image to selected index
+                    imageScrollViewRef.current?.scrollTo({
+                      x: index * (width - 32),
+                      animated: true
+                    });
+                  }}
                   className={`mr-2 rounded-lg overflow-hidden ${
                     currentImageIndex === index ? 'border-2 border-orange-500' : 'border border-gray-300'
                   }`}
@@ -889,6 +1029,41 @@ const fetchProductDetails = useCallback(async () => {
                             Offerprice: offerPrice,
                             price: regularPrice
                           });
+                          
+                          // Check cart for this variant+size combination
+                          try {
+                            const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
+                            const cartData = await AsyncStorage.getItem(cartKey);
+                            console.log('Color changed - Checking cart:', cartKey);
+                            console.log('Cart data:', cartData);
+                            if (cartData) {
+                              const cart = JSON.parse(cartData);
+                              const cartItemIdWithSize = `${product._id}_${index}_${firstSize.value}`;
+                              const cartItemIdWithoutSize = `${product._id}_${index}`;
+                              console.log('Looking for (with size):', cartItemIdWithSize);
+                              console.log('Looking for (without size):', cartItemIdWithoutSize);
+                              console.log('Cart items:', cart.map(item => item._id));
+                              
+                              let existingItem = cart.find(item => item._id === cartItemIdWithSize);
+                              if (!existingItem) {
+                                existingItem = cart.find(item => item._id === cartItemIdWithoutSize);
+                              }
+                              
+                              if (existingItem) {
+                                console.log('Found in cart, setting quantity:', existingItem.qty);
+                                setQuantity(existingItem.qty);
+                              } else {
+                                console.log('Not found in cart, setting quantity to 0');
+                                setQuantity(0);
+                              }
+                            } else {
+                              console.log('No cart data, setting quantity to 0');
+                              setQuantity(0);
+                            }
+                          } catch (error) {
+                            console.error('Error checking cart on color change:', error);
+                            setQuantity(0);
+                          }
                         } else {
                           setSelectedSize(null);
                           
@@ -915,6 +1090,8 @@ const fetchProductDetails = useCallback(async () => {
                             Offerprice: offerPrice,
                             price: regularPrice
                           });
+                          
+                          setQuantity(0);
                         }
                         
                         // Reset quantity when changing variant (will be updated when size is selected)
@@ -955,7 +1132,7 @@ const fetchProductDetails = useCallback(async () => {
                item.label.toLowerCase().includes('weight') || 
                item.label.toLowerCase().includes('capacity')
              )
-           ) && (
+           ) && product.varients[selectedVariant].selected.length > 1 && (
             <View className="mb-4">
               <Text className="text-base font-semibold text-black mb-3">
                 Select Size:

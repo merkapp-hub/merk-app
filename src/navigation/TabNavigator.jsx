@@ -120,6 +120,13 @@ function CartStackScreen() {
     <CartStack.Navigator screenOptions={{ headerShown: false }}>
       <CartStack.Screen name="CartScreen" component={CartScreen} />
       <CartStack.Screen
+        name="ProductDetail"
+        component={ProductDetails}
+        options={{
+          animation: 'slide_from_right',
+        }}
+      />
+      <CartStack.Screen
         name="BillingDetails"
         component={BillingDetails}
         options={{
@@ -201,6 +208,9 @@ function AccountStackScreen() {
 
 const TabNavigator = () => {
   const { cartCount, favoritesCount } = useAuth();
+  
+  console.log('🛒 TabNavigator - Cart Count:', cartCount);
+  console.log('❤️ TabNavigator - Favorites Count:', favoritesCount);
 
   return (
     <Tab.Navigator
@@ -208,10 +218,11 @@ const TabNavigator = () => {
         headerShown: false,
         tabBarActiveTintColor: '#E58F14',
         tabBarInactiveTintColor: '#9CA3AF',
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
           minHeight: Platform?.OS === 'android' ? 70 : 95,
-          paddingBottom: 8,
-          paddingTop: 10,
+          paddingBottom: Platform?.OS === 'android' ? 16 : 25,
+          paddingTop: Platform?.OS === 'android' ? 12 : 15,
           paddingHorizontal: 10,
           backgroundColor: COLORS.mainColor,
           borderTopWidth: 0,
@@ -228,15 +239,19 @@ const TabNavigator = () => {
           elevation: 10,
         },
         tabBarItemStyle: {
-          paddingVertical: 5,
+          paddingVertical: Platform?.OS === 'android' ? 8 : 10,
+          justifyContent: 'center',
+          alignItems: 'center',
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '500',
-          marginBottom: 4,
+          marginBottom: Platform?.OS === 'android' ? 2 : 4,
+          marginTop: Platform?.OS === 'android' ? -2 : 2,
         },
         tabBarIconStyle: {
-          marginTop: 4,
+          marginTop: 0,
+          marginBottom: 2,
         },
       }}
     >
@@ -249,6 +264,17 @@ const TabNavigator = () => {
             <Home width={size} height={size} fill={color} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Prevent default behavior
+            e.preventDefault();
+            
+            // Always navigate to Home tab with HomeScreen as initial
+            navigation.navigate('HomeTab', {
+              screen: 'HomeScreen'
+            });
+          },
+        })}
       />
       <Tab.Screen
         name="CategoriesTab"
@@ -259,6 +285,17 @@ const TabNavigator = () => {
             <ShoppingBag width={size} height={size} color={color} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Prevent default behavior
+            e.preventDefault();
+            
+            // Always navigate to Categories tab with CategoriesScreen as initial
+            navigation.navigate('CategoriesTab', {
+              screen: 'CategoriesScreen'
+            });
+          },
+        })}
       />
       <Tab.Screen
         name="FavoritesTab"
@@ -299,33 +336,47 @@ const TabNavigator = () => {
         options={{
           tabBarLabel: 'Cart',
           headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <View style={{ position: 'relative' }}>
-              <ShoppingCart width={size} height={size} color={color} />
-              {cartCount > 0 && (
-                <View style={{
-                  position: 'absolute',
-                  top: -8,
-                  right: -8,
-                  backgroundColor: '#E58F14',
-                  borderRadius: 10,
-                  width: 20,
-                  height: 20,
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  <Text style={{
-                    color: 'white',
-                    fontSize: 12,
-                    fontWeight: 'bold'
+          tabBarIcon: ({ color, size }) => {
+            console.log('🎨 Rendering Cart Icon - cartCount:', cartCount);
+            return (
+              <View style={{ position: 'relative' }}>
+                <ShoppingCart width={size} height={size} color={color} />
+                {cartCount > 0 && (
+                  <View style={{
+                    position: 'absolute',
+                    top: -8,
+                    right: -8,
+                    backgroundColor: '#E58F14',
+                    borderRadius: 10,
+                    width: 20,
+                    height: 20,
+                    justifyContent: 'center',
+                    alignItems: 'center'
                   }}>
-                    {cartCount > 99 ? '99+' : cartCount}
-                  </Text>
-                </View>
-              )}
-            </View>
-          ),
+                    <Text style={{
+                      color: 'white',
+                      fontSize: 12,
+                      fontWeight: 'bold'
+                    }}>
+                      {cartCount > 99 ? '99+' : cartCount}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          },
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Prevent default behavior
+            e.preventDefault();
+            
+            // Always navigate to Cart tab with CartScreen as initial
+            navigation.navigate('CartStack', {
+              screen: 'CartScreen'
+            });
+          },
+        })}
       />
       <Tab.Screen
         name="Account"
@@ -337,6 +388,17 @@ const TabNavigator = () => {
             <User width={size} height={size} color={color} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Prevent default behavior
+            e.preventDefault();
+            
+            // Always navigate to Account tab with AccountScreen as initial
+            navigation.navigate('Account', {
+              screen: 'AccountScreen'
+            });
+          },
+        })}
       />
     </Tab.Navigator>
   );

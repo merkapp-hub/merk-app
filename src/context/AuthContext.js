@@ -4,6 +4,7 @@ import { API_BASE_URL } from '../config';
 import axios from 'axios';
 import { GetApi } from '../Helper/Service';
 import { CommonActions } from '@react-navigation/native';
+import { getUserStorageKey, STORAGE_KEYS } from '../utils/storageKeys';
 
 export const AuthContext = createContext();
 
@@ -251,6 +252,19 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
+  // Update counts when user changes (login/logout)
+  useEffect(() => {
+    if (userInfo) {
+      // User logged in, update counts
+      updateFavoritesCount();
+      updateCartCount();
+    } else {
+      // User logged out, reset counts
+      setFavoritesCount(0);
+      setCartCount(0);
+    }
+  }, [userInfo?._id]); // Watch for user ID changes
+
   const [cart, setCart] = useState([]);
   const [cartCount, setCartCount] = useState(0);
   const [favoritesCount, setFavoritesCount] = useState(0);
@@ -259,7 +273,8 @@ export const AuthProvider = ({ children }) => {
   // Update favorites count from AsyncStorage
   const updateFavoritesCount = async () => {
     try {
-      const favorites = await AsyncStorage.getItem('favorites');
+      const favoritesKey = getUserStorageKey(STORAGE_KEYS.FAVORITES, userInfo?._id);
+      const favorites = await AsyncStorage.getItem(favoritesKey);
       if (favorites) {
         const favArray = JSON.parse(favorites);
         setFavoritesCount(favArray.length);
@@ -275,15 +290,21 @@ export const AuthProvider = ({ children }) => {
   // Update cart count from localStorage
   const updateCartCount = async () => {
     try {
-      const cartData = await AsyncStorage.getItem('cartData');
+      const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, userInfo?._id);
+      const cartData = await AsyncStorage.getItem(cartKey);
+      console.log('📊 Updating cart count - cartKey:', cartKey);
+      console.log('📊 Cart data from storage:', cartData);
       if (cartData) {
         const parsedCart = JSON.parse(cartData);
+        console.log('📊 Parsed cart:', parsedCart);
         if (Array.isArray(parsedCart)) {
           // Count unique items instead of summing quantities
           const uniqueItemsCount = parsedCart.length;
+          console.log('📊 Setting cart count to:', uniqueItemsCount);
           setCartCount(uniqueItemsCount);
         }
       } else {
+        console.log('📊 No cart data found, setting count to 0');
         setCartCount(0);
       }
     } catch (error) {
@@ -295,7 +316,8 @@ export const AuthProvider = ({ children }) => {
   // Add item to cart (localStorage)
   const addToCart = async (product, selectedVariant = 0, quantity = 1, selectedSize = null, selectedPrice = null) => {
     try {
-      const cartData = await AsyncStorage.getItem('cartData');
+      const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, userInfo?._id);
+      const cartData = await AsyncStorage.getItem(cartKey);
       let cart = cartData ? JSON.parse(cartData) : [];
       
       // Get price from selected variant if available, otherwise use price_slot
@@ -376,7 +398,7 @@ export const AuthProvider = ({ children }) => {
         cart.push(cartItem);
       }
 
-      await AsyncStorage.setItem('cartData', JSON.stringify(cart));
+      await AsyncStorage.setItem(cartKey, JSON.stringify(cart));
       await updateCartCount();
       return { success: true };
     } catch (error) {
