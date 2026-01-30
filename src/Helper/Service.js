@@ -24,24 +24,47 @@ const GetApi = async (url, props, retryCount = 0) => {
 
     console.log('Making request to:', API_BASE_URL + url);
     
-    // Get token with error handling
-    let token;
-    try {
-      console.log('Retrieving token from AsyncStorage...');
-      token = await AsyncStorage.getItem('userToken');
-      // console.log('Token retrieved from storage:', token ? `Found (${token.length} chars)` : 'Not found');
-      
-      if (!token) {
-        if (retryCount < 1) {
-          console.log('No token found, waiting 500ms and retrying...');
-          await new Promise(resolve => setTimeout(resolve, 500));
-          return GetApi(url, props, retryCount + 1);
+    // Define public endpoints that don't require authentication
+    const publicEndpoints = [
+      'getProduct',
+      'getCategory', 
+      'getsetting',
+      'gallery',
+      'getTopSoldProduct',
+      'getBestSellingProduct',
+      'getFlashSale',
+      'getTax',
+      'getDeliveryCharge'
+    ];
+    
+    // Check if URL exactly matches or starts with public endpoint (but not contains)
+    const isPublicEndpoint = publicEndpoints.some(endpoint => {
+      // Exact match or starts with endpoint followed by query params
+      return url === endpoint || url.startsWith(endpoint + '?');
+    });
+    
+    // Get token with error handling (only for non-public endpoints)
+    let token = null;
+    if (!isPublicEndpoint) {
+      try {
+        console.log('Retrieving token from AsyncStorage...');
+        token = await AsyncStorage.getItem('userToken');
+        // console.log('Token retrieved from storage:', token ? `Found (${token.length} chars)` : 'Not found');
+        
+        if (!token) {
+          if (retryCount < 1) {
+            console.log('No token found, waiting 500ms and retrying...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            return GetApi(url, props, retryCount + 1);
+          }
+          throw new Error('No authentication token found in storage');
         }
-        throw new Error('No authentication token found in storage');
+      } catch (storageError) {
+        console.error('Error retrieving token from storage:', storageError);
+        throw new Error('Error accessing authentication token');
       }
-    } catch (storageError) {
-      console.error('Error retrieving token from storage:', storageError);
-      throw new Error('Error accessing authentication token');
+    } else {
+      console.log('Public endpoint detected, skipping authentication');
     }
 
     // Make the API request
@@ -63,13 +86,20 @@ const GetApi = async (url, props, retryCount = 0) => {
 
       // console.log(`[${requestId}] Setting request timeout to ${timeoutDuration}ms`);
       
+      // Prepare headers
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Request-ID': requestId,
+      };
+      
+      // Add authorization header only if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await axios.get(requestUrl, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'X-Request-ID': requestId,
-        },
+        headers,
         timeout: 60000, // Increased timeout for slow API responses
         cancelToken: source.token,
         validateStatus: function (status) {
@@ -150,8 +180,8 @@ const GetApi = async (url, props, retryCount = 0) => {
           headers: error.response.headers,
         });
         
-        if (error.response.status === 401) {
-          // Clear all auth related data
+        if (error.response.status === 401 && !isPublicEndpoint) {
+          // Clear all auth related data only for protected endpoints
           await Promise.all([
             AsyncStorage.removeItem('userToken'),
             AsyncStorage.removeItem('userInfo'),
@@ -270,9 +300,17 @@ const Post = async (url, data, props) => {
           console.log('token===>', token ? `Bearer ${token}` : 'No token');
           console.log('data=====>', data);
           
-          // Skip token check for auth-related endpoints
-          const authEndpoints = ['auth/sendOTP', 'auth/verifyOTP', 'auth/changePassword', 'auth/login', 'auth/register'];
-          const requiresAuth = !authEndpoints.some(endpoint => url.includes(endpoint));
+          // Skip token check for auth-related endpoints and public endpoints
+          const publicEndpoints = [
+            'auth/sendOTP', 
+            'auth/verifyOTP', 
+            'auth/changePassword', 
+            'auth/login', 
+            'auth/register',
+            'getCartItems',
+            'getWishlistItems'
+          ];
+          const requiresAuth = !publicEndpoints.some(endpoint => url.includes(endpoint));
           
           if (requiresAuth && !token) {
             return reject('No authentication token found');
@@ -297,8 +335,8 @@ const Post = async (url, data, props) => {
             .catch(async err => {
               if (err.response) {
                 console.log(err.response.status);
-                if (err?.response?.status === 401) {
-                  // Clear all auth related data
+                if (err?.response?.status === 401 && requiresAuth) {
+                  // Clear all auth related data only for protected endpoints
                   await Promise.all([
                     AsyncStorage.removeItem('userToken'),
                     AsyncStorage.removeItem('userInfo'),

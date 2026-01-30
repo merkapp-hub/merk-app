@@ -22,7 +22,7 @@ import { getUserStorageKey, STORAGE_KEYS } from '../../utils/storageKeys';
 
 const Favorites = () => {
   const navigation = useNavigation();
-  const { userInfo: user, addToCart, updateFavoritesCount } = useAuth();
+  const { userInfo: user, addToCart, updateFavoritesCount, goToAuth } = useAuth();
   const { t } = useTranslation();
   const { convertPrice, currencySymbol } = useCurrency();
   const [favorites, setFavorites] = useState([]);
@@ -461,19 +461,36 @@ const Favorites = () => {
         </View>
       </View>
       
-      <FlatList
-        data={favorites}
-        renderItem={renderProduct}
-        keyExtractor={(item) => item.uniqueId || item._id}
-        contentContainerStyle={{ 
-          paddingVertical: 16,
-          paddingBottom: 90 
-        }}
-        ListEmptyComponent={renderEmpty}
-        refreshing={refreshing}
-        onRefresh={fetchFavorites}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* Check if user is logged in */}
+      {!user ? (
+        <View className="flex-1 justify-center items-center px-4">
+          <HeartIconSolid size={80} color="#9CA3AF" />
+          <Text className="text-gray-500 text-lg mb-4 text-center">{t('please_login_to_view_favorites')}</Text>
+          <TouchableOpacity 
+            onPress={() => {
+              // Go to auth screen for login
+              goToAuth();
+            }}
+            className="bg-slate-800 px-6 py-3 rounded-lg"
+          >
+            <Text className="text-white font-medium">{t('login')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={favorites}
+          renderItem={renderProduct}
+          keyExtractor={(item) => item.uniqueId || item._id}
+          contentContainerStyle={{ 
+            paddingVertical: 16,
+            paddingBottom: 90 
+          }}
+          ListEmptyComponent={renderEmpty}
+          refreshing={refreshing}
+          onRefresh={fetchFavorites}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </View>
   );
 };

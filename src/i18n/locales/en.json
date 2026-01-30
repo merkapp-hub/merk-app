@@ -550,6 +550,27 @@
     "order_confirmation_sent": "A confirmation email has been sent to your email address",
     "view_orders": "View My Orders",
     "continue_shopping": "Continue Shopping",
-    "redirecting_home_in_4_seconds": "Redirecting to home in 4 seconds..."
+    "redirecting_home_in_4_seconds": "Redirecting to home in 4 seconds...",
+    "please_login_to_access_account": "Please login to access your account",
+    "please_login_to_view_favorites": "Please login to view your favorites",
+    "please_login_to_view_orders": "Please login to view your orders",
+    "login": "Login",
+    "skip_for_now": "Skip for now",
+    "loading_more": "Loading more...",
+    "loading": "Loading...",
+    "no_orders_found": "No orders found",
+    "orders": "Orders",
+    "guest_user": "Guest User",
+    "processing_status": "Processing",
+    "delivered_status": "Delivered",
+    "unknown_product": "Unknown Product",
+    "unnamed_product": "Unnamed Product",
+    "uncategorized": "Uncategorized",
+    "active_status": "Active",
+    "inactive_status": "Inactive",
+    "failed_to_fetch_orders": "Failed to fetch orders",
+    "failed_to_load_orders": "Failed to load orders",
+    "error_fetching_orders": "Error fetching orders",
+    "seller_id_not_found": "Seller ID not found"
   }
 }

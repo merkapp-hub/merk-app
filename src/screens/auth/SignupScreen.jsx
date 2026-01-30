@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 
 const SignupScreen = () => {
   const navigation = useNavigation();
-  const { register } = useAuth();
+  const { register, enableGuestMode } = useAuth();
   const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState('user');
@@ -29,6 +29,11 @@ const SignupScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const handleSkip = () => {
+    // Enable guest mode which will trigger navigation to App stack
+    enableGuestMode();
+  };
 
   const validateForm = () => {
     if (!firstName || !lastName || !email || !password) {
@@ -277,6 +282,18 @@ const SignupScreen = () => {
           <TouchableOpacity onPress={() => navigation.navigate('Login')}>
             <Text className="text-[#E58F14] text-base font-medium">
               {t('log_in')}?
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Skip for now button */}
+        <View className="mt-8">
+          <TouchableOpacity
+            onPress={handleSkip}
+            className="w-full py-3 items-center"
+          >
+            <Text className="text-[#E58F14] text-base font-bold underline">
+              {t('skip_for_now')}
             </Text>
           </TouchableOpacity>
         </View>

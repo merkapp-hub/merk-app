@@ -895,11 +895,11 @@ const BillingDetails = () => {
                 <Text>{currencySymbol} {convertPrice(calculateSubtotal()).toLocaleString()}</Text>
               </View>
               <View className="flex-row justify-between mb-1">
-                <Text>Tax ({taxRate}%)</Text>
+                <Text>{t('tax')} ({taxRate}%)</Text>
                 <Text>{currencySymbol} {convertPrice(calculateTax()).toLocaleString()}</Text>
               </View>
               <View className="flex-row justify-between mb-1">
-                <Text>Delivery Charge</Text>
+                <Text>{t('delivery_charge')}</Text>
                 <Text>{currencySymbol} {convertPrice(deliveryCharge).toLocaleString()}</Text>
               </View>
               <View className="flex-row justify-between mb-1">

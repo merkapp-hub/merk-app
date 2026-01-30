@@ -300,6 +300,14 @@ const HomeScreen = () => {
       console.log('Gallery API response:', response);
       
       if (response && response.status && response.data) {
+        // Set banner image (last image from gallery)
+        if (response.data.length > 0) {
+          const lastImage = response.data[response.data.length - 1];
+          setGalleryData([lastImage.image]); // Store last image for banner
+          console.log('Banner image set:', lastImage.image);
+        }
+        
+        // Set new arrivals (existing logic)
         const newArrivalItems = response.data
           .filter(item => item.type === 'new_arrival' && item.isActive)
           .sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -317,10 +325,12 @@ const HomeScreen = () => {
       } else {
         console.warn('No gallery data found');
         setNewArrivals([]);
+        setGalleryData([]);
       }
     } catch (error) {
       console.error('Error fetching gallery images:', error);
       setNewArrivals([]);
+      setGalleryData([]);
     }
   };
 
@@ -947,6 +957,26 @@ const HomeScreen = () => {
           )}
         </View>
         */}
+
+        {/* Banner Section */}
+        {galleryData.length > 0 && (
+          <View className="px-4 mb-6">
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate('BestSellingProducts')}
+              className="rounded-2xl overflow-hidden"
+            >
+              <Image
+                source={{ uri: galleryData[galleryData.length - 1] }}
+                style={{
+                  width: width - 32,
+                  height: 200,
+                }}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Featured - New Arrivals */}
         <View className="px-4 mb-6">

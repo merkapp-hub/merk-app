@@ -23,7 +23,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 const AccountScreen = () => {
   const navigation = useNavigation();
-  const { logout, userInfo } = useAuth();
+  const { logout, userInfo, goToAuth } = useAuth();
   const { t } = useTranslation();
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('en');
@@ -143,7 +143,23 @@ const AccountScreen = () => {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-6">
+      {/* Check if user is logged in */}
+      {!userInfo ? (
+        <View className="flex-1 justify-center items-center px-4">
+          <UserIcon size={80} color="#9CA3AF" />
+          <Text className="text-gray-500 text-lg mb-4 text-center">{t('please_login_to_access_account')}</Text>
+          <TouchableOpacity 
+            onPress={() => {
+              // Go to auth screen for login
+              goToAuth();
+            }}
+            className="bg-slate-800 px-6 py-3 rounded-lg"
+          >
+            <Text className="text-white font-medium">{t('login')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <ScrollView className="flex-1 px-4 pt-6">
         {/* Profile Section */}
         <View className="flex-row items-center mb-5">
           <TouchableOpacity
@@ -201,6 +217,7 @@ const AccountScreen = () => {
           ))}
         </View>
       </ScrollView>
+      )}
 
       {/* Language Selection Modal */}
       <LanguageModal

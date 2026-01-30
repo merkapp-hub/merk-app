@@ -48,11 +48,14 @@ export default function SellerOrdersScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMoreData, setHasMoreData] = useState(true);
 
-  const fetchOrders = async (page = 1, isLoadMore = false) => {
+  const fetchOrders = async (page = 1, isLoadMore = false, isRefresh = false) => {
     try {
       if (!isLoadMore) {
         setLoading(true);
-        setRefreshing(true);
+        // Only set refreshing to true if it's actually a pull-to-refresh action
+        if (isRefresh) {
+          setRefreshing(true);
+        }
       } else {
         setLoadingMore(true);
       }
@@ -314,12 +317,11 @@ export default function SellerOrdersScreen() {
 
   // Handle refresh - reset to first page
   const onRefresh = React.useCallback(() => {
-    setRefreshing(true);
     setCurrentPage(1);
     setHasMoreData(true);
 
     if (activeTab === 'orders') {
-      fetchOrders(1, false);
+      fetchOrders(1, false, true); // Pass true for isRefresh
     } else {
       fetchProducts(1, false);
     }
@@ -400,7 +402,7 @@ export default function SellerOrdersScreen() {
     );
   };
 
-  if (loading && !refreshing && orders.length === 0) {
+  if (loading && orders.length === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>

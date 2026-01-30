@@ -23,7 +23,7 @@ const PRESET_COLORS = [
   '#FFD700', '#C0C0C0', '#FF6347', '#4169E1', '#32CD32', '#FF1493'
 ];
 
-// Parameter Type Defaults
+
 const DEFAULT_SIZE = {
   id: Date.now() + Math.random(),
   label: "Size",
@@ -54,7 +54,7 @@ const DEFAULT_WEIGHT = {
   total: 0,
 };
 
-// Helper functions for color conversion
+
 const hexToRgb = (hex) => {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result ? {
@@ -73,10 +73,8 @@ export default function AddProductScreen({ navigation, route }) {
   const [userId, setUserId] = useState(null);
   const productId = route?.params?.productId || null;
   
-  // Debug logs
-  console.log('=== AddProductScreen Loaded ===');
-  console.log('Route params:', route?.params);
-  console.log('Product ID:', productId);
+ 
+ 
   
   const [productData, setProductData] = useState({
     name: '', category: '', sku: '', model: '', origin: '', expirydate: '',
@@ -134,17 +132,17 @@ export default function AddProductScreen({ navigation, route }) {
     if (productId) {
       fetchProductById();
     } else {
-      // Reset form for new product
+    
       resetForm();
     }
   }, [productId]);
 
-  // Add focus listener to reset form when navigating back
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      console.log('Screen focused - productId:', productId);
+    
       if (!productId) {
-        // Reset form when coming back to add new product
+     
         resetForm();
       }
     });
@@ -186,8 +184,7 @@ export default function AddProductScreen({ navigation, route }) {
 
   const fetchProductById = async () => {
     try {
-      console.log('=== Fetching Product ===');
-      console.log('Product ID:', productId);
+    
       
       setLoading(true);
       const response = await GetApi(`getProductById/${productId}`);
@@ -199,8 +196,7 @@ export default function AddProductScreen({ navigation, route }) {
         console.log('Product data:', product);
         
         const hasVariants = product.varients?.length > 0;
-        console.log('Has variants:', hasVariants);
-        console.log('Variants:', product.varients);
+     
         
         setProductData({
           ...productData,
@@ -244,12 +240,12 @@ export default function AddProductScreen({ navigation, route }) {
       try {
         const apiLevel = Platform.Version;
         
-        // Android 13+ (API 33+) doesn't need READ_EXTERNAL_STORAGE for image picker
+      
         if (apiLevel >= 33) {
           return true;
         }
         
-        // For Android 12 and below
+       
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
           {
@@ -288,11 +284,11 @@ export default function AddProductScreen({ navigation, route }) {
 
       launchImageLibrary({ 
         mediaType: 'photo', 
-        quality: 0.7, // Reduced quality for faster upload
-        selectionLimit: 5, // Limit to 5 images at once
+        quality: 0.7, 
+        selectionLimit: 5, 
         includeBase64: false,
-        maxWidth: 1200, // Resize to max 1200px width
-        maxHeight: 1200, // Resize to max 1200px height
+        maxWidth: 1200, 
+        maxHeight: 1200,
       }, async (response) => {
         if (response.didCancel) {
           console.log('User cancelled image picker');
@@ -306,15 +302,15 @@ export default function AddProductScreen({ navigation, route }) {
         } 
         
         if (response.assets && response.assets.length > 0) {
-          // Upload images immediately
+       
           setLoading(true);
           
-          // Increased timeout to 2 minutes for slow connections
+        
           const loadingTimeout = setTimeout(() => {
             console.warn('Upload timeout - forcing loading to stop');
             setLoading(false);
             Alert.alert('Timeout', 'Upload is taking too long. Please check your internet connection and try again.');
-          }, 120000); // 2 minutes
+          }, 120000); 
           
           try {
             const imageFiles = response.assets.map((asset, index) => ({
@@ -325,14 +321,14 @@ export default function AddProductScreen({ navigation, route }) {
             
             console.log('Image files prepared:', imageFiles);
             
-            // Upload to server
+        
             const uploadedUrls = await uploadImagesToServer(imageFiles);
             
-            // Clear timeout since upload succeeded
+          
             clearTimeout(loadingTimeout);
             
             if (variantIndex !== null) {
-              // Add uploaded URLs to variant images
+             
               const newVariants = [...variants];
               newVariants[variantIndex].image = [
                 ...newVariants[variantIndex].image, 
@@ -341,7 +337,7 @@ export default function AddProductScreen({ navigation, route }) {
               setVariants(newVariants);
               Alert.alert('Success', `${uploadedUrls.length} image(s) uploaded successfully!`);
             } else {
-              // Add uploaded URLs to product images
+              
               setProductData(prev => ({ 
                 ...prev, 
                 images: [...prev.images, ...uploadedUrls] 
@@ -353,7 +349,7 @@ export default function AddProductScreen({ navigation, route }) {
             clearTimeout(loadingTimeout);
             Alert.alert('Upload Failed', error.message || 'Failed to upload images. Please try again.');
           } finally {
-            // Ensure loading is always turned off
+        
             console.log('Turning off loading spinner');
             setLoading(false);
           }

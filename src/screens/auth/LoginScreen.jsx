@@ -21,7 +21,7 @@ import i18n from '../../i18n';
 const LoginScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { login, setUserToken, setUserInfo } = useAuth();
+  const { login, setUserToken, setUserInfo, enableGuestMode } = useAuth();
   const { t } = useTranslation();
 
   const [email, setEmail] = useState(route.params?.email || '');
@@ -73,6 +73,11 @@ const LoginScreen = () => {
     }
   }, [route.params]);
 
+  const handleSkip = () => {
+    // Enable guest mode which will trigger navigation to App stack
+    enableGuestMode();
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
       setError(t('please_enter_email_password'));
@@ -104,10 +109,8 @@ const LoginScreen = () => {
         // For regular users
         else {
           console.log('Regular user login, navigating to MainTabs');
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'MainTabs' }],
-          });
+          // Don't navigate here - let the RootNavigator handle it automatically
+          // The userToken and userInfo will be set, triggering navigation in RootNavigator
         }
       } else {
         throw new Error(result.error || 'Login failed');
@@ -256,6 +259,18 @@ const LoginScreen = () => {
             <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
               <Text className="text-[#E58F14] text-base font-medium">
                 {t('sign_up')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Skip for now button */}
+          <View className="mt-8">
+            <TouchableOpacity
+              onPress={handleSkip}
+              className="w-full py-3 items-center"
+            >
+              <Text className="text-[#E58F14] text-base font-bold underline">
+                {t('skip_for_now')}
               </Text>
             </TouchableOpacity>
           </View>

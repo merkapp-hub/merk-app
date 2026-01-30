@@ -23,7 +23,7 @@ import { useCurrency } from '../../context/CurrencyContext';
 
 
 const OrdersScreen = ({ navigation }) => {
-  const { userInfo } = useAuth();
+  const { userInfo, goToAuth } = useAuth();
   const { t } = useTranslation();
   const { convertPrice, currencySymbol } = useCurrency();
   const [orders, setOrders] = useState([]);
@@ -530,13 +530,27 @@ const OrdersScreen = ({ navigation }) => {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <ChevronLeftIcon size={24} color="#ffffff" />
+            <ChevronLeftIcon size={24} color="white" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('my_orders')}</Text>
         </View>
       </View>
 
-      {orders.length === 0 ? (
+      {/* Check if user is logged in */}
+      {!userInfo ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>{t('please_login_to_view_orders')}</Text>
+          <TouchableOpacity 
+            onPress={() => {
+              // Go to auth screen for login
+              goToAuth();
+            }}
+            style={styles.startShoppingButton}
+          >
+            <Text style={styles.startShoppingText}>{t('login')}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : orders.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyTitle}>{t('no_orders_yet')}</Text>
           <Text style={styles.emptySubtitle}>

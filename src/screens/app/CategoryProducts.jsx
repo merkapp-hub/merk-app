@@ -28,6 +28,7 @@ const CategoryProducts = () => {
 
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -40,16 +41,17 @@ const CategoryProducts = () => {
       // Only show loading indicator on first page load or refresh
       if (page === 1) {
         setLoading(true);
-        setProducts([]); // Clear products when loading first page
+        setProducts([]); 
       } else {
         setLoading(false);
+        setLoadingMore(true); // Show footer loader for pagination
       }
 
       setError(null);
 
       console.log('Fetching products for category ID:', categoryId, 'Page:', page);
 
-      // Use the correct endpoint that filters by category on the server side
+  
       const response = await GetApi(`getProductByCategory/${categoryId}?page=${page}&limit=${limit}&is_verified=true`);
 
       console.log('API Response:', {
@@ -67,7 +69,7 @@ const CategoryProducts = () => {
       const pagination = response.pagination || {};
 
       if (Array.isArray(productsData)) {
-        // Debug: Log the first product's category
+     
         if (productsData.length > 0) {
           console.log('First product category:', {
             productId: productsData[0]._id,
@@ -133,23 +135,44 @@ const CategoryProducts = () => {
 
 
         setProducts(prev => {
+          console.log('📦 Setting products:');
+          console.log('   Current products count:', prev.length);
+          console.log('   New products count:', formattedProducts.length);
+          console.log('   Page:', page);
 
           if (page === 1) {
+            console.log('   ✅ First page - replacing all products');
             return formattedProducts;
           }
 
-          return [...prev, ...formattedProducts];
+          const combined = [...prev, ...formattedProducts];
+          console.log('   ✅ Appending - Total products now:', combined.length);
+          return combined;
         });
 
-        // Update hasMore based on pagination
-        const hasMorePages = pagination.currentPage < pagination.totalPages;
-        console.log('Pagination:', {
-          currentPage: pagination.currentPage,
-          totalPages: pagination.totalPages,
-          hasMore: hasMorePages,
-          itemsPerPage: pagination.itemsPerPage,
-          totalItems: pagination.totalItems
-        });
+        // Update hasMore based on pagination or data count
+        let hasMorePages = false;
+        
+        if (pagination && pagination.currentPage && pagination.totalPages) {
+          // If pagination object exists, use it
+          hasMorePages = pagination.currentPage < pagination.totalPages;
+          console.log('📊 Using pagination object for hasMore calculation');
+        } else {
+          // Fallback: if we got exactly the limit, there might be more
+          hasMorePages = formattedProducts.length === limit;
+          console.log('📊 Using data count for hasMore calculation');
+          console.log('   Products received:', formattedProducts.length);
+          console.log('   Limit:', limit);
+          console.log('   Assuming more pages:', hasMorePages);
+        }
+        
+        console.log('📊 Pagination Info:');
+        console.log('   Current Page:', pagination?.currentPage || page);
+        console.log('   Total Pages:', pagination?.totalPages || 'Unknown');
+        console.log('   Items Per Page:', pagination?.itemsPerPage || limit);
+        console.log('   Total Items:', pagination?.totalItems || 'Unknown');
+        console.log('   Has More Pages:', hasMorePages);
+        console.log('   Products loaded this page:', formattedProducts.length);
         setHasMore(hasMorePages);
       }
     } catch (err) {
@@ -157,6 +180,7 @@ const CategoryProducts = () => {
       setError(t('failed_load_products'));
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [categoryId, page]);
 
@@ -268,14 +292,21 @@ const CategoryProducts = () => {
   }, [products, categoryId, categoryName]);
 
   const loadMore = useCallback(() => {
-    console.log('Load more triggered. Current page:', page, 'Has more:', hasMore, 'Loading:', loading);
+    console.log('🔄 Load More Triggered:');
+    console.log('   Current page:', page);
+    console.log('   Has more:', hasMore);
+    console.log('   Loading:', loading);
+    console.log('   Total products:', products.length);
+    
     if (!loading && hasMore) {
-      console.log('Loading more products. New page:', page + 1);
+      console.log('   ✅ Loading next page:', page + 1);
       setPage(prev => prev + 1);
     } else {
-      console.log('Not loading more. Loading:', loading, 'Has more:', hasMore);
+      console.log('   ❌ Not loading more:');
+      if (loading) console.log('      - Already loading');
+      if (!hasMore) console.log('      - No more pages');
     }
-  }, [page, hasMore, loading]);
+  }, [page, hasMore, loading, products.length]);
 
   const renderItem = ({ item }) => {
     const discountText = item.discount > 0 ? `${item.discount}% OFF` : null;
@@ -378,17 +409,11 @@ const CategoryProducts = () => {
           </View>
         }
         ListFooterComponent={
-          loading ? (
+          loadingMore ? (
             <View style={styles.footerLoader}>
-              <ActivityIndicator size="small" color="#0000ff" />
+              <ActivityIndicator size="small" color="#E58F14" />
+              <Text style={styles.loadingText}>Loading more products...</Text>
             </View>
-          ) : hasMore ? (
-            <TouchableOpacity
-              style={styles.loadMoreButton}
-              onPress={loadMore}
-            >
-              <Text style={styles.loadMoreText}>Load More</Text>
-            </TouchableOpacity>
           ) : null
         }
       />
@@ -535,6 +560,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     margin: 10,
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 8,
+    color: '#666',
+    fontSize: 12,
   },
   loadMoreText: {
     color: '#333',

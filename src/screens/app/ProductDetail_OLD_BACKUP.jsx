@@ -188,7 +188,7 @@ const fetchProductDetails = async () => {
       const response = await GetApi(`getProductbycategory/${categoryId}`);
       
       if (response && Array.isArray(response)) {
-        // Filter out current product and limit to 5 items
+      
         const filtered = response
           .filter(item => item._id !== productId)
           .slice(0, 5)
@@ -373,7 +373,7 @@ const fetchProductDetails = async () => {
           console.error('Error removing from cart:', error);
         }
       }
-      // If quantity is being updated (but not to/from 0), update cart
+     
       else if (newQuantity > 0 && quantity > 0) {
         try {
           const cartData = await AsyncStorage.getItem('cartData');
@@ -660,7 +660,7 @@ const fetchProductDetails = async () => {
             )}
           </View>
           
-          {/* Thumbnail Images */}
+       
           {selectedImageList.length > 1 && (
             <ScrollView
               horizontal

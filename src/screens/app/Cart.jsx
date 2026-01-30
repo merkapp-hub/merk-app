@@ -19,7 +19,7 @@ import { getUserStorageKey, STORAGE_KEYS } from '../../utils/storageKeys';
 
 const CartScreen = () => {
   const navigation = useNavigation();
-  const { userInfo: user, updateCartCount } = useAuth();
+  const { userInfo: user, updateCartCount, goToAuth } = useAuth();
   const { t } = useTranslation();
   const { convertPrice, currencySymbol, formatPrice, userCurrency, exchangeRate } = useCurrency();
   const [cartItems, setCartItems] = useState([]);
@@ -477,6 +477,13 @@ const CartScreen = () => {
   // }
 
   const navigateToBilling = () => {
+    // Check if user is logged in before proceeding to checkout
+    if (!user) {
+      // Redirect to login screen if user is not logged in
+      goToAuth();
+      return;
+    }
+
     setIsCheckingOut(true);
     
     // Pass complete product data including image

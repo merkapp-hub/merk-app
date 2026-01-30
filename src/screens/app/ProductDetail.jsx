@@ -180,7 +180,7 @@ const ProductDetailScreen = () => {
           price: variantRegularPrice
         });
         
-        // Check if this variant+size is already in cart
+     
         try {
           const cartKey = getUserStorageKey(STORAGE_KEYS.CART_DATA, user?._id);
           const cartData = await AsyncStorage.getItem(cartKey);
@@ -866,13 +866,16 @@ const ProductDetailScreen = () => {
             </TouchableOpacity>
             <Text className="text-white text-xl font-semibold">{t('product_details')}</Text>
           </View>
-          <TouchableOpacity onPress={handleToggleFavorite}>
-            {isFavorite ? (
-              <HeartIconSolid size={24} color="#EF4444" />
-            ) : (
-              <HeartIconOutline size={24} color="white" />
-            )}
-          </TouchableOpacity>
+          {/* Show heart icon only for logged in users */}
+          {user && (
+            <TouchableOpacity onPress={handleToggleFavorite}>
+              {isFavorite ? (
+                <HeartIconSolid size={24} color="#EF4444" />
+              ) : (
+                <HeartIconOutline size={24} color="white" />
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -973,7 +976,7 @@ const ProductDetailScreen = () => {
             <View className="flex-row mr-2">
               {renderStars(4.0)}
             </View>
-            <Text className="text-gray-500 text-sm">(4.0) • {product.sold_pieces || 0} {t('sold')}</Text>
+            {/* <Text className="text-gray-500 text-sm">(4.0) • {product.sold_pieces || 0} {t('sold')}</Text> */}
           </View>
 
           {/* Colors Selection */}
@@ -1302,28 +1305,30 @@ const ProductDetailScreen = () => {
 
         
 
-          {/* Favorite Button */}
-          <View className="mb-6">
-            <TouchableOpacity 
-              onPress={toggleFavorite}
-              disabled={favoriteLoading}
-              className="flex-row items-center justify-center py-2 rounded-lg border border-gray-300 w-32"
-            >
-              {favoriteLoading ? (
-                <ActivityIndicator size="small" color="#f97316" />
-              ) : isFavorite ? (
-                <>
-                  <HeartIconSolid size={20} color="#ef4444" />
-                  <Text className="text-gray-700 ml-2 font-medium">{t('saved')}</Text>
-                </>
-              ) : (
-                <>
-                  <HeartIconOutline size={20} color="#6b7280" />
-                  <Text className="text-gray-700 ml-2 font-medium">{t('save')}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+          {/* Favorite Button - Show only for logged in users */}
+          {user && (
+            <View className="mb-6">
+              <TouchableOpacity 
+                onPress={toggleFavorite}
+                disabled={favoriteLoading}
+                className="flex-row items-center justify-center py-2 rounded-lg border border-gray-300 w-32"
+              >
+                {favoriteLoading ? (
+                  <ActivityIndicator size="small" color="#f97316" />
+                ) : isFavorite ? (
+                  <>
+                    <HeartIconSolid size={20} color="#ef4444" />
+                    <Text className="text-gray-700 ml-2 font-medium">{t('saved')}</Text>
+                  </>
+                ) : (
+                  <>
+                    <HeartIconOutline size={20} color="#6b7280" />
+                    <Text className="text-gray-700 ml-2 font-medium">{t('save')}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Product Details */}
           {/* <View className="mb-6">

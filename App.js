@@ -63,11 +63,14 @@ const AppStack = () => {
   
   console.log('User Info in AppStack:', userInfo);
 
-  // Set initial route based on user role and verification status
+  // Always start with MainTabs (Home screen) regardless of login status
+  // Authentication will be checked when needed (like checkout)
   const getInitialRouteName = () => {
+    // Only redirect sellers to their specific screens
     if (userInfo?.role === 'seller') {
       return userInfo?.status === 'Verified' ? 'SellerTabs' : 'CreateStore';
     }
+    // For all other cases (logged in users, guests), show Home screen
     return 'MainTabs';
   };
 
@@ -107,88 +110,37 @@ const AppStack = () => {
 };
 
 const RootNavigator = () => {
-  const { isLoading, userToken, userInfo } = useAuth();
+  const { isLoading, userToken, userInfo, isGuestMode } = useAuth();
   const [isSplashVisible, setIsSplashVisible] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const navigationRef = useNavigationContainerRef();
-  // useEffect(() => {
-  //   const init = async () => {
-  //     // …do multiple sync or async tasks
-  //   };
 
-  //   init().finally(async () => {
-  //     // await BootSplash.hide({ fade: true });
-  //     console.log("BootSplash has been hidden successfully");
-  //   });
-  // }, []);
-  // useEffect(() => {
-  //   const timer = setTimeout(() => {
-  //     setIsSplashVisible(false);
-  //   }, 4000); // 3 seconds
-
-  //   return () => clearTimeout(timer);
-  // }, []);
-
-  // useEffect(() => {
-  //   const prepare = async () => {
-  //     try {
-  //       console.log('Auth state changed, userToken:', userToken ? 'exists' : 'does not exist');
-  //       console.log('User info:', userInfo);
-  //     } catch (e) {
-  //       console.warn('Error in prepare:', e);
-  //     } finally {
-  //       setIsReady(true);
-  //     }
-  //   };
-
-  //   if (!isSplashVisible) {
-  //     prepare();
-  //   }
-  // }, [isSplashVisible, userToken, userInfo]);
-
-  // if (isSplashVisible) {
-  //   return <SplashScreen />;
-  // }
-
-  // if (isLoading || !isReady) {
-  //   return (
-  //     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-  //       <ActivityIndicator size="large" color="#0000ff" />
-  //     </View>
-  //   );
-  // }
-
-  // Navigate to appropriate screen when userInfo loads
+  // Navigate to appropriate screen when userInfo loads (only for sellers)
   useEffect(() => {
     if (userToken && userInfo && navigationRef.current) {
       console.log('UserInfo loaded in RootNavigator, role:', userInfo.role, 'status:', userInfo.status);
       
-      // Small delay to ensure navigation is ready
-      setTimeout(() => {
-        if (userInfo.role === 'seller') {
+      // Only redirect sellers, let regular users stay on Home
+      if (userInfo.role === 'seller') {
+        // Small delay to ensure navigation is ready
+        setTimeout(() => {
           const targetScreen = userInfo.status === 'Verified' ? 'SellerTabs' : 'CreateStore';
-          console.log('Navigating to:', targetScreen);
+          console.log('Navigating seller to:', targetScreen);
           navigationRef.current?.navigate('App', {
             screen: targetScreen
           });
-        } else {
-          console.log('Navigating to: MainTabs');
-          navigationRef.current?.navigate('App', {
-            screen: 'MainTabs'
-          });
-        }
-      }, 100);
+        }, 100);
+      }
+      // Regular users and guests will automatically be on Home screen via AppStack
     }
   }, [userToken, userInfo]);
 
   return (
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!userToken ? (
-          <Stack.Screen name="Auth" component={AuthStack} />
-        ) : (
-          <Stack.Screen name="App" component={AppStack} />
-        )}
+        {/* Always show App stack first - authentication will be checked when needed */}
+        <Stack.Screen name="App" component={AppStack} />
+        <Stack.Screen name="Auth" component={AuthStack} />
       </Stack.Navigator>
     </NavigationContainer>
   );

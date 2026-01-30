@@ -15,6 +15,24 @@ export const AuthProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [userToken, setUserToken] = useState(null);
   const [userInfo, setUserInfo] = useState(null);
+  const [isGuestMode, setIsGuestMode] = useState(false);
+
+  // Guest mode function
+  const enableGuestMode = async () => {
+    setIsGuestMode(true);
+    setIsLoading(false);
+    // Save guest mode to AsyncStorage
+    await AsyncStorage.setItem('isGuestMode', 'true');
+  };
+
+  // Function to go back to auth screen
+  const goToAuth = async () => {
+    setIsGuestMode(false);
+    setUserToken(null);
+    setUserInfo(null);
+    // Clear guest mode from AsyncStorage
+    await AsyncStorage.removeItem('isGuestMode');
+  };
 
   // Check for existing token on app load
   useEffect(() => {
@@ -22,12 +40,19 @@ export const AuthProvider = ({ children }) => {
       try {
         console.log('Checking for existing token...');
         const token = await AsyncStorage.getItem('userToken');
+        const guestMode = await AsyncStorage.getItem('isGuestMode');
+        
         console.log('Token found in AsyncStorage:', token ? 'Yes' : 'No');
+        console.log('Guest mode found in AsyncStorage:', guestMode === 'true' ? 'Yes' : 'No');
+        
         setUserToken(token);
         
         if (token) {
           const userData = await AsyncStorage.getItem('userInfo');
           setUserInfo(userData ? JSON.parse(userData) : null);
+        } else if (guestMode === 'true') {
+          // Restore guest mode
+          setIsGuestMode(true);
         }
       } catch (error) {
         console.error('Error checking token:', error);
@@ -156,8 +181,10 @@ export const AuthProvider = ({ children }) => {
     try {
       await AsyncStorage.removeItem('userToken');
       await AsyncStorage.removeItem('userInfo');
+      await AsyncStorage.removeItem('isGuestMode'); // Clear guest mode on logout
       setUserToken(null);
       setUserInfo(null);
+      setIsGuestMode(false); // Reset guest mode state
       setIsLoading(false);
     } catch (e) {
       console.log('Logout error:', e);
@@ -420,9 +447,12 @@ export const AuthProvider = ({ children }) => {
     isLoading,
     userToken,
     userInfo,
+    isGuestMode,
     login,
     logout,
     register,
+    enableGuestMode,
+    goToAuth,
     cartCount,
     updateCartCount,
     updateFavoritesCount,
